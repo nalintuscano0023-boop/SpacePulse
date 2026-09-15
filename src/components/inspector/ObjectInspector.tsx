@@ -3,15 +3,13 @@ import {
   X, 
   Satellite, 
   Radio, 
-  ExternalLink, 
   Compass, 
   Layers, 
   Activity,
   Zap,
-  Clock,
   Crosshair
 } from 'lucide-react';
-import { SpacecraftObject } from '../../types/space';
+import type { SpacecraftObject } from '../../types/space';
 import { StatusBadge } from '../common/StatusBadge';
 import { formatDistanceKm, formatVelocityKmS } from '../../utils/formatters';
 import { formatLightTime, kmToAu } from '../../services/calculations/physics';
@@ -38,56 +36,56 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
     <div
       style={{
         position: 'fixed',
-        top: '80px',
-        right: '24px',
-        bottom: '24px',
+        top: '72px',
+        right: '20px',
+        bottom: '20px',
         width: '420px',
-        maxWidth: 'calc(100vw - 48px)',
-        zIndex: 90,
+        maxWidth: 'calc(100vw - 40px)',
+        zIndex: 150,
         display: 'flex',
         flexDirection: 'column',
-        animation: 'slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+        animation: 'slideInRight 0.22s cubic-bezier(0.16, 1, 0.3, 1)'
       }}
-      className="glass-panel"
+      className="glass-panel tech-corner"
     >
       {/* Panel Header */}
       <div style={{
-        padding: '18px 20px',
-        borderBottom: '1px solid var(--border-subtle)',
+        padding: '16px 20px',
+        borderBottom: '1px solid var(--border-hairline)',
         display: 'flex',
         alignItems: 'flex-start',
         justifyContent: 'space-between',
-        background: 'rgba(255, 255, 255, 0.02)'
+        background: 'rgba(255, 255, 255, 0.015)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{
-            width: '38px',
-            height: '38px',
-            borderRadius: 'var(--radius-sm)',
+            width: '36px',
+            height: '36px',
+            borderRadius: 'var(--radius-xs)',
             background: 'rgba(56, 189, 248, 0.1)',
-            border: '1px solid var(--border-glass)',
+            border: '1px solid var(--border-subtle)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: 'var(--accent-cyan)'
           }}>
-            <Satellite size={20} />
+            <Satellite size={19} />
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: 700 }}>{object.name}</h3>
+              <h3 style={{ fontSize: '17px', fontWeight: 700, color: '#ffffff' }}>{object.name}</h3>
               <span style={{
                 fontSize: '10px',
-                padding: '2px 6px',
-                borderRadius: '4px',
-                background: 'rgba(255, 255, 255, 0.06)',
-                color: 'var(--text-secondary)',
+                padding: '2px 5px',
+                borderRadius: '3px',
+                background: 'rgba(255, 255, 255, 0.05)',
+                color: 'var(--accent-cyan)',
                 fontWeight: 600
               }}>
                 {object.agency}
               </span>
             </div>
-            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
               {object.mission}
             </div>
           </div>
@@ -108,7 +106,7 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
           }}
           aria-label="Close Inspector"
         >
-          <X size={18} />
+          <X size={17} />
         </button>
       </div>
 
@@ -116,24 +114,24 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
       <div style={{
         flex: 1,
         overflowY: 'auto',
-        padding: '20px',
+        padding: '18px 20px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '20px'
+        gap: '16px'
       }}>
         {/* Status & Provenance Bar */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          background: 'rgba(255, 255, 255, 0.02)',
+          background: 'var(--surface-inset)',
           padding: '10px 14px',
-          borderRadius: 'var(--radius-sm)',
-          border: '1px solid var(--border-subtle)'
+          borderRadius: 'var(--radius-xs)',
+          border: '1px solid var(--border-hairline)'
         }}>
           <div>
             <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Mission Status
+              Mission Flight Status
             </div>
             <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginTop: '2px' }}>
               {object.statusText}
@@ -150,23 +148,23 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
             color: 'var(--text-muted)',
             textTransform: 'uppercase',
             letterSpacing: '0.06em',
-            marginBottom: '10px',
+            marginBottom: '8px',
             display: 'flex',
             alignItems: 'center',
             gap: '6px'
           }}>
-            <Activity size={13} style={{ color: 'var(--accent-cyan)' }} />
-            <span>Flight Telemetry</span>
+            <Activity size={12} style={{ color: 'var(--accent-cyan)' }} />
+            <span>Flight Measurements</span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
             {/* Distance from Earth */}
-            <div className="glass-card" style={{ padding: '12px' }}>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Distance from Earth</div>
-              <div className="mono" style={{ fontSize: '16px', fontWeight: 700, marginTop: '4px', color: 'var(--text-primary)' }}>
+            <div style={{ background: 'var(--surface-inset)', padding: '12px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Distance from Earth</div>
+              <div className="mono" style={{ fontSize: '15px', fontWeight: 700, marginTop: '4px', color: 'var(--text-primary)' }}>
                 {object.distanceFromEarthKm !== undefined ? formatDistanceKm(object.distanceFromEarthKm) : 'Unavailable'}
               </div>
-              {distAu !== undefined && distAu >= 0.01 && (
+              {distAu !== undefined && distAu >= 0.005 && (
                 <div className="mono" style={{ fontSize: '11px', color: 'var(--accent-cyan)', marginTop: '2px' }}>
                   {distAu.toFixed(4)} AU
                 </div>
@@ -174,21 +172,21 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
             </div>
 
             {/* Velocity */}
-            <div className="glass-card" style={{ padding: '12px' }}>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Orbital Velocity</div>
-              <div className="mono" style={{ fontSize: '16px', fontWeight: 700, marginTop: '4px', color: 'var(--text-primary)' }}>
+            <div style={{ background: 'var(--surface-inset)', padding: '12px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Orbital Velocity</div>
+              <div className="mono" style={{ fontSize: '15px', fontWeight: 700, marginTop: '4px', color: 'var(--text-primary)' }}>
                 {object.velocityKmS !== undefined ? formatVelocityKmS(object.velocityKmS) : 'Unavailable'}
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
                 Relative to coordinate center
               </div>
             </div>
 
             {/* Distance from Sun */}
-            <div className="glass-card" style={{ padding: '12px' }}>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Distance from Sun</div>
-              <div className="mono" style={{ fontSize: '16px', fontWeight: 700, marginTop: '4px', color: 'var(--text-primary)' }}>
-                {object.distanceFromSunKm !== undefined ? formatDistanceKm(object.distanceFromSunKm) : 'Unavailable'}
+            <div style={{ background: 'var(--surface-inset)', padding: '12px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Distance from Sun</div>
+              <div className="mono" style={{ fontSize: '15px', fontWeight: 700, marginTop: '4px', color: 'var(--text-primary)' }}>
+                {object.distanceFromSunKm !== undefined ? formatDistanceKm(object.distanceFromSunKm, true) : 'Unavailable'}
               </div>
               {distSunAu !== undefined && (
                 <div className="mono" style={{ fontSize: '11px', color: 'var(--accent-cyan)', marginTop: '2px' }}>
@@ -198,12 +196,12 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
             </div>
 
             {/* Light Travel Time */}
-            <div className="glass-card" style={{ padding: '12px' }}>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>One-Way Light Delay</div>
-              <div className="mono" style={{ fontSize: '16px', fontWeight: 700, marginTop: '4px', color: 'var(--accent-cyan)' }}>
+            <div style={{ background: 'var(--surface-inset)', padding: '12px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>One-Way Light Delay</div>
+              <div className="mono" style={{ fontSize: '15px', fontWeight: 700, marginTop: '4px', color: 'var(--accent-cyan)' }}>
                 {object.lightTimeToEarthSec !== undefined ? formatLightTime(object.lightTimeToEarthSec) : 'N/A'}
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
                 Speed of Light ($c$)
               </div>
             </div>
@@ -212,25 +210,25 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
 
         {/* Geodetic Coordinates if in Earth Orbit */}
         {object.geodetic && (
-          <div className="glass-card" style={{ padding: '14px' }}>
-            <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>
+          <div style={{ background: 'var(--surface-inset)', padding: '12px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
+            <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
               Sub-Satellite Geodetic Track
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
               <div>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Latitude</span>
+                <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Latitude</span>
                 <div className="mono" style={{ fontSize: '13px', fontWeight: 600 }}>
                   {object.geodetic.latitude.toFixed(2)}°
                 </div>
               </div>
               <div>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Longitude</span>
+                <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Longitude</span>
                 <div className="mono" style={{ fontSize: '13px', fontWeight: 600 }}>
                   {object.geodetic.longitude.toFixed(2)}°
                 </div>
               </div>
               <div>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Altitude</span>
+                <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Altitude</span>
                 <div className="mono" style={{ fontSize: '13px', fontWeight: 600 }}>
                   {Math.round(object.geodetic.altitudeKm)} km
                 </div>
@@ -243,19 +241,19 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
         <div style={{
           background: 'rgba(56, 189, 248, 0.04)',
           border: '1px solid rgba(56, 189, 248, 0.2)',
-          borderRadius: 'var(--radius-md)',
-          padding: '16px'
+          borderRadius: 'var(--radius-xs)',
+          padding: '14px'
         }}>
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
+            gap: '6px',
             color: 'var(--accent-cyan)',
             fontWeight: 600,
-            fontSize: '13px',
-            marginBottom: '8px'
+            fontSize: '12px',
+            marginBottom: '6px'
           }}>
-            <Zap size={15} />
+            <Zap size={14} />
             <span>What does this mean?</span>
           </div>
           <p style={{ fontSize: '12px', color: 'var(--text-primary)', lineHeight: 1.6 }}>
@@ -264,8 +262,8 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
         </div>
 
         {/* Coordinate Reference & Orbit Type */}
-        <div className="glass-card" style={{ padding: '14px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ background: 'var(--surface-inset)', padding: '12px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
               <span style={{ color: 'var(--text-muted)' }}>Orbit Class</span>
               <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{object.orbitType}</span>
@@ -285,29 +283,29 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
         {object.payloads && object.payloads.length > 0 && (
           <div>
             <div style={{
-              fontSize: '11px',
+              fontSize: '10px',
               fontFamily: 'var(--font-heading)',
               color: 'var(--text-muted)',
               textTransform: 'uppercase',
               letterSpacing: '0.06em',
-              marginBottom: '8px',
+              marginBottom: '6px',
               display: 'flex',
               alignItems: 'center',
               gap: '6px'
             }}>
-              <Layers size={13} style={{ color: 'var(--accent-cyan)' }} />
-              <span>Scientific Instrumentation ({object.payloads.length})</span>
+              <Layers size={12} style={{ color: 'var(--accent-cyan)' }} />
+              <span>Scientific Payloads ({object.payloads.length})</span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               {object.payloads.map((payload, idx) => (
                 <div
                   key={idx}
                   style={{
-                    fontSize: '12px',
-                    padding: '8px 12px',
-                    background: 'rgba(255, 255, 255, 0.02)',
-                    border: '1px solid var(--border-subtle)',
-                    borderRadius: 'var(--radius-sm)',
+                    fontSize: '11px',
+                    padding: '6px 10px',
+                    background: 'var(--surface-inset)',
+                    border: '1px solid var(--border-hairline)',
+                    borderRadius: 'var(--radius-xs)',
                     color: 'var(--text-secondary)'
                   }}
                 >
@@ -320,14 +318,14 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
 
         {/* Data Provenance Footnote */}
         <div style={{
-          padding: '12px',
-          background: 'rgba(0, 0, 0, 0.25)',
-          borderRadius: 'var(--radius-sm)',
-          border: '1px solid var(--border-subtle)',
+          padding: '10px 12px',
+          background: 'rgba(3, 5, 10, 0.5)',
+          borderRadius: 'var(--radius-xs)',
+          border: '1px solid var(--border-hairline)',
           fontSize: '11px',
           color: 'var(--text-muted)'
         }}>
-          <div style={{ fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>
+          <div style={{ fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '2px' }}>
             Data Source Verification
           </div>
           <div>Source: {object.telemetrySource.sourceName}</div>
@@ -337,26 +335,26 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
             </div>
           )}
           <div style={{ marginTop: '4px', fontSize: '10px' }}>
-            Calculated / Updated: {new Date(object.telemetrySource.timestamp).toUTCString()}
+            Updated: {new Date(object.telemetrySource.timestamp).toUTCString()}
           </div>
         </div>
       </div>
 
       {/* Action Footer */}
       <div style={{
-        padding: '16px 20px',
-        borderTop: '1px solid var(--border-subtle)',
+        padding: '14px 20px',
+        borderTop: '1px solid var(--border-hairline)',
         display: 'flex',
         gap: '10px',
-        background: 'rgba(7, 10, 18, 0.95)'
+        background: 'rgba(3, 5, 10, 0.95)'
       }}>
         {onFocusOnMap && (
           <button
             onClick={() => onFocusOnMap(object.id)}
             className="btn btn-primary"
-            style={{ flex: 1 }}
+            style={{ flex: 1, fontSize: '12px' }}
           >
-            <Crosshair size={15} />
+            <Crosshair size={14} />
             <span>Focus on 3D Map</span>
           </button>
         )}
@@ -364,10 +362,10 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
           <button
             onClick={() => onOpenInAnalysis(object.id)}
             className="btn btn-secondary"
-            style={{ flex: 1 }}
+            style={{ flex: 1, fontSize: '12px' }}
           >
-            <Compass size={15} />
-            <span>Analyze</span>
+            <Compass size={14} />
+            <span>Vector Analysis</span>
           </button>
         )}
       </div>

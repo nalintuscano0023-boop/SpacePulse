@@ -2,20 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { 
   Search, 
   Satellite, 
-  Filter, 
-  ArrowUpRight, 
   Orbit, 
   Activity, 
   Compass, 
   RefreshCw,
   ExternalLink,
-  ChevronRight
+  ChevronRight,
+  Crosshair
 } from 'lucide-react';
 import { SPACECRAFT_REGISTRY, resolveSpacecraftState } from '../../services/data/spacecraftCatalog';
-import { SpacecraftObject } from '../../types/space';
+import type { SpacecraftObject } from '../../types/space';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { formatDistanceKm, formatVelocityKmS } from '../../utils/formatters';
-import { formatLightTime, kmToAu } from '../../services/calculations/physics';
+import { formatLightTime } from '../../services/calculations/physics';
 
 interface SpacecraftExplorerProps {
   onSelectObject: (obj: SpacecraftObject) => void;
@@ -51,7 +50,6 @@ export const SpacecraftExplorer: React.FC<SpacecraftExplorerProps> = ({
     resolveAll();
   }, []);
 
-  // Filtering
   const filteredList = spacecraftList.filter(craft => {
     const matchesSearch = craft.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       craft.mission.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -71,35 +69,35 @@ export const SpacecraftExplorer: React.FC<SpacecraftExplorerProps> = ({
   return (
     <div className="container" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Header */}
-      <div style={{ padding: '20px 0 8px' }}>
+      <div style={{ padding: '16px 0 6px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
           <div style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: '6px',
             padding: '3px 8px',
-            borderRadius: 'var(--radius-full)',
+            borderRadius: 'var(--radius-xs)',
             background: 'rgba(56, 189, 248, 0.1)',
-            border: '1px solid rgba(56, 189, 248, 0.3)',
+            border: '1px solid rgba(56, 189, 248, 0.25)',
             fontSize: '11px',
-            fontFamily: 'var(--font-heading)',
+            fontFamily: 'var(--font-mono)',
             color: 'var(--accent-cyan)',
             fontWeight: 600,
             textTransform: 'uppercase'
           }}>
-            <span>Orbital Fleet Directory</span>
+            <span>ASTRONOMICAL CATALOG // VERIFIED FLEET</span>
           </div>
         </div>
 
-        <h1 style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.02em', color: '#f8fafc' }}>
-          Spacecraft & Satellite Explorer
+        <h1 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.02em', color: '#ffffff' }}>
+          Spacecraft & Orbital Fleet Catalog
         </h1>
-        <p style={{ fontSize: '14px', color: 'var(--text-secondary)', maxWidth: '800px', lineHeight: 1.5, marginTop: '4px' }}>
-          Explore supported deep space probes, lunar exploration assets, and Earth-orbiting satellites with calculated ephemerides and authoritative CelesTrak / JPL data.
+        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', maxWidth: '800px', lineHeight: 1.5, marginTop: '4px' }}>
+          Authoritative directory of active planetary orbiters, solar observatories, deep-space probes, and Earth-orbiting satellites with calculated ephemerides and real-time CelesTrak SGP4 tracking.
         </p>
       </div>
 
-      {/* Search & Filter Controls */}
+      {/* Search & Filter Toolbar */}
       <div style={{
         display: 'flex',
         flexWrap: 'wrap',
@@ -112,17 +110,17 @@ export const SpacecraftExplorer: React.FC<SpacecraftExplorerProps> = ({
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
-          background: 'rgba(255, 255, 255, 0.03)',
-          border: '1px solid var(--border-subtle)',
-          borderRadius: 'var(--radius-sm)',
-          padding: '8px 14px',
+          background: 'var(--surface-inset)',
+          border: '1px solid var(--border-hairline)',
+          borderRadius: 'var(--radius-xs)',
+          padding: '8px 12px',
           width: '100%',
           maxWidth: '360px'
         }}>
-          <Search size={16} style={{ color: 'var(--text-muted)' }} />
+          <Search size={15} style={{ color: 'var(--text-muted)' }} />
           <input
             type="text"
-            placeholder="Search by name, agency, or mission..."
+            placeholder="Search catalog by name, agency, or payload..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
@@ -149,7 +147,7 @@ export const SpacecraftExplorer: React.FC<SpacecraftExplorerProps> = ({
               ISRO: 'ISRO Fleet',
               DEEP_SPACE: 'Deep Space & L1',
               LUNAR: 'Lunar Missions',
-              EARTH_ORBIT: 'Earth Orbit'
+              EARTH_ORBIT: 'Earth Orbit (LEO/SSO)'
             };
             const isActive = activeCategory === cat;
             return (
@@ -157,14 +155,14 @@ export const SpacecraftExplorer: React.FC<SpacecraftExplorerProps> = ({
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
                 style={{
-                  padding: '6px 14px',
-                  borderRadius: 'var(--radius-sm)',
+                  padding: '5px 12px',
+                  borderRadius: 'var(--radius-xs)',
                   fontSize: '12px',
                   fontFamily: 'var(--font-heading)',
                   fontWeight: 500,
                   cursor: 'pointer',
-                  border: isActive ? '1px solid var(--border-active)' : '1px solid var(--border-subtle)',
-                  background: isActive ? 'rgba(56, 189, 248, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                  border: isActive ? '1px solid var(--border-focus)' : '1px solid var(--border-hairline)',
+                  background: isActive ? 'rgba(56, 189, 248, 0.12)' : 'var(--surface-inset)',
                   color: isActive ? 'var(--accent-cyan)' : 'var(--text-secondary)',
                   transition: 'all 0.15s ease'
                 }}
@@ -176,16 +174,16 @@ export const SpacecraftExplorer: React.FC<SpacecraftExplorerProps> = ({
         </div>
       </div>
 
-      {/* Spacecraft Cards Grid */}
+      {/* Catalog Cards Grid */}
       {loading ? (
         <div style={{ padding: '48px', textAlign: 'center' }}>
           <RefreshCw size={24} className="radar-sweep" style={{ color: 'var(--accent-cyan)', margin: '0 auto 16px' }} />
-          <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Propagating satellite orbits and computing ephemerides...</div>
+          <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Propagating real-time orbital elements and resolving J2000 state vectors...</div>
         </div>
       ) : (
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
           gap: '16px'
         }}>
           {filteredList.map((craft) => (
@@ -193,15 +191,15 @@ export const SpacecraftExplorer: React.FC<SpacecraftExplorerProps> = ({
               key={craft.id}
               className="glass-card"
               style={{
-                padding: '20px',
+                padding: '18px',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
-                gap: '14px'
+                gap: '12px'
               }}
             >
               <div>
-                {/* Top: Name, Agency, Status */}
+                {/* Catalog Card Header */}
                 <div style={{
                   display: 'flex',
                   alignItems: 'flex-start',
@@ -215,9 +213,9 @@ export const SpacecraftExplorer: React.FC<SpacecraftExplorerProps> = ({
                       </span>
                       <span style={{
                         fontSize: '10px',
-                        padding: '2px 6px',
+                        padding: '2px 5px',
                         background: 'rgba(255, 255, 255, 0.05)',
-                        borderRadius: '4px',
+                        borderRadius: '3px',
                         fontWeight: 600,
                         color: 'var(--accent-cyan)'
                       }}>
@@ -232,19 +230,19 @@ export const SpacecraftExplorer: React.FC<SpacecraftExplorerProps> = ({
                   <StatusBadge status={craft.telemetrySource.status} metadata={craft.telemetrySource} compact />
                 </div>
 
-                {/* Telemetry 2x2 grid */}
+                {/* Measurements Grid */}
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: '1fr 1fr',
                   gap: '8px',
-                  background: 'rgba(0, 0, 0, 0.25)',
-                  padding: '12px',
-                  borderRadius: 'var(--radius-sm)',
-                  margin: '10px 0'
+                  background: 'var(--surface-inset)',
+                  padding: '10px 12px',
+                  borderRadius: 'var(--radius-xs)',
+                  margin: '8px 0'
                 }}>
                   <div>
                     <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                      Dist. from Earth
+                      Distance to Earth
                     </span>
                     <div className="mono" style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
                       {craft.distanceFromEarthKm !== undefined ? formatDistanceKm(craft.distanceFromEarthKm, true) : 'Unavailable'}
@@ -271,7 +269,7 @@ export const SpacecraftExplorer: React.FC<SpacecraftExplorerProps> = ({
 
                   <div>
                     <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                      Coordinate Frame
+                      Coordinate System
                     </span>
                     <div style={{ fontSize: '11px', fontWeight: 500, color: 'var(--text-secondary)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {craft.coordinateFrame}
@@ -284,18 +282,18 @@ export const SpacecraftExplorer: React.FC<SpacecraftExplorerProps> = ({
                 </p>
               </div>
 
-              {/* Card Footer Actions */}
+              {/* Actions Footer */}
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                paddingTop: '14px',
-                borderTop: '1px solid rgba(255, 255, 255, 0.05)'
+                paddingTop: '12px',
+                borderTop: '1px solid var(--border-hairline)'
               }}>
                 <button
                   onClick={() => onSelectObject(craft)}
                   className="btn btn-secondary"
-                  style={{ flex: 1, fontSize: '12px' }}
+                  style={{ flex: 1, fontSize: '12px', padding: '6px 10px' }}
                 >
                   <Activity size={13} />
                   <span>Inspect Telemetry</span>
@@ -304,8 +302,8 @@ export const SpacecraftExplorer: React.FC<SpacecraftExplorerProps> = ({
                 <button
                   onClick={() => onFocusOnMap(craft.id)}
                   className="btn btn-primary"
-                  style={{ padding: '8px 12px' }}
-                  title="View on 3D Space Map"
+                  style={{ padding: '6px 12px' }}
+                  title="Focus in 3D Space Map"
                 >
                   <Orbit size={14} />
                 </button>
@@ -313,8 +311,8 @@ export const SpacecraftExplorer: React.FC<SpacecraftExplorerProps> = ({
                 <button
                   onClick={() => onAnalyzeObject(craft.id)}
                   className="btn btn-secondary"
-                  style={{ padding: '8px 12px' }}
-                  title="Open in Analysis Workspace"
+                  style={{ padding: '6px 12px' }}
+                  title="Analyze Vectors in Workspace"
                 >
                   <Compass size={14} />
                 </button>

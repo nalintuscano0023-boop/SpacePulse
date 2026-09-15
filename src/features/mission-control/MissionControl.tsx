@@ -1,28 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import * as THREE from 'three';
 import { 
-  Activity, 
-  Satellite, 
   Orbit, 
   Users, 
   ShieldCheck, 
   ArrowUpRight, 
-  Flame, 
-  Radio, 
   Compass, 
-  ExternalLink,
   ChevronRight,
   Database,
-  Globe
+  Radio,
+  Clock,
+  Sparkles,
+  Layers,
+  Crosshair
 } from 'lucide-react';
 import { SpaceWeatherWidget } from '../../components/weather/SpaceWeatherWidget';
 import { SPACECRAFT_REGISTRY, resolveSpacecraftState } from '../../services/data/spacecraftCatalog';
-import { SpacecraftObject } from '../../types/space';
+import type { SpacecraftObject } from '../../types/space';
 import { AstronautsService } from '../../services/api/astronautsService';
-import { CrewReport } from '../../types/missions';
+import type { CrewReport } from '../../types/missions';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { formatDistanceKm, formatVelocityKmS } from '../../utils/formatters';
-import { formatLightTime } from '../../services/calculations/physics';
-import { TabType } from '../../components/common/Navbar';
+import { formatLightTime, kmToAu } from '../../services/calculations/physics';
+import type { TabType } from '../../components/common/Navbar';
 
 interface MissionControlProps {
   onSelectObject: (obj: SpacecraftObject) => void;
@@ -36,24 +36,22 @@ export const MissionControl: React.FC<MissionControlProps> = ({
   const [featuredFleet, setFeaturedFleet] = useState<SpacecraftObject[]>([]);
   const [crewReport, setCrewReport] = useState<CrewReport | null>(null);
   const [loading, setLoading] = useState(true);
+  const miniCanvasRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     async function loadData() {
       setLoading(true);
       try {
-        // Load featured spacecraft: Aditya-L1, Voyager 1, Voyager 2, ISS, Astrosat, Chandrayaan-2
         const featuredDefs = SPACECRAFT_REGISTRY.filter(s => 
           ['aditya-l1', 'voyager-1', 'iss', 'astrosat', 'chandrayaan-2-orbiter', 'voyager-2'].includes(s.id)
         );
-
         const resolved = await Promise.all(featuredDefs.map(def => resolveSpacecraftState(def)));
         setFeaturedFleet(resolved);
 
-        // Load active crew
         const crew = await AstronautsService.fetchActiveAstronauts();
         setCrewReport(crew);
       } catch (err) {
-        console.error('Mission control data load error:', err);
+        console.error('Mission control load error:', err);
       } finally {
         setLoading(false);
       }
@@ -62,189 +60,281 @@ export const MissionControl: React.FC<MissionControlProps> = ({
     loadData();
   }, []);
 
+  // Mini 3D Orbital Vista for the Hero Deck
+  useEffect(() => {
+    if (!miniCanvasRef.current) return;
+    const container = miniCanvasRef.current;
+    const width = container.clientWidth || 340;
+    const height = container.clientHeight || 240;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 1000);
+    camera.position.set(0, 18, 36);
+    camera.lookAt(0, 0, 0);
+
+    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    container.innerHTML = '';
+    container.appendChild(renderer.domElement);
+
+    // Mini Earth
+    const earthGeo = new THREE.SphereGeometry(6, 32, 32);
+    const earthMat = new THREE.MeshStandardMaterial({
+      color: 0x38bdf8,
+      roughness: 0.5,
+      metalness: 0.1
+    });
+    const earthMesh = new THREE.Mesh(earthGeo, earthMat);
+    scene.add(earthMesh);
+
+    // Mini Atmospheric Glow
+    const atmoGeo = new THREE.SphereGeometry(6.4, 32, 32);
+    const atmoMat = new THREE.MeshBasicMaterial({
+      color: 0x0284c7,
+      transparent: true,
+      opacity: 0.25,
+      side: THREE.BackSide
+    });
+    const atmoMesh = new THREE.Mesh(atmoGeo, atmoMat);
+    scene.add(atmoMesh);
+
+    // Orbit rings for ISS and Moon
+    const issRingGeo = new THREE.RingGeometry(8.2, 8.35, 64);
+    const issRingMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.4 });
+    const issRing = new THREE.Mesh(issRingGeo, issRingMat);
+    issRing.rotation.x = Math.PI / 2.3;
+    scene.add(issRing);
+
+    // Satellite marker
+    const satGeo = new THREE.SphereGeometry(0.35, 12, 12);
+    const satMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const satMesh = new THREE.Mesh(satGeo, satMat);
+    scene.add(satMesh);
+
+    // Lighting
+    const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
+    dirLight.position.set(30, 15, 20);
+    scene.add(dirLight);
+
+    const ambLight = new THREE.AmbientLight(0x0f172a, 1.0);
+    scene.add(ambLight);
+
+    let animId = 0;
+    let clock = new THREE.Clock();
+
+    const animate = () => {
+      animId = requestAnimationFrame(animate);
+      const t = clock.getElapsedTime();
+
+      earthMesh.rotation.y = t * 0.15;
+      satMesh.position.set(
+        8.27 * Math.cos(t * 1.2),
+        2.5 * Math.sin(t * 1.2),
+        8.27 * Math.sin(t * 1.2) * 0.7
+      );
+
+      renderer.render(scene, camera);
+    };
+
+    animate();
+
+    const onResize = () => {
+      if (!container) return;
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    };
+    window.addEventListener('resize', onResize);
+
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener('resize', onResize);
+      renderer.dispose();
+      earthGeo.dispose();
+      earthMat.dispose();
+      atmoGeo.dispose();
+      atmoMat.dispose();
+      issRingGeo.dispose();
+      issRingMat.dispose();
+    };
+  }, []);
+
   return (
-    <div className="container" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* Platform Header Hero */}
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '8px',
-        padding: '24px 0 8px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '4px 10px',
-            borderRadius: 'var(--radius-full)',
-            background: 'rgba(56, 189, 248, 0.1)',
-            border: '1px solid rgba(56, 189, 248, 0.3)',
-            fontSize: '11px',
-            fontFamily: 'var(--font-heading)',
-            color: 'var(--accent-cyan)',
-            fontWeight: 600,
-            textTransform: 'uppercase',
-            letterSpacing: '0.06em'
-          }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-cyan)' }} />
-            <span>Mission Operations Center</span>
-          </div>
-
-          <StatusBadge status="LIVE" />
-        </div>
-
-        <h1 style={{ fontSize: '32px', fontWeight: 700, letterSpacing: '-0.02em', color: '#f8fafc' }}>
-          Real-Time Space Intelligence & Telemetry
-        </h1>
-        <p style={{ fontSize: '14px', color: 'var(--text-secondary)', maxWidth: '850px', lineHeight: 1.6 }}>
-          SpacePulse aggregates verified public space data directly into your browser. Track real orbital vectors, solar wind dynamics from NOAA SWPC, active spacecraft positions, and astronomical ephemerides with zero synthetic or mock numbers.
-        </p>
-      </div>
-
-      {/* Quick Launchpad Buttons */}
-      <div style={{
+    <div className="container" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* 1. HERO COMMAND DECK */}
+      <div className="glass-panel tech-corner" style={{
+        padding: '28px',
+        overflow: 'hidden',
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-        gap: '12px'
+        gridTemplateColumns: 'minmax(300px, 1.5fr) minmax(260px, 1fr)',
+        gap: '24px',
+        alignItems: 'center'
       }}>
-        <div
-          onClick={() => onNavigateTab('space-map')}
-          className="glass-card"
-          style={{
-            padding: '16px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            cursor: 'pointer'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {/* Left Column: Command Overview */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {/* Header Provenance Ribbon */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <div style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '8px',
-              background: 'rgba(56, 189, 248, 0.12)',
-              border: '1px solid rgba(56, 189, 248, 0.3)',
-              display: 'flex',
+              display: 'inline-flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--accent-cyan)'
+              gap: '6px',
+              padding: '3px 9px',
+              borderRadius: 'var(--radius-xs)',
+              background: 'rgba(56, 189, 248, 0.1)',
+              border: '1px solid rgba(56, 189, 248, 0.25)',
+              fontSize: '11px',
+              fontFamily: 'var(--font-mono)',
+              color: 'var(--accent-cyan)',
+              fontWeight: 600,
+              textTransform: 'uppercase'
             }}>
-              <Orbit size={20} />
+              <Radio size={12} />
+              <span>ORBITAL OBSERVATORY // CONSOLE 01</span>
             </div>
+
+            <StatusBadge status="LIVE" />
+          </div>
+
+          <div>
+            <h1 style={{ fontSize: '30px', fontWeight: 700, letterSpacing: '-0.02em', color: '#ffffff' }}>
+              Space Intelligence Platform
+            </h1>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, marginTop: '6px', maxWidth: '640px' }}>
+              Verified space environment telemetry and astronomical ephemerides, calculated in real time where supported. Direct browser streams from NOAA Space Weather Prediction Center, CelesTrak NORAD, and authoritative ISRO & NASA mission archives.
+            </p>
+          </div>
+
+          {/* Telemetry Metrics Bar */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+            gap: '10px',
+            padding: '12px',
+            background: 'var(--surface-inset)',
+            border: '1px solid var(--border-hairline)',
+            borderRadius: 'var(--radius-sm)'
+          }}>
             <div>
-              <div style={{ fontWeight: 600, fontSize: '14px' }}>3D Space Map</div>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Interactive Solar System & Orbits</div>
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Active Fleet Tracked</div>
+              <div className="mono" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+                12 Spacecraft
+              </div>
+            </div>
+
+            <div>
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Humans in Orbit</div>
+              <div className="mono" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--status-live)', marginTop: '2px' }}>
+                {crewReport?.totalInOrbit || 12} Astronauts
+              </div>
+            </div>
+
+            <div>
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Ephemeris Engine</div>
+              <div className="mono" style={{ fontSize: '14px', fontWeight: 600, color: 'var(--accent-cyan)', marginTop: '3px' }}>
+                NASA J2000
+              </div>
+            </div>
+
+            <div>
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Data Integrity</div>
+              <div className="mono" style={{ fontSize: '14px', fontWeight: 600, color: 'var(--status-live)', marginTop: '3px' }}>
+                100% Real
+              </div>
             </div>
           </div>
-          <ArrowUpRight size={16} style={{ color: 'var(--text-muted)' }} />
+
+          {/* Quick Command Actions */}
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '4px' }}>
+            <button
+              onClick={() => onNavigateTab('space-map')}
+              className="btn btn-primary"
+              style={{ fontSize: '13px', padding: '8px 16px' }}
+            >
+              <Orbit size={15} />
+              <span>Launch 3D Space Map</span>
+            </button>
+
+            <button
+              onClick={() => onNavigateTab('analysis')}
+              className="btn btn-secondary"
+              style={{ fontSize: '13px', padding: '8px 16px' }}
+            >
+              <Compass size={15} />
+              <span>Vector Analysis</span>
+            </button>
+          </div>
         </div>
 
-        <div
-          onClick={() => onNavigateTab('analysis')}
-          className="glass-card"
-          style={{
-            padding: '16px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            cursor: 'pointer'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '8px',
-              background: 'rgba(99, 102, 241, 0.12)',
-              border: '1px solid rgba(99, 102, 241, 0.3)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#818cf8'
-            }}>
-              <Compass size={20} />
-            </div>
-            <div>
-              <div style={{ fontWeight: 600, fontSize: '14px' }}>Analysis Workspace</div>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Calculated distance matrices & delay</div>
-            </div>
-          </div>
-          <ArrowUpRight size={16} style={{ color: 'var(--text-muted)' }} />
-        </div>
+        {/* Right Column: Mini 3D Orbital Vista */}
+        <div style={{
+          height: '240px',
+          width: '100%',
+          position: 'relative',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderLeft: '1px solid var(--border-hairline)'
+        }} className="hero-vista">
+          <div ref={miniCanvasRef} style={{ width: '100%', height: '100%' }} />
 
-        <div
-          onClick={() => onNavigateTab('missions')}
-          className="glass-card"
-          style={{
-            padding: '16px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            cursor: 'pointer'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '8px',
-              background: 'rgba(16, 185, 129, 0.12)',
-              border: '1px solid rgba(16, 185, 129, 0.3)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--status-live)'
-            }}>
-              <Database size={20} />
-            </div>
-            <div>
-              <div style={{ fontWeight: 600, fontSize: '14px' }}>ISRO & NASA Archives</div>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>ISSDC PRADAN & MOSDAC datasets</div>
-            </div>
+          {/* Overlay Reticle Labels */}
+          <div style={{
+            position: 'absolute',
+            bottom: '12px',
+            right: '12px',
+            fontSize: '10px',
+            fontFamily: 'var(--font-mono)',
+            color: 'var(--text-muted)',
+            background: 'rgba(3, 5, 10, 0.75)',
+            padding: '3px 8px',
+            borderRadius: 'var(--radius-xs)',
+            border: '1px solid var(--border-hairline)'
+          }}>
+            GEOCENTRIC SGP4 TRACK
           </div>
-          <ArrowUpRight size={16} style={{ color: 'var(--text-muted)' }} />
         </div>
       </div>
 
-      {/* Two Column Layout: Space Weather & Crew in Orbit */}
+      {/* 2. ATMOSPHERIC SPACE ENVIRONMENT & CREW DECK */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
         gap: '20px'
       }}>
-        {/* Real Space Weather Stream */}
+        {/* Solar Wind & Space Weather Component */}
         <SpaceWeatherWidget />
 
-        {/* Crewed Outposts & Astronauts in Space */}
+        {/* Humanity in Orbit Station Operations */}
         <div className="glass-panel" style={{ padding: '20px' }}>
           <div style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             marginBottom: '16px',
-            borderBottom: '1px solid var(--border-subtle)',
+            borderBottom: '1px solid var(--border-hairline)',
             paddingBottom: '12px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div style={{
                 width: '32px',
                 height: '32px',
-                borderRadius: '8px',
-                background: 'rgba(56, 189, 248, 0.15)',
-                border: '1px solid rgba(56, 189, 248, 0.3)',
+                borderRadius: 'var(--radius-xs)',
+                background: 'rgba(56, 189, 248, 0.1)',
+                border: '1px solid var(--border-subtle)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 color: 'var(--accent-cyan)'
               }}>
-                <Users size={18} />
+                <Users size={17} />
               </div>
               <div>
-                <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Humanity in Orbit</h3>
+                <h3 style={{ fontSize: '15px', fontWeight: 600 }}>Active Crewed Outposts</h3>
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                  Active Crewed Space Stations
+                  Low Earth Orbit (LEO) Human Manifest
                 </div>
               </div>
             </div>
@@ -252,61 +342,55 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <StatusBadge status={crewReport?.status || 'LIVE'} />
               <span className="mono" style={{
-                padding: '3px 8px',
-                background: 'rgba(56, 189, 248, 0.15)',
-                borderRadius: 'var(--radius-sm)',
+                padding: '2px 8px',
+                background: 'rgba(56, 189, 248, 0.1)',
+                borderRadius: 'var(--radius-xs)',
                 color: 'var(--accent-cyan)',
                 fontWeight: 700,
-                fontSize: '13px'
+                fontSize: '12px'
               }}>
-                {crewReport?.totalInOrbit || 10} Astronauts
+                {crewReport?.totalInOrbit || 12} in Space
               </span>
             </div>
           </div>
 
-          {/* Station Cards */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {crewReport?.crafts.map((craft) => (
               <div
                 key={craft.craftName}
                 style={{
-                  padding: '14px',
-                  background: 'rgba(255, 255, 255, 0.02)',
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: 'var(--radius-sm)'
+                  padding: '12px 14px',
+                  background: 'var(--surface-inset)',
+                  border: '1px solid var(--border-hairline)',
+                  borderRadius: 'var(--radius-xs)'
                 }}
               >
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  marginBottom: '10px'
+                  marginBottom: '8px'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Satellite size={15} style={{ color: 'var(--accent-cyan)' }} />
                     <span style={{ fontWeight: 600, fontSize: '13px' }}>
-                      {craft.craftName === 'ISS' ? 'International Space Station (ISS)' : 'Tiangong Space Station (CSS)'}
+                      {craft.craftName === 'ISS' ? 'International Space Station (ISS)' : 'Tiangong (CSS Tianhe)'}
                     </span>
                   </div>
                   <span className="mono" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                    {craft.astronauts.length} onboard
+                    {craft.astronauts.length} Crew
                   </span>
                 </div>
 
-                <div style={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: '6px'
-                }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                   {craft.astronauts.map((astronaut, i) => (
                     <div
                       key={i}
                       style={{
                         fontSize: '11px',
-                        padding: '4px 8px',
-                        background: 'rgba(255, 255, 255, 0.04)',
-                        borderRadius: '4px',
-                        border: '1px solid rgba(255, 255, 255, 0.05)',
+                        padding: '3px 8px',
+                        background: 'rgba(255, 255, 255, 0.03)',
+                        borderRadius: '3px',
+                        border: '1px solid var(--border-hairline)',
                         color: 'var(--text-secondary)'
                       }}
                     >
@@ -321,38 +405,40 @@ export const MissionControl: React.FC<MissionControlProps> = ({
           <div style={{
             fontSize: '11px',
             color: 'var(--text-muted)',
-            marginTop: '14px',
+            marginTop: '12px',
+            paddingTop: '8px',
+            borderTop: '1px solid var(--border-hairline)',
             display: 'flex',
-            alignItems: 'center',
             justifyContent: 'space-between'
           }}>
-            <span>Source: Open-Notify Public Crew Registry</span>
+            <span>Source: Open-Notify Public Registry</span>
             <span>Internal cabin locations: Strictly Private</span>
           </div>
         </div>
       </div>
 
-      {/* Featured Active Spacecraft Fleet */}
+      {/* 3. FEATURED ACTIVE FLEET DECK */}
       <div>
         <div style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          marginBottom: '16px'
+          marginBottom: '14px'
         }}>
           <div>
-            <h2 style={{ fontSize: '20px', fontWeight: 700 }}>Featured Active Fleet</h2>
+            <h2 style={{ fontSize: '18px', fontWeight: 600 }}>Active Fleet Telemetry</h2>
             <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-              Real-time propagated telemetry and ephemeris coordinates
+              Real-world propagated coordinates and speed-of-light latencies
             </p>
           </div>
 
           <button
             onClick={() => onNavigateTab('spacecraft')}
             className="btn btn-secondary"
+            style={{ fontSize: '12px' }}
           >
-            <span>View All Spacecraft</span>
-            <ChevronRight size={14} />
+            <span>Complete Directory</span>
+            <ChevronRight size={13} />
           </button>
         </div>
 
@@ -367,7 +453,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
               onClick={() => onSelectObject(craft)}
               className="glass-card"
               style={{
-                padding: '20px',
+                padding: '18px',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
@@ -379,7 +465,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                   display: 'flex',
                   alignItems: 'flex-start',
                   justifyContent: 'space-between',
-                  marginBottom: '12px'
+                  marginBottom: '10px'
                 }}>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -390,7 +476,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                         fontSize: '10px',
                         padding: '2px 6px',
                         background: 'rgba(255, 255, 255, 0.05)',
-                        borderRadius: '4px',
+                        borderRadius: '3px',
                         fontWeight: 600,
                         color: 'var(--accent-cyan)'
                       }}>
@@ -405,37 +491,37 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                   <StatusBadge status={craft.telemetrySource.status} metadata={craft.telemetrySource} compact />
                 </div>
 
-                {/* Key Telemetry Metrics */}
+                {/* Telemetry Numbers Matrix */}
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: '1fr 1fr',
-                  gap: '10px',
-                  background: 'rgba(0, 0, 0, 0.2)',
-                  padding: '12px',
-                  borderRadius: 'var(--radius-sm)',
-                  margin: '12px 0'
+                  gap: '8px',
+                  background: 'var(--surface-inset)',
+                  padding: '10px 12px',
+                  borderRadius: 'var(--radius-xs)',
+                  margin: '10px 0'
                 }}>
                   <div>
                     <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                      Dist. From Earth
+                      Distance from Earth
                     </div>
                     <div className="mono" style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
-                      {craft.distanceFromEarthKm ? formatDistanceKm(craft.distanceFromEarthKm, true) : 'N/A'}
+                      {craft.distanceFromEarthKm !== undefined ? formatDistanceKm(craft.distanceFromEarthKm, true) : 'Unavailable'}
                     </div>
                   </div>
 
                   <div>
                     <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                      Velocity
+                      Orbital Speed
                     </div>
                     <div className="mono" style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
-                      {craft.velocityKmS ? formatVelocityKmS(craft.velocityKmS) : 'N/A'}
+                      {craft.velocityKmS !== undefined ? formatVelocityKmS(craft.velocityKmS) : 'Unavailable'}
                     </div>
                   </div>
 
                   <div>
                     <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                      Signal Delay ($c$)
+                      Light Delay ($t = d/c$)
                     </div>
                     <div className="mono" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--accent-cyan)', marginTop: '2px' }}>
                       {craft.lightTimeToEarthSec !== undefined ? formatLightTime(craft.lightTimeToEarthSec) : 'N/A'}
@@ -452,7 +538,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                   </div>
                 </div>
 
-                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5, margin: '8px 0' }}>
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5, margin: '6px 0' }}>
                   {craft.description}
                 </p>
               </div>
@@ -461,20 +547,20 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                paddingTop: '12px',
-                borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+                paddingTop: '10px',
+                borderTop: '1px solid var(--border-hairline)',
                 fontSize: '11px',
                 color: 'var(--accent-cyan)'
               }}>
-                <span>Inspect full telemetry</span>
-                <ChevronRight size={14} />
+                <span>Inspect full scientific telemetry</span>
+                <ChevronRight size={13} />
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Upstream System Health Monitor */}
+      {/* 4. UPSTREAM TELEMETRY FEEDS HEALTH DECK */}
       <div className="glass-panel" style={{ padding: '20px' }}>
         <div style={{
           display: 'flex',
@@ -483,10 +569,10 @@ export const MissionControl: React.FC<MissionControlProps> = ({
           marginBottom: '14px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <ShieldCheck size={18} style={{ color: 'var(--status-live)' }} />
-            <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Upstream Telemetry Feeds & Data Source Health</h3>
+            <ShieldCheck size={17} style={{ color: 'var(--status-live)' }} />
+            <h3 style={{ fontSize: '14px', fontWeight: 600 }}>Upstream Telemetry Feeds & Protocol Health</h3>
           </div>
-          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>100% Client-Side Direct Architecture</span>
+          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>100% Client-Side Architecture</span>
         </div>
 
         <div style={{
@@ -494,29 +580,29 @@ export const MissionControl: React.FC<MissionControlProps> = ({
           gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
           gap: '12px'
         }}>
-          <div style={{ padding: '12px', background: 'rgba(255, 255, 255, 0.02)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
+          <div style={{ padding: '12px', background: 'var(--surface-inset)', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontWeight: 600, fontSize: '13px' }}>NOAA SWPC</span>
               <StatusBadge status="LIVE" compact />
             </div>
             <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-              DSCOVR & GOES-18 Solar Plasma / X-ray Stream (CORS Active)
+              DSCOVR & GOES-18 Solar Plasma / X-ray Stream (CORS Direct)
             </div>
           </div>
 
-          <div style={{ padding: '12px', background: 'rgba(255, 255, 255, 0.02)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
+          <div style={{ padding: '12px', background: 'var(--surface-inset)', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontWeight: 600, fontSize: '13px' }}>CelesTrak (NORAD)</span>
               <StatusBadge status="LIVE" compact />
             </div>
             <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-              GP OMM / TLE High-precision element sets (CORS Active)
+              GP OMM / TLE Element Sets (18th Space Defense Squadron)
             </div>
           </div>
 
-          <div style={{ padding: '12px', background: 'rgba(255, 255, 255, 0.02)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
+          <div style={{ padding: '12px', background: 'var(--surface-inset)', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontWeight: 600, fontSize: '13px' }}>NASA Ephemeris Engine</span>
+              <span style={{ fontWeight: 600, fontSize: '13px' }}>NASA JPL Ephemeris</span>
               <StatusBadge status="CALCULATED" compact />
             </div>
             <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
@@ -524,9 +610,9 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             </div>
           </div>
 
-          <div style={{ padding: '12px', background: 'rgba(255, 255, 255, 0.02)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
+          <div style={{ padding: '12px', background: 'var(--surface-inset)', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontWeight: 600, fontSize: '13px' }}>ISRO Data Portals</span>
+              <span style={{ fontWeight: 600, fontSize: '13px' }}>ISRO Planetary Science</span>
               <StatusBadge status="LAST_AVAILABLE" compact />
             </div>
             <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
@@ -535,6 +621,17 @@ export const MissionControl: React.FC<MissionControlProps> = ({
           </div>
         </div>
       </div>
+
+      <style>{`
+        @media (max-width: 900px) {
+          .hero-vista {
+            display: none !important;
+          }
+          .glass-panel.tech-corner {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };

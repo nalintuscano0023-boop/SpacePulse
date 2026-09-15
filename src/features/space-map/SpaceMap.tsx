@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { 
@@ -6,10 +6,15 @@ import {
   Layers, 
   Clock, 
   RotateCcw, 
-  ChevronRight
+  ChevronRight,
+  Crosshair,
+  Search,
+  Eye,
+  Check
 } from 'lucide-react';
 import { calculatePlanetEphemeris } from '../../services/calculations/kepler';
 import { calculateAdityaL1Ephemeris, calculateVoyagerEphemeris } from '../../services/calculations/lagrange';
+import { CelestrakService } from '../../services/api/celestrakService';
 import { SPACECRAFT_REGISTRY, resolveSpacecraftState } from '../../services/data/spacecraftCatalog';
 import type { SpacecraftObject } from '../../types/space';
 import { formatDistanceKm } from '../../utils/formatters';
@@ -35,15 +40,142 @@ interface VisualBody {
   craftData?: SpacecraftObject;
 }
 
+// Procedural Astronomical Textures Generator
+function createSunTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d')!;
+  
+  const grad = ctx.createLinearGradient(0, 0, 512, 256);
+  grad.addColorStop(0, '#fffbeb');
+  grad.addColorStop(0.3, '#fef08a');
+  grad.addColorStop(0.7, '#f59e0b');
+  grad.addColorStop(1, '#d97706');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 512, 256);
+
+  // Solar turbulence granulation
+  for (let i = 0; i < 400; i++) {
+    const x = Math.random() * 512;
+    const y = Math.random() * 256;
+    const r = 2 + Math.random() * 6;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255, 255, 255, 0.25)' : 'rgba(180, 83, 9, 0.25)';
+    ctx.fill();
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  return tex;
+}
+
+function createEarthTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d')!;
+
+  // Deep ocean blue
+  ctx.fillStyle = '#0f3a68';
+  ctx.fillRect(0, 0, 512, 256);
+
+  // Continents (procedural earth landmasses)
+  ctx.fillStyle = '#22543d';
+  const drawLand = (x: number, y: number, w: number, h: number) => {
+    ctx.beginPath();
+    ctx.ellipse(x, y, w, h, Math.random() * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+  };
+  
+  // Eurasia / Africa
+  drawLand(280, 100, 70, 50);
+  drawLand(260, 140, 45, 60);
+  // Americas
+  drawLand(120, 95, 45, 50);
+  drawLand(150, 160, 35, 65);
+  // Australia
+  drawLand(390, 180, 30, 25);
+  
+  // Polar Ice Caps
+  ctx.fillStyle = '#f8fafc';
+  ctx.fillRect(0, 0, 512, 20);
+  ctx.fillRect(0, 236, 512, 20);
+
+  return new THREE.CanvasTexture(canvas);
+}
+
+function createCloudsTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d')!;
+  ctx.clearRect(0, 0, 512, 256);
+
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+  for (let i = 0; i < 60; i++) {
+    const x = Math.random() * 512;
+    const y = 40 + Math.random() * 176;
+    ctx.beginPath();
+    ctx.ellipse(x, y, 20 + Math.random() * 40, 8 + Math.random() * 14, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  return new THREE.CanvasTexture(canvas);
+}
+
+function createJupiterTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d')!;
+
+  const colors = ['#fde68a', '#d97706', '#fef3c7', '#b45309', '#fef08a', '#92400e', '#fef3c7'];
+  const bandHeight = 256 / colors.length;
+  colors.forEach((c, idx) => {
+    ctx.fillStyle = c;
+    ctx.fillRect(0, idx * bandHeight, 512, bandHeight);
+  });
+
+  // Great Red Spot
+  ctx.fillStyle = '#dc2626';
+  ctx.beginPath();
+  ctx.ellipse(320, 165, 30, 16, 0.1, 0, Math.PI * 2);
+  ctx.fill();
+
+  return new THREE.CanvasTexture(canvas);
+}
+
+function createSaturnRingTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 1;
+  const ctx = canvas.getContext('2d')!;
+
+  const grad = ctx.createLinearGradient(0, 0, 256, 0);
+  grad.addColorStop(0.0, 'rgba(214, 211, 209, 0)');
+  grad.addColorStop(0.2, 'rgba(231, 229, 228, 0.85)');
+  grad.addColorStop(0.55, 'rgba(214, 211, 209, 0.9)');
+  grad.addColorStop(0.65, 'rgba(120, 113, 108, 0.1)'); // Cassini Division
+  grad.addColorStop(0.75, 'rgba(231, 229, 228, 0.7)');
+  grad.addColorStop(1.0, 'rgba(214, 211, 209, 0)');
+
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 256, 1);
+
+  return new THREE.CanvasTexture(canvas);
+}
+
 export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObjectId }) => {
   const mountRef = useRef<HTMLDivElement>(null);
 
   // UI state
   const [showOrbits, setShowOrbits] = useState(true);
   const [showSpacecraft, setShowSpacecraft] = useState(true);
-  const [showPlanets] = useState(true);
+  const [showPlanets, setShowPlanets] = useState(true);
   const [simDate, setSimDate] = useState<Date>(new Date());
   const [selectedBodyId, setSelectedBodyId] = useState<string | null>(selectedObjectId || 'earth');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
   const [hudData, setHudData] = useState<{
     name: string;
     distEarthKm: number;
@@ -59,14 +191,18 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObje
   const controlsRef = useRef<OrbitControls | null>(null);
   const bodiesRef = useRef<Map<string, VisualBody>>(new Map());
   const distanceLineRef = useRef<THREE.Line | null>(null);
+  const cloudsMeshRef = useRef<THREE.Mesh | null>(null);
   const animationFrameRef = useRef<number>(0);
 
-  // Visual scaling helpers:
-  // In heliocentric view: 1 AU = 32 visual units with logarithmic soft-falloff for outer planets
+  // Target Camera Transition State
+  const targetCamPos = useRef<THREE.Vector3 | null>(null);
+  const targetLookAt = useRef<THREE.Vector3 | null>(null);
+
+  // Visual scaling helpers
   const mapAuToVisual = (au: number) => {
-    if (au <= 1.8) return au * 32.0;
-    if (au <= 6.0) return 1.8 * 32.0 + Math.pow(au - 1.8, 0.75) * 22.0;
-    return 1.8 * 32.0 + Math.pow(6.0 - 1.8, 0.75) * 22.0 + Math.pow(au - 6.0, 0.65) * 16.0;
+    if (au <= 1.8) return au * 34.0;
+    if (au <= 6.0) return 1.8 * 34.0 + Math.pow(au - 1.8, 0.75) * 22.0;
+    return 1.8 * 34.0 + Math.pow(6.0 - 1.8, 0.75) * 22.0 + Math.pow(au - 6.0, 0.65) * 16.0;
   };
 
   useEffect(() => {
@@ -77,20 +213,20 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObje
 
     // 1. Scene
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color('#05070e');
+    scene.background = new THREE.Color('#03050a');
     sceneRef.current = scene;
 
     // 2. Camera
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 8000);
-    camera.position.set(0, 160, 220);
+    camera.position.set(0, 150, 240);
     cameraRef.current = camera;
 
     // 3. Renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
     renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.1;
+    renderer.toneMappingExposure = 1.15;
     container.innerHTML = '';
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
@@ -99,26 +235,26 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObje
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
-    controls.maxDistance = 1800;
-    controls.minDistance = 5;
+    controls.maxDistance = 2000;
+    controls.minDistance = 4;
     controlsRef.current = controls;
 
     // 5. Lighting
-    const sunLight = new THREE.PointLight(0xffffff, 2.5, 3000, 0.2);
+    const sunLight = new THREE.PointLight(0xfffbeb, 3.0, 3500, 0.2);
     sunLight.position.set(0, 0, 0);
     scene.add(sunLight);
 
-    const ambientLight = new THREE.AmbientLight(0x334155, 0.7);
+    const ambientLight = new THREE.AmbientLight(0x1e293b, 0.85);
     scene.add(ambientLight);
 
-    // 6. Deep Starfield
+    // 6. Deep Starfield Background
     const starGeometry = new THREE.BufferGeometry();
-    const starCount = 3500;
+    const starCount = 3800;
     const starPositions = new Float32Array(starCount * 3);
     const starColors = new Float32Array(starCount * 3);
 
     for (let i = 0; i < starCount; i++) {
-      const r = 1200 + Math.random() * 800;
+      const r = 1400 + Math.random() * 800;
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos((Math.random() * 2) - 1);
 
@@ -126,23 +262,23 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObje
       starPositions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
       starPositions[i * 3 + 2] = r * Math.cos(phi);
 
-      const brightness = 0.5 + Math.random() * 0.5;
+      const brightness = 0.4 + Math.random() * 0.6;
       starColors[i * 3] = brightness;
       starColors[i * 3 + 1] = brightness * (0.85 + Math.random() * 0.15);
-      starColors[i * 3 + 2] = brightness * (0.9 + Math.random() * 0.1);
+      starColors[i * 3 + 2] = brightness * (0.95 + Math.random() * 0.05);
     }
     starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
     starGeometry.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
-    const starMaterial = new THREE.PointsMaterial({ size: 1.6, vertexColors: true, transparent: true, opacity: 0.8 });
+    const starMaterial = new THREE.PointsMaterial({ size: 1.5, vertexColors: true, transparent: true, opacity: 0.85 });
     const starField = new THREE.Points(starGeometry, starMaterial);
     scene.add(starField);
 
-    // 7. Ecliptic Reference Plane Grid (subtle)
-    const grid = new THREE.GridHelper(400, 40, 0x1e293b, 0x0f172a);
+    // 7. Ecliptic Grid (Fine hairline guide)
+    const grid = new THREE.GridHelper(500, 50, 0x1e293b, 0x0a101f);
     grid.position.y = -0.5;
     scene.add(grid);
 
-    // 8. Distance Line
+    // 8. Distance Line Raycast
     const distLineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0)]);
     const distLineMat = new THREE.LineDashedMaterial({
       color: 0x38bdf8,
@@ -150,7 +286,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObje
       gapSize: 2,
       linewidth: 1.5,
       transparent: true,
-      opacity: 0.75
+      opacity: 0.8
     });
     const distanceLine = new THREE.Line(distLineGeo, distLineMat);
     distanceLine.computeLineDistances();
@@ -193,6 +329,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObje
         if (hitObject && hitObject.userData.bodyId) {
           const bodyId = hitObject.userData.bodyId;
           setSelectedBodyId(bodyId);
+          focusCameraOnObject(bodyId);
           const body = bodiesRef.current.get(bodyId);
           if (body && body.craftData) {
             onSelectObject(body.craftData);
@@ -203,18 +340,33 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObje
 
     renderer.domElement.addEventListener('click', handleClick);
 
-    // Animation Loop
+    // Animation Loop with smooth camera interpolation
     const animate = () => {
       animationFrameRef.current = requestAnimationFrame(animate);
-      controls.update();
 
       // Rotate planet meshes on their axes
       bodiesRef.current.forEach(body => {
         if (body.mesh) {
-          body.mesh.rotation.y += 0.005;
+          body.mesh.rotation.y += 0.003;
         }
       });
 
+      if (cloudsMeshRef.current) {
+        cloudsMeshRef.current.rotation.y += 0.0045;
+      }
+
+      // Smooth camera transition toward selected target
+      if (targetCamPos.current && targetLookAt.current) {
+        camera.position.lerp(targetCamPos.current, 0.05);
+        controls.target.lerp(targetLookAt.current, 0.05);
+
+        if (camera.position.distanceTo(targetCamPos.current) < 0.2) {
+          targetCamPos.current = null;
+          targetLookAt.current = null;
+        }
+      }
+
+      controls.update();
       renderer.render(scene, camera);
     };
 
@@ -225,10 +377,12 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObje
       window.removeEventListener('resize', handleResize);
       renderer.domElement.removeEventListener('click', handleClick);
       renderer.dispose();
+      starGeometry.dispose();
+      starMaterial.dispose();
     };
   }, []);
 
-  // Update bodies whenever date or settings change
+  // Update bodies whenever date or toggles change
   useEffect(() => {
     const scene = sceneRef.current;
     if (!scene) return;
@@ -242,27 +396,28 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObje
 
     const planetDefs = [
       { id: 'mercury', name: 'Mercury', color: '#94a3b8', radius: 1.0 },
-      { id: 'venus', name: 'Venus', color: '#e2e8f0', radius: 1.6 },
-      { id: 'earth', name: 'Earth', color: '#38bdf8', radius: 1.8 },
+      { id: 'venus', name: 'Venus', color: '#fde68a', radius: 1.6 },
+      { id: 'earth', name: 'Earth', color: '#38bdf8', radius: 1.8, isEarth: true },
       { id: 'mars', name: 'Mars', color: '#ef4444', radius: 1.3 },
-      { id: 'jupiter', name: 'Jupiter', color: '#f59e0b', radius: 4.2 },
-      { id: 'saturn', name: 'Saturn', color: '#fde047', radius: 3.5, hasRings: true },
+      { id: 'jupiter', name: 'Jupiter', color: '#f59e0b', radius: 4.2, isJupiter: true },
+      { id: 'saturn', name: 'Saturn', color: '#fef08a', radius: 3.5, hasRings: true },
       { id: 'uranus', name: 'Uranus', color: '#67e8f9', radius: 2.6 },
       { id: 'neptune', name: 'Neptune', color: '#6366f1', radius: 2.5 }
     ];
 
-    // 1. Create Sun
-    const sunGeo = new THREE.SphereGeometry(6.5, 32, 32);
-    const sunMat = new THREE.MeshBasicMaterial({ color: 0xfff7ed });
+    // 1. Create Sun with Atmospheric Corona
+    const sunTex = createSunTexture();
+    const sunGeo = new THREE.SphereGeometry(6.5, 36, 36);
+    const sunMat = new THREE.MeshBasicMaterial({ map: sunTex });
     const sunMesh = new THREE.Mesh(sunGeo, sunMat);
     sunMesh.userData = { bodyId: 'sun' };
 
-    // Sun Glow Halo
-    const haloGeo = new THREE.SphereGeometry(8.5, 32, 32);
+    // Sun Solar Corona Glow
+    const haloGeo = new THREE.SphereGeometry(8.2, 32, 32);
     const haloMat = new THREE.MeshBasicMaterial({
       color: 0xf59e0b,
       transparent: true,
-      opacity: 0.25,
+      opacity: 0.28,
       side: THREE.BackSide
     });
     const halo = new THREE.Mesh(haloGeo, haloMat);
@@ -280,7 +435,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObje
       color: '#f59e0b'
     });
 
-    // 2. Compute Planet Ephemerides
+    // 2. Planets
     planetDefs.forEach(p => {
       try {
         const ephem = calculatePlanetEphemeris(p.id, simDate);
@@ -290,31 +445,76 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObje
         const factor = rAU > 0 ? visualR / rAU : 1;
 
         const posX = ephem.positionAU.x * factor;
-        const posZ = ephem.positionAU.y * factor; // Map Y ecliptic to Z 3D
+        const posZ = ephem.positionAU.y * factor;
         const posY = ephem.positionAU.z * factor;
 
-        // Mesh
-        const geo = new THREE.SphereGeometry(p.radius, 24, 24);
-        const mat = new THREE.MeshStandardMaterial({
-          color: new THREE.Color(p.color),
-          roughness: 0.6,
-          metalness: 0.1
-        });
+        // Custom Textured Mesh
+        let mat: THREE.Material;
+        const geo = new THREE.SphereGeometry(p.radius, 32, 32);
+
+        if (p.isEarth) {
+          const earthTex = createEarthTexture();
+          mat = new THREE.MeshStandardMaterial({
+            map: earthTex,
+            roughness: 0.6,
+            metalness: 0.1
+          });
+        } else if (p.isJupiter) {
+          const jupTex = createJupiterTexture();
+          mat = new THREE.MeshStandardMaterial({
+            map: jupTex,
+            roughness: 0.8
+          });
+        } else {
+          mat = new THREE.MeshStandardMaterial({
+            color: new THREE.Color(p.color),
+            roughness: 0.7,
+            metalness: 0.1
+          });
+        }
+
         const mesh = new THREE.Mesh(geo, mat);
         mesh.position.set(posX, posY, posZ);
         mesh.userData = { bodyId: p.id };
 
-        // Saturn Rings
+        // Earth Atmospheric & Cloud Layer
+        if (p.isEarth) {
+          const cloudsTex = createCloudsTexture();
+          const cloudGeo = new THREE.SphereGeometry(p.radius * 1.025, 32, 32);
+          const cloudMat = new THREE.MeshStandardMaterial({
+            map: cloudsTex,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.NormalBlending
+          });
+          const cloudsMesh = new THREE.Mesh(cloudGeo, cloudMat);
+          mesh.add(cloudsMesh);
+          cloudsMeshRef.current = cloudsMesh;
+
+          // Atmospheric Rayleigh Rim
+          const atmoGeo = new THREE.SphereGeometry(p.radius * 1.08, 32, 32);
+          const atmoMat = new THREE.MeshBasicMaterial({
+            color: 0x38bdf8,
+            transparent: true,
+            opacity: 0.2,
+            side: THREE.BackSide
+          });
+          const atmoMesh = new THREE.Mesh(atmoGeo, atmoMat);
+          mesh.add(atmoMesh);
+        }
+
+        // Saturn Rings with Realistic Cassini Division
         if (p.hasRings) {
-          const ringGeo = new THREE.RingGeometry(p.radius * 1.4, p.radius * 2.3, 32);
+          const ringTex = createSaturnRingTexture();
+          const ringGeo = new THREE.RingGeometry(p.radius * 1.4, p.radius * 2.5, 64);
           const ringMat = new THREE.MeshBasicMaterial({
-            color: 0xe2e8f0,
+            map: ringTex,
             side: THREE.DoubleSide,
             transparent: true,
-            opacity: 0.7
+            opacity: 0.85
           });
           const ring = new THREE.Mesh(ringGeo, ringMat);
-          ring.rotation.x = Math.PI / 2.3;
+          ring.rotation.x = Math.PI / 2.35;
           mesh.add(ring);
         }
 
@@ -335,7 +535,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObje
           const orbitMat = new THREE.LineBasicMaterial({
             color: new THREE.Color(p.color),
             transparent: true,
-            opacity: 0.25
+            opacity: 0.22
           });
           orbitLine = new THREE.Line(orbitGeo, orbitMat);
           scene.add(orbitLine);
@@ -356,24 +556,23 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObje
           color: p.color
         });
       } catch (e) {
-        console.error('Ephem error for', p.id, e);
+        console.error('Ephemeris render error:', p.id, e);
       }
     });
 
-    // 3. Spacecraft: Aditya-L1
+    // 3. Spacecraft: Aditya-L1 at L1 Halo Orbit
     try {
       const l1 = calculateAdityaL1Ephemeris(simDate);
       const earthBody = bodiesRef.current.get('earth');
       if (earthBody) {
-        // Offset visually along Sun-Earth vector
         const dir = new THREE.Vector3().subVectors(new THREE.Vector3(0, 0, 0), earthBody.position).normalize();
         const l1VisualPos = earthBody.position.clone().add(dir.multiplyScalar(4.5));
 
-        const l1Geo = new THREE.OctahedronGeometry(0.8);
+        const l1Geo = new THREE.OctahedronGeometry(0.75);
         const l1Mat = new THREE.MeshStandardMaterial({
           color: 0x38bdf8,
           emissive: 0x0284c7,
-          emissiveIntensity: 0.5
+          emissiveIntensity: 0.6
         });
         const l1Mesh = new THREE.Mesh(l1Geo, l1Mat);
         l1Mesh.position.copy(l1VisualPos);
@@ -390,7 +589,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObje
             haloPts.push(l1VisualPos.clone().add(new THREE.Vector3(1.2 * Math.cos(th), 0.8 * Math.sin(th), 0)));
           }
           const hGeo = new THREE.BufferGeometry().setFromPoints(haloPts);
-          const hMat = new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.5 });
+          const hMat = new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.45 });
           haloLine = new THREE.Line(hGeo, hMat);
           scene.add(haloLine);
         }
@@ -417,7 +616,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObje
       console.error('L1 visual error:', e);
     }
 
-    // 4. Spacecraft: Voyager 1 & Voyager 2 (Interstellar)
+    // 4. Spacecraft: Voyager 1 & Voyager 2 (Interstellar Trajectories)
     ['voyager1', 'voyager2'].forEach(v => {
       try {
         const voy = calculateVoyagerEphemeris(v as 'voyager1' | 'voyager2', simDate);
@@ -428,7 +627,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObje
         const dirNorm = new THREE.Vector3(voy.positionAU.x, voy.positionAU.z, voy.positionAU.y).normalize();
         const vPos = dirNorm.multiplyScalar(visualR);
 
-        const vGeo = new THREE.ConeGeometry(0.8, 1.6, 4);
+        const vGeo = new THREE.ConeGeometry(0.7, 1.5, 4);
         const vMat = new THREE.MeshStandardMaterial({
           color: v === 'voyager1' ? 0xf43f5e : 0xec4899,
           emissive: v === 'voyager1' ? 0x9f1239 : 0x831843,
@@ -441,7 +640,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObje
         vMesh.visible = showSpacecraft;
         scene.add(vMesh);
 
-        // Hyperbolic Trajectory Line from Sun
+        // Hyperbolic Trajectory Line
         let trajLine: THREE.Line | undefined;
         if (showOrbits) {
           const trajPts = [new THREE.Vector3(0, 0, 0), vPos];
@@ -451,7 +650,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObje
             dashSize: 4,
             gapSize: 3,
             transparent: true,
-            opacity: 0.4
+            opacity: 0.35
           });
           trajLine = new THREE.Line(tGeo, tMat);
           trajLine.computeLineDistances();
@@ -493,7 +692,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObje
       distLine.computeLineDistances();
       distLine.visible = true;
 
-      // Real physical distance calculation
       const dx = selected.realKm.x - earth.realKm.x;
       const dy = selected.realKm.y - earth.realKm.y;
       const dz = selected.realKm.z - earth.realKm.z;
@@ -533,35 +731,31 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObje
     }
   }, [selectedBodyId, simDate]);
 
-  // Focus Camera on Selected Body
-  const focusOnObject = (id: string) => {
+  // Smooth Camera Focusing on Object
+  const focusCameraOnObject = (id: string) => {
     const body = bodiesRef.current.get(id);
-    if (!body || !cameraRef.current || !controlsRef.current) return;
+    if (!body || !cameraRef.current) return;
 
     const targetPos = body.position;
-    controlsRef.current.target.copy(targetPos);
-    cameraRef.current.position.set(
-      targetPos.x + 18,
-      targetPos.y + 12,
-      targetPos.z + 24
-    );
-    controlsRef.current.update();
+    targetLookAt.current = targetPos.clone();
+    
+    // Position camera offset depending on object type
+    const offset = body.id === 'sun' ? new THREE.Vector3(25, 18, 32) : new THREE.Vector3(12, 8, 16);
+    targetCamPos.current = targetPos.clone().add(offset);
   };
 
-  // Reset to Global Solar System View
   const resetView = () => {
-    if (!cameraRef.current || !controlsRef.current) return;
-    controlsRef.current.target.set(0, 0, 0);
-    cameraRef.current.position.set(0, 160, 220);
-    controlsRef.current.update();
+    if (!cameraRef.current) return;
+    targetLookAt.current = new THREE.Vector3(0, 0, 0);
+    targetCamPos.current = new THREE.Vector3(0, 150, 240);
   };
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: 'calc(100vh - 120px)', minHeight: '600px', overflow: 'hidden' }}>
+    <div style={{ position: 'relative', width: '100%', height: 'calc(100vh - 110px)', minHeight: '620px', overflow: 'hidden' }}>
       {/* 3D WebGL Canvas */}
       <div ref={mountRef} style={{ width: '100%', height: '100%', outline: 'none' }} />
 
-      {/* Top Floating Control Bar */}
+      {/* Top Floating Scientific Tool Strip */}
       <div style={{
         position: 'absolute',
         top: '16px',
@@ -573,23 +767,23 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObje
         pointerEvents: 'none',
         zIndex: 10
       }}>
-        {/* Left: View Mode Badge & Quick Object Select */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', pointerEvents: 'auto' }}>
+        {/* Left: Scientific Mode Badge & Quick Object Selectors */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', pointerEvents: 'auto', flexWrap: 'wrap' }}>
           <div className="glass-panel" style={{
-            padding: '6px 12px',
+            padding: '5px 12px',
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            borderRadius: 'var(--radius-sm)'
+            borderRadius: 'var(--radius-xs)'
           }}>
-            <Orbit size={16} style={{ color: 'var(--accent-cyan)' }} />
-            <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-primary)' }}>
-              Solar System Ephemeris
+            <Orbit size={15} style={{ color: 'var(--accent-cyan)' }} />
+            <span style={{ fontWeight: 600, fontSize: '12px', color: 'var(--text-primary)' }}>
+              SOLAR SYSTEM EPHEMERIS
             </span>
             <StatusBadge status="CALCULATED" compact />
           </div>
 
-          {/* Quick Object Focus Buttons */}
+          {/* Quick Focus Object Tabs */}
           {['sun', 'earth', 'mars', 'jupiter', 'aditya-l1', 'voyager-1'].map(id => {
             const isSel = selectedBodyId === id;
             return (
@@ -597,10 +791,10 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObje
                 key={id}
                 onClick={() => {
                   setSelectedBodyId(id);
-                  focusOnObject(id);
+                  focusCameraOnObject(id);
                 }}
                 className={`btn ${isSel ? 'btn-active' : 'btn-secondary'}`}
-                style={{ fontSize: '11px', padding: '6px 10px', pointerEvents: 'auto' }}
+                style={{ fontSize: '11px', padding: '5px 10px', pointerEvents: 'auto' }}
               >
                 {id === 'aditya-l1' ? 'Aditya-L1' : id === 'voyager-1' ? 'Voyager 1' : id.charAt(0).toUpperCase() + id.slice(1)}
               </button>
@@ -609,7 +803,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObje
         </div>
 
         {/* Right: Layer Toggles & View Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', pointerEvents: 'auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', pointerEvents: 'auto' }}>
           <button
             onClick={() => setShowOrbits(!showOrbits)}
             className={`btn ${showOrbits ? 'btn-active' : 'btn-secondary'}`}
@@ -623,7 +817,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObje
           <button
             onClick={() => setShowSpacecraft(!showSpacecraft)}
             className={`btn ${showSpacecraft ? 'btn-active' : 'btn-secondary'}`}
-            title="Toggle Spacecraft"
+            title="Toggle Spacecraft Probes"
             style={{ fontSize: '11px', padding: '6px 10px' }}
           >
             <span>Probes</span>
@@ -632,46 +826,45 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObje
           <button
             onClick={resetView}
             className="btn btn-secondary"
-            title="Reset Camera View"
+            title="Reset Observatory Camera"
             style={{ fontSize: '11px', padding: '6px 10px' }}
           >
             <RotateCcw size={13} />
-            <span>Reset View</span>
+            <span>Reset</span>
           </button>
         </div>
       </div>
 
-      {/* Real-time Distance HUD Box (Bottom Left) */}
+      {/* Subtle Target Acquisition Reticle (Bottom Left) */}
       {hudData && (
         <div
-          className="glass-panel"
+          className="glass-panel tech-corner"
           style={{
             position: 'absolute',
             bottom: '24px',
             left: '20px',
             padding: '16px 20px',
-            borderRadius: 'var(--radius-md)',
+            borderRadius: 'var(--radius-sm)',
             zIndex: 10,
             maxWidth: '380px',
             animation: 'fadeIn 0.2s ease'
           }}
         >
+          {/* Target Header */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                {hudData.name}
-              </span>
-              <span style={{
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
                 fontSize: '10px',
-                padding: '2px 6px',
-                background: 'rgba(56, 189, 248, 0.1)',
-                borderRadius: '4px',
-                color: 'var(--accent-cyan)',
-                fontWeight: 600,
-                textTransform: 'uppercase'
+                fontFamily: 'var(--font-mono)',
+                color: 'var(--status-live)',
+                letterSpacing: '0.06em'
               }}>
-                {hudData.type}
-              </span>
+                <Crosshair size={12} />
+                <span>OBJECT ACQUIRED</span>
+              </div>
             </div>
 
             <button
@@ -689,7 +882,8 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObje
                 fontSize: '11px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px'
+                gap: '4px',
+                padding: '2px 4px'
               }}
             >
               <span>Inspect</span>
@@ -697,8 +891,13 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObje
             </button>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '6px' }}>
-            <div>
+          <div style={{ fontSize: '18px', fontWeight: 700, color: '#ffffff', letterSpacing: '-0.01em' }}>
+            {hudData.name}
+          </div>
+
+          {/* Metrics Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '8px' }}>
+            <div style={{ background: 'var(--surface-inset)', padding: '8px 10px', borderRadius: 'var(--radius-xs)' }}>
               <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                 Distance to Earth
               </div>
@@ -710,51 +909,51 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObje
               </div>
             </div>
 
-            <div>
+            <div style={{ background: 'var(--surface-inset)', padding: '8px 10px', borderRadius: 'var(--radius-xs)' }}>
               <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                Radio Signal Delay
+                Radio Delay ($c$)
               </div>
               <div className="mono" style={{ fontSize: '15px', fontWeight: 700, color: 'var(--accent-cyan)', marginTop: '2px' }}>
                 {hudData.lightTimeStr}
               </div>
               <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-                One-way light time ($c$)
+                Speed of Light
               </div>
             </div>
           </div>
 
           <div style={{
             marginTop: '10px',
-            paddingTop: '8px',
-            borderTop: '1px solid var(--border-subtle)',
+            paddingTop: '6px',
+            borderTop: '1px solid var(--border-hairline)',
             fontSize: '10px',
             color: 'var(--text-muted)',
             display: 'flex',
             justifyContent: 'space-between'
           }}>
-            <span>Visual scale: Logarithmic normalized</span>
-            <span>Metrics: Exact astronomical calculation</span>
+            <span>Scale: Visual logarithmic</span>
+            <span>Coordinates: Standish J2000</span>
           </div>
         </div>
       )}
 
-      {/* Interactive Time Navigation Bar (Bottom Right) */}
+      {/* Floating Time Scrubber Bar (Bottom Right) */}
       <div
         className="glass-panel"
         style={{
           position: 'absolute',
           bottom: '24px',
           right: '20px',
-          padding: '12px 16px',
-          borderRadius: 'var(--radius-md)',
+          padding: '10px 14px',
+          borderRadius: 'var(--radius-sm)',
           zIndex: 10,
           display: 'flex',
           alignItems: 'center',
-          gap: '12px'
+          gap: '10px'
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Clock size={14} style={{ color: 'var(--accent-cyan)' }} />
+          <Clock size={13} style={{ color: 'var(--accent-cyan)' }} />
           <span className="mono" style={{ fontSize: '12px', fontWeight: 600 }}>
             {simDate.toISOString().split('T')[0]}
           </span>
@@ -764,7 +963,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObje
           <button
             onClick={() => setSimDate(new Date(simDate.getTime() - 86400000 * 7))}
             className="btn btn-secondary"
-            style={{ padding: '4px 8px', fontSize: '10px' }}
+            style={{ padding: '4px 7px', fontSize: '10px' }}
             title="Rewind 7 days"
           >
             -7d
@@ -772,15 +971,15 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObje
           <button
             onClick={() => setSimDate(new Date())}
             className="btn btn-secondary"
-            style={{ padding: '4px 8px', fontSize: '10px' }}
-            title="Reset to current time"
+            style={{ padding: '4px 7px', fontSize: '10px' }}
+            title="Reset to current real time"
           >
             Now
           </button>
           <button
             onClick={() => setSimDate(new Date(simDate.getTime() + 86400000 * 7))}
             className="btn btn-secondary"
-            style={{ padding: '4px 8px', fontSize: '10px' }}
+            style={{ padding: '4px 7px', fontSize: '10px' }}
             title="Advance 7 days"
           >
             +7d
@@ -788,7 +987,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({ onSelectObject, selectedObje
           <button
             onClick={() => setSimDate(new Date(simDate.getTime() + 86400000 * 30))}
             className="btn btn-secondary"
-            style={{ padding: '4px 8px', fontSize: '10px' }}
+            style={{ padding: '4px 7px', fontSize: '10px' }}
             title="Advance 30 days"
           >
             +30d

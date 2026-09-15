@@ -6,9 +6,10 @@ import {
   Flame, 
   AlertCircle, 
   RefreshCw,
-  Info
+  Info,
+  Radio
 } from 'lucide-react';
-import { SpaceWeatherSummary } from '../../types/weather';
+import type { SpaceWeatherSummary } from '../../types/weather';
 import { NoaaService } from '../../services/api/noaaService';
 import { StatusBadge } from '../common/StatusBadge';
 
@@ -26,7 +27,7 @@ export const SpaceWeatherWidget: React.FC<SpaceWeatherWidgetProps> = ({ compact 
       const res = await NoaaService.fetchSpaceWeatherSummary();
       setData(res);
     } catch {
-      // Handled in service
+      // Handled gracefully in service
     } finally {
       setLoading(false);
     }
@@ -34,38 +35,28 @@ export const SpaceWeatherWidget: React.FC<SpaceWeatherWidgetProps> = ({ compact 
 
   useEffect(() => {
     loadWeather();
-    // Poll every 3 minutes
-    const interval = setInterval(loadWeather, 180000);
+    const interval = setInterval(loadWeather, 180000); // 3-minute poll
     return () => clearInterval(interval);
   }, []);
 
   const getKpDescription = (kp: number) => {
-    if (kp < 4) return { text: 'Quiet / Nominal', color: 'var(--status-live)' };
-    if (kp < 5) return { text: 'Unsettled Conditions', color: 'var(--status-last)' };
-    if (kp < 6) return { text: 'G1 Minor Storm', color: 'var(--status-error)' };
-    if (kp < 7) return { text: 'G2 Moderate Storm', color: 'var(--status-error)' };
-    if (kp < 8) return { text: 'G3 Strong Storm', color: 'var(--status-error)' };
-    return { text: 'G4/G5 Severe Storm', color: 'var(--status-error)' };
+    if (kp < 4) return { text: 'Quiet / Nominal Geomagnetic Field', color: 'var(--status-live)' };
+    if (kp < 5) return { text: 'Unsettled Field (Minor Fluctuations)', color: 'var(--status-last)' };
+    if (kp < 6) return { text: 'G1 Minor Geomagnetic Storm', color: 'var(--status-error)' };
+    if (kp < 7) return { text: 'G2 Moderate Geomagnetic Storm', color: 'var(--status-error)' };
+    if (kp < 8) return { text: 'G3 Strong Geomagnetic Storm', color: 'var(--status-error)' };
+    return { text: 'G4/G5 Severe/Extreme Geomagnetic Storm', color: 'var(--status-error)' };
   };
 
   const getFlareClassColor = (flareClass: string) => {
     switch (flareClass) {
       case 'X': return '#ef4444';
       case 'M': return '#f97316';
-      case 'C': return '#eab308';
+      case 'C': return '#f59e0b';
       case 'B': return '#38bdf8';
       default: return '#94a3b8';
     }
   };
-
-  if (loading && !data) {
-    return (
-      <div className="glass-card" style={{ padding: '24px', textAlign: 'center' }}>
-        <RefreshCw size={20} className="radar-sweep" style={{ color: 'var(--accent-cyan)', margin: '0 auto 12px' }} />
-        <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Connecting to NOAA Space Weather Prediction Center...</div>
-      </div>
-    );
-  }
 
   const kpVal = data?.kpIndex?.kp ?? 0;
   const kpInfo = getKpDescription(kpVal);
@@ -74,33 +65,33 @@ export const SpaceWeatherWidget: React.FC<SpaceWeatherWidgetProps> = ({ compact 
 
   return (
     <div className="glass-panel" style={{ padding: '20px', borderRadius: 'var(--radius-md)' }}>
-      {/* Header */}
+      {/* Header with Solar Accent */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         marginBottom: '16px',
-        borderBottom: '1px solid var(--border-subtle)',
+        borderBottom: '1px solid var(--border-hairline)',
         paddingBottom: '12px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{
             width: '32px',
             height: '32px',
-            borderRadius: '8px',
-            background: 'rgba(245, 158, 11, 0.15)',
+            borderRadius: 'var(--radius-xs)',
+            background: 'rgba(245, 158, 11, 0.12)',
             border: '1px solid rgba(245, 158, 11, 0.3)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#f59e0b'
+            color: 'var(--solar-amber)'
           }}>
-            <Sun size={18} />
+            <Sun size={17} />
           </div>
           <div>
-            <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Space Weather Environment</h3>
+            <h3 style={{ fontSize: '15px', fontWeight: 600 }}>Heliospheric & Solar Environment</h3>
             <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-              NOAA SWPC / DSCOVR & GOES-18 Satellites
+              NOAA SWPC // DSCOVR & GOES-18 Primary Solar Sensors
             </div>
           </div>
         </div>
@@ -109,7 +100,7 @@ export const SpaceWeatherWidget: React.FC<SpaceWeatherWidgetProps> = ({ compact 
           <StatusBadge status={data?.solarWind ? 'LIVE' : 'LAST_AVAILABLE'} />
           <button
             onClick={loadWeather}
-            title="Refresh Space Weather"
+            title="Refresh solar telemetry"
             style={{
               background: 'transparent',
               border: 'none',
@@ -118,59 +109,59 @@ export const SpaceWeatherWidget: React.FC<SpaceWeatherWidgetProps> = ({ compact 
               padding: '4px'
             }}
           >
-            <RefreshCw size={14} className={loading ? 'radar-sweep' : ''} />
+            <RefreshCw size={13} className={loading ? 'radar-sweep' : ''} />
           </button>
         </div>
       </div>
 
-      {/* Primary Weather Indicators Grid */}
+      {/* Solar Plasma & Radiation Metrics */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: compact ? '1fr 1fr' : 'repeat(auto-fit, minmax(200px, 1fr))',
+        gridTemplateColumns: compact ? '1fr 1fr' : 'repeat(auto-fit, minmax(180px, 1fr))',
         gap: '12px',
         marginBottom: '16px'
       }}>
-        {/* Solar Wind Velocity */}
-        <div className="glass-card" style={{ padding: '14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', fontSize: '11px', textTransform: 'uppercase' }}>
-            <Wind size={13} style={{ color: 'var(--accent-cyan)' }} />
-            <span>Solar Wind Speed</span>
+        {/* Solar Wind Proton Velocity */}
+        <div style={{ background: 'var(--surface-inset)', padding: '12px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase' }}>
+            <Wind size={12} style={{ color: 'var(--accent-cyan)' }} />
+            <span>Solar Wind Plasma Speed</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', margin: '8px 0 4px' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', margin: '6px 0 2px' }}>
             <span className="mono" style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)' }}>
               {windSpeed ? Math.round(windSpeed) : 'N/A'}
             </span>
-            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>km/s</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>km/s</span>
           </div>
           <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-            {windSpeed && windSpeed > 500 ? 'High velocity stream' : 'Nominal background flow'}
+            {windSpeed && windSpeed > 500 ? 'Elevated coronal hole stream' : 'Nominal background solar wind'}
           </div>
         </div>
 
-        {/* Planetary K-Index */}
-        <div className="glass-card" style={{ padding: '14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', fontSize: '11px', textTransform: 'uppercase' }}>
-            <ShieldAlert size={13} style={{ color: kpInfo.color }} />
+        {/* Planetary Kp Index */}
+        <div style={{ background: 'var(--surface-inset)', padding: '12px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase' }}>
+            <ShieldAlert size={12} style={{ color: kpInfo.color }} />
             <span>Planetary Kp Index</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', margin: '8px 0 4px' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', margin: '6px 0 2px' }}>
             <span className="mono" style={{ fontSize: '22px', fontWeight: 700, color: kpInfo.color }}>
               {data?.kpIndex?.kp !== undefined ? data.kpIndex.kp.toFixed(1) : 'N/A'}
             </span>
-            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>/ 9.0</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>/ 9.0</span>
           </div>
           <div style={{ fontSize: '11px', color: kpInfo.color, fontWeight: 500 }}>
             {kpInfo.text}
           </div>
         </div>
 
-        {/* Solar Flare Monitor (GOES-18 X-ray) */}
-        <div className="glass-card" style={{ padding: '14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', fontSize: '11px', textTransform: 'uppercase' }}>
-            <Flame size={13} style={{ color: '#f59e0b' }} />
+        {/* Solar X-ray Flux Monitor */}
+        <div style={{ background: 'var(--surface-inset)', padding: '12px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase' }}>
+            <Flame size={12} style={{ color: 'var(--solar-amber)' }} />
             <span>X-ray Flare Class</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', margin: '8px 0 4px' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', margin: '6px 0 2px' }}>
             <span className="mono" style={{
               fontSize: '22px',
               fontWeight: 700,
@@ -185,36 +176,36 @@ export const SpaceWeatherWidget: React.FC<SpaceWeatherWidgetProps> = ({ compact 
         </div>
       </div>
 
-      {/* Active Alerts List */}
-      {data?.activeAlerts && data.activeAlerts.length > 0 && (
+      {/* Verified SWPC Space Weather Bulletins */}
+      <div style={{
+        marginTop: '12px',
+        paddingTop: '12px',
+        borderTop: '1px solid var(--border-hairline)'
+      }}>
         <div style={{
-          marginTop: '12px',
-          paddingTop: '12px',
-          borderTop: '1px solid var(--border-subtle)'
+          fontSize: '11px',
+          color: 'var(--text-muted)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.04em',
+          marginBottom: '8px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px'
         }}>
-          <div style={{
-            fontSize: '11px',
-            color: 'var(--text-muted)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.04em',
-            marginBottom: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}>
-            <AlertCircle size={13} style={{ color: '#f59e0b' }} />
-            <span>Latest Official SWPC Bulletins ({data.activeAlerts.length})</span>
-          </div>
+          <AlertCircle size={13} style={{ color: 'var(--solar-amber)' }} />
+          <span>Verified Space Weather Bulletins ({data?.activeAlerts?.length || 0})</span>
+        </div>
 
+        {data?.activeAlerts && data.activeAlerts.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '140px', overflowY: 'auto' }}>
             {data.activeAlerts.slice(0, 4).map((alert) => (
               <div
                 key={alert.id}
                 style={{
                   padding: '8px 12px',
-                  background: 'rgba(255, 255, 255, 0.02)',
-                  border: '1px solid rgba(255, 255, 255, 0.05)',
-                  borderRadius: 'var(--radius-sm)',
+                  background: 'var(--surface-inset)',
+                  border: '1px solid var(--border-hairline)',
+                  borderRadius: 'var(--radius-xs)',
                   fontSize: '12px',
                   display: 'flex',
                   alignItems: 'flex-start',
@@ -225,7 +216,7 @@ export const SpaceWeatherWidget: React.FC<SpaceWeatherWidgetProps> = ({ compact 
                 <div>
                   <div style={{
                     fontWeight: 600,
-                    color: alert.severity === 'ALERT' ? '#ef4444' : alert.severity === 'WARNING' ? '#f59e0b' : 'var(--text-primary)'
+                    color: alert.severity === 'ALERT' ? 'var(--status-error)' : alert.severity === 'WARNING' ? 'var(--solar-amber)' : 'var(--text-primary)'
                   }}>
                     {alert.summary}
                   </div>
@@ -239,8 +230,19 @@ export const SpaceWeatherWidget: React.FC<SpaceWeatherWidgetProps> = ({ compact 
               </div>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <div style={{
+            padding: '12px',
+            background: 'var(--surface-inset)',
+            borderRadius: 'var(--radius-xs)',
+            fontSize: '12px',
+            color: 'var(--text-muted)',
+            textAlign: 'center'
+          }}>
+            NO ACTIVE SEVERE SPACE WEATHER ALERTS REPORTED BY SWPC
+          </div>
+        )}
+      </div>
     </div>
   );
 };

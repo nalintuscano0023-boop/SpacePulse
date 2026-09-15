@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { Navbar, TabType } from './components/common/Navbar';
+import React, { useState, useEffect } from 'react';
+import { Navbar, type TabType } from './components/common/Navbar';
+import { SpaceEnvironment } from './components/environment/SpaceEnvironment';
+import { OpeningExperience } from './components/common/OpeningExperience';
 import { MissionControl } from './features/mission-control/MissionControl';
 import { SpacecraftExplorer } from './features/spacecraft/SpacecraftExplorer';
 import { SpaceMap } from './features/space-map/SpaceMap';
@@ -7,14 +9,24 @@ import { ScientificAnalysis } from './features/analysis/ScientificAnalysis';
 import { MissionsExplorer } from './features/missions/MissionsExplorer';
 import { ObjectInspector } from './components/inspector/ObjectInspector';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
-import { SpacecraftObject } from './types/space';
+import type { SpacecraftObject } from './types/space';
 import { SPACECRAFT_REGISTRY, resolveSpacecraftState } from './services/data/spacecraftCatalog';
-import { Shield, ExternalLink, Radio } from 'lucide-react';
+import { Radio } from 'lucide-react';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<TabType>('mission-control');
   const [selectedObject, setSelectedObject] = useState<SpacecraftObject | null>(null);
   const [focusedObjectId, setFocusedObjectId] = useState<string | undefined>(undefined);
+  
+  // Opening Experience State: check sessionStorage so it plays once on initial session entry
+  const [showOpening, setShowOpening] = useState(() => {
+    return !sessionStorage.getItem('spacepulse_intro_shown');
+  });
+
+  const handleCompleteOpening = () => {
+    sessionStorage.setItem('spacepulse_intro_shown', 'true');
+    setShowOpening(false);
+  };
 
   const handleSelectObject = (obj: SpacecraftObject) => {
     setSelectedObject(obj);
@@ -23,7 +35,6 @@ export function App() {
   const handleFocusOnMap = async (objectId: string) => {
     setFocusedObjectId(objectId);
     setActiveTab('space-map');
-    // If not already resolved as selectedObject, resolve it
     if (!selectedObject || selectedObject.id !== objectId) {
       const def = SPACECRAFT_REGISTRY.find(s => s.id === objectId);
       if (def) {
@@ -38,8 +49,16 @@ export function App() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* 5-Section Header Navigation */}
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+      {/* 1. Deep Space WebGL Environment (Stars & Milky Way) */}
+      <SpaceEnvironment />
+
+      {/* 2. Opening Experience Transition */}
+      {showOpening && (
+        <OpeningExperience onComplete={handleCompleteOpening} />
+      )}
+
+      {/* 3. Floating Aerospace Navigation */}
       <Navbar
         activeTab={activeTab}
         onSelectTab={(tab) => {
@@ -48,8 +67,8 @@ export function App() {
         }}
       />
 
-      {/* Main Content Area */}
-      <main style={{ flex: 1, paddingBottom: '48px' }}>
+      {/* 4. Main Scientific Operations Console */}
+      <main style={{ flex: 1, position: 'relative', zIndex: 10, paddingBottom: '32px' }}>
         <ErrorBoundary fallbackTitle="Scientific Component Notice">
           {activeTab === 'mission-control' && (
             <MissionControl
@@ -86,7 +105,7 @@ export function App() {
         </ErrorBoundary>
       </main>
 
-      {/* Slide-out Object Inspector */}
+      {/* 5. Floating Object Inspector */}
       {selectedObject && (
         <ObjectInspector
           object={selectedObject}
@@ -96,16 +115,20 @@ export function App() {
         />
       )}
 
-      {/* Aerospace Scientific Footer */}
+      {/* 6. Precision Aerospace Footer */}
       <footer style={{
-        background: 'rgba(5, 7, 13, 0.95)',
-        borderTop: '1px solid var(--border-subtle)',
-        padding: '24px',
+        position: 'relative',
+        zIndex: 10,
+        background: 'rgba(3, 5, 10, 0.88)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        borderTop: '1px solid var(--border-hairline)',
+        padding: '20px 24px',
         color: 'var(--text-muted)',
-        fontSize: '12px'
+        fontSize: '11px'
       }}>
         <div style={{
-          maxWidth: '1600px',
+          maxWidth: '1540px',
           margin: '0 auto',
           display: 'flex',
           flexWrap: 'wrap',
@@ -113,19 +136,19 @@ export function App() {
           justifyContent: 'space-between',
           gap: '16px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Radio size={16} style={{ color: 'var(--accent-cyan)' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Radio size={14} style={{ color: 'var(--accent-cyan)' }} />
             <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
-              SpacePulse Space Intelligence & Visualization
+              SpacePulse Space Intelligence Platform
             </span>
             <span>•</span>
-            <span style={{ color: 'var(--status-live)', fontWeight: 500 }}>
-              Authentic Public Space Data Only Policy
+            <span style={{ color: 'var(--status-live)' }}>
+              100% Authentic Data Policy
             </span>
           </div>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center' }}>
-            <span>Authoritative Sources:</span>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', alignItems: 'center' }}>
+            <span>Authoritative Telemetry:</span>
             <a href="https://www.swpc.noaa.gov/" target="_blank" rel="noreferrer" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>
               NOAA SWPC
             </a>
@@ -145,16 +168,16 @@ export function App() {
         </div>
 
         <div style={{
-          maxWidth: '1600px',
-          margin: '12px auto 0',
-          paddingTop: '12px',
-          borderTop: '1px solid rgba(255, 255, 255, 0.04)',
+          maxWidth: '1540px',
+          margin: '10px auto 0',
+          paddingTop: '8px',
+          borderTop: '1px solid rgba(255, 255, 255, 0.03)',
           display: 'flex',
           justifyContent: 'space-between',
-          fontSize: '11px'
+          fontSize: '10px'
         }}>
-          <span>100% Frontend Architecture • Zero Synthetic Or Invented Telemetry</span>
-          <span>Standard Reference Frame: Ecliptic of J2000.0 / TEME Geocentric</span>
+          <span>Standard Celestial Reference Frame: Heliocentric Ecliptic J2000.0 / TEME Geocentric</span>
+          <span>Zero Synthetic Or Mock Numbers</span>
         </div>
       </footer>
     </div>
