@@ -1,6 +1,6 @@
 import { SpacecraftObject } from '../../types/space';
-import { calculateAdityaL1Ephemeris, calculateVoyagerEphemeris } from '../calculations/lagrange';
-import { calculateDistanceKm, calculateLightTimeSeconds, KM_PER_AU, MOON_MEAN_DISTANCE_KM } from '../calculations/physics';
+import { calculateAdityaL1Ephemeris } from '../calculations/lagrange';
+import { calculateDistanceKm, calculateLightTimeSeconds, MOON_MEAN_DISTANCE_KM } from '../calculations/physics';
 import { calculatePlanetEphemeris } from '../calculations/kepler';
 import { CelestrakService } from '../api/celestrakService';
 
@@ -274,6 +274,38 @@ export const SPACECRAFT_REGISTRY: SpacecraftDefinition[] = [
       'ACS (Advanced Camera for Surveys)',
       'STIS (Space Telescope Imaging Spectrograph)'
     ]
+  },
+  {
+    id: 'noaa-19',
+    name: 'NOAA-19 (POES)',
+    noradId: 33591,
+    agency: 'NASA',
+    mission: 'Polar Operational Environmental Satellite',
+    launchDate: '2009-02-06',
+    statusText: 'Active / Sun-Synchronous Weather Monitoring',
+    isOperational: true,
+    orbitType: 'Sun-Synchronous (SSO)',
+    coordinateFrame: 'Geocentric ECI (TEME / J2000)',
+    description: 'Polar-orbiting meteorological observatory delivering high-resolution atmospheric temperature, moisture, and cloud imaging for global weather prediction.',
+    significance: 'Key contributor to international search-and-rescue (SARSAT) and operational climatology datasets.',
+    scientificExplanation: 'Operates in a sun-synchronous circular orbit at ~850 km altitude with 99.1° inclination.',
+    payloads: ['AVHRR/3', 'HIRS/4', 'AMSU-A', 'MHS', 'SARSAT']
+  },
+  {
+    id: 'terra',
+    name: 'Terra (EOS AM-1)',
+    noradId: 25994,
+    agency: 'NASA',
+    mission: 'Earth Observing System Flagship',
+    launchDate: '1999-12-18',
+    statusText: 'Active / Multi-Decadal Climate Monitoring',
+    isOperational: true,
+    orbitType: 'Sun-Synchronous (SSO)',
+    coordinateFrame: 'Geocentric ECI (TEME / J2000)',
+    description: 'Flagship NASA Earth science satellite measuring Earth atmospheric aerosols, global vegetation health, land surface temperatures, and radiative balance.',
+    significance: 'Provides the definitive 25+ year continuous MODIS climate record of global wildfire, vegetation, and snowpack dynamics.',
+    scientificExplanation: 'Orbits in a descending node Sun-Synchronous Orbit at ~705 km altitude with 98.2° inclination.',
+    payloads: ['MODIS', 'ASTER', 'CERES', 'MISR', 'MOPITT']
   }
 ];
 
@@ -303,26 +335,24 @@ export async function resolveSpacecraftState(def: SpacecraftDefinition, date: Da
     };
   }
 
-  // 2. If it's Voyager 1 or 2
+  // 2. If it's Voyager 1 or 2: DO NOT FABRICATE COORDINATES
+  // "If the current browser-accessible data sources cannot provide a reliable Voyager 1 ephemeris:
+  // do NOT place Voyager 1 at a fake location. Instead, display POSITION DATA UNAVAILABLE / EPHEMERIS SOURCE UNAVAILABLE"
   if (def.id === 'voyager-1' || def.id === 'voyager-2') {
-    const craft = def.id === 'voyager-1' ? 'voyager1' : 'voyager2';
-    const voy = calculateVoyagerEphemeris(craft, date);
-    const lightTime = calculateLightTimeSeconds(voy.distanceFromEarthKm);
-
     return {
       ...def,
-      distanceFromEarthKm: voy.distanceFromEarthKm,
-      distanceFromSunKm: voy.distanceFromSunKm,
-      velocityKmS: voy.velocityKmS,
-      lightTimeToEarthSec: lightTime,
-      position: voy.positionKm,
+      distanceFromEarthKm: undefined,
+      distanceFromSunKm: undefined,
+      velocityKmS: undefined,
+      lightTimeToEarthSec: undefined,
+      position: undefined,
       telemetrySource: {
-        sourceName: 'NASA JPL Interstellar Trajectory Solution',
+        sourceName: 'NASA JPL Deep Space Network',
         sourceUrl: 'https://voyager.jpl.nasa.gov/',
         timestamp: date.toISOString(),
-        status: 'CALCULATED',
-        statusNote: 'Hyperbolic trajectory propagated from NASA JPL verified asymptotic direction and velocity',
-        calculationMethod: 'Hyperbolic excess velocity model'
+        status: 'UNAVAILABLE',
+        statusNote: 'Reliable browser-accessible positional data is currently unavailable for this object.',
+        calculationMethod: 'Ephemeris source unavailable for direct browser verification'
       }
     };
   }
@@ -359,6 +389,11 @@ export async function resolveSpacecraftState(def: SpacecraftDefinition, date: Da
 
         return {
           ...def,
+          orbitType: satTrack.orbitClass === 'SSO' ? 'Sun-Synchronous (SSO)' :
+                     satTrack.orbitClass === 'GEO' ? 'Geostationary (GEO)' :
+                     satTrack.orbitClass === 'MEO' ? 'Medium Earth Orbit (MEO)' :
+                     satTrack.orbitClass === 'HEO' ? 'Highly Elliptical Orbit (HEO)' :
+                     'Low Earth Orbit (LEO)',
           distanceFromEarthKm: state.distanceFromEarthSurfaceKm,
           distanceFromSunKm: earthEphem.distanceFromSunKm,
           velocityKmS: state.velocityKmS,
@@ -384,7 +419,7 @@ export async function resolveSpacecraftState(def: SpacecraftDefinition, date: Da
       sourceName: 'Telemetry Registry',
       timestamp: date.toISOString(),
       status: 'UNAVAILABLE',
-      statusNote: 'Orbital elements could not be retrieved from external source at this time'
+      statusNote: 'Orbital elements could not be verified or propagated at this timestamp.'
     }
   };
 }

@@ -6,15 +6,15 @@ import {
   Activity, 
   Compass, 
   RefreshCw,
-  ExternalLink,
-  ChevronRight,
-  Crosshair
+  Eye,
+  AlertTriangle
 } from 'lucide-react';
 import { SPACECRAFT_REGISTRY, resolveSpacecraftState } from '../../services/data/spacecraftCatalog';
 import type { SpacecraftObject } from '../../types/space';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { formatDistanceKm, formatVelocityKmS } from '../../utils/formatters';
 import { formatLightTime } from '../../services/calculations/physics';
+import { Spacecraft3DViewer } from '../../components/inspector/Spacecraft3DViewer';
 
 interface SpacecraftExplorerProps {
   onSelectObject: (obj: SpacecraftObject) => void;
@@ -33,6 +33,7 @@ export const SpacecraftExplorer: React.FC<SpacecraftExplorerProps> = ({
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<FilterCategory>('ALL');
+  const [viewing3DCraft, setViewing3DCraft] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     async function resolveAll() {
@@ -186,141 +187,185 @@ export const SpacecraftExplorer: React.FC<SpacecraftExplorerProps> = ({
           gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
           gap: '16px'
         }}>
-          {filteredList.map((craft) => (
-            <div
-              key={craft.id}
-              className="glass-card"
-              style={{
-                padding: '18px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                gap: '12px'
-              }}
-            >
-              <div>
-                {/* Catalog Card Header */}
+          {filteredList.map((craft) => {
+            const isVoyager = craft.id.includes('voyager');
+            return (
+              <div
+                key={craft.id}
+                className="glass-card"
+                style={{
+                  padding: '18px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  gap: '12px'
+                }}
+              >
+                <div>
+                  {/* Catalog Card Header */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    justifyContent: 'space-between',
+                    marginBottom: '10px'
+                  }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '17px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                          {craft.name}
+                        </span>
+                        <span style={{
+                          fontSize: '10px',
+                          padding: '2px 5px',
+                          background: 'rgba(255, 255, 255, 0.05)',
+                          borderRadius: '3px',
+                          fontWeight: 600,
+                          color: 'var(--accent-cyan)'
+                        }}>
+                          {craft.agency}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        {craft.mission}
+                      </div>
+                    </div>
+
+                    <StatusBadge status={craft.telemetrySource.status} metadata={craft.telemetrySource} compact />
+                  </div>
+
+                  {/* Measurements Grid */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '8px',
+                    background: 'var(--surface-inset)',
+                    padding: '10px 12px',
+                    borderRadius: 'var(--radius-xs)',
+                    margin: '8px 0'
+                  }}>
+                    <div>
+                      <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                        Distance to Earth
+                      </span>
+                      <div className="mono" style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+                        {craft.distanceFromEarthKm !== undefined ? formatDistanceKm(craft.distanceFromEarthKm, true) : 'DATA UNAVAILABLE'}
+                      </div>
+                    </div>
+
+                    <div>
+                      <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                        Orbital Speed
+                      </span>
+                      <div className="mono" style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+                        {craft.velocityKmS !== undefined ? formatVelocityKmS(craft.velocityKmS) : 'DATA UNAVAILABLE'}
+                      </div>
+                    </div>
+
+                    <div>
+                      <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                        Signal Delay ($c$)
+                      </span>
+                      <div className="mono" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--accent-cyan)', marginTop: '2px' }}>
+                        {craft.lightTimeToEarthSec !== undefined ? formatLightTime(craft.lightTimeToEarthSec) : 'N/A'}
+                      </div>
+                    </div>
+
+                    <div>
+                      <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                        Coordinate System
+                      </span>
+                      <div style={{ fontSize: '11px', fontWeight: 500, color: 'var(--text-secondary)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {craft.coordinateFrame}
+                      </div>
+                    </div>
+                  </div>
+
+                  {isVoyager && (
+                    <div style={{
+                      padding: '8px 10px',
+                      background: 'rgba(245, 158, 11, 0.08)',
+                      borderRadius: 'var(--radius-xs)',
+                      border: '1px solid rgba(245, 158, 11, 0.25)',
+                      fontSize: '11px',
+                      color: '#fef08a',
+                      marginBottom: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}>
+                      <AlertTriangle size={13} style={{ color: '#f59e0b', flexShrink: 0 }} />
+                      <span>Ephemeris unavailable for browser verification. Position not fabricated.</span>
+                    </div>
+                  )}
+
+                  <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                    {craft.description}
+                  </p>
+                </div>
+
+                {/* Actions Footer */}
                 <div style={{
                   display: 'flex',
-                  alignItems: 'flex-start',
-                  justifyContent: 'space-between',
-                  marginBottom: '10px'
-                }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '17px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                        {craft.name}
-                      </span>
-                      <span style={{
-                        fontSize: '10px',
-                        padding: '2px 5px',
-                        background: 'rgba(255, 255, 255, 0.05)',
-                        borderRadius: '3px',
-                        fontWeight: 600,
-                        color: 'var(--accent-cyan)'
-                      }}>
-                        {craft.agency}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      {craft.mission}
-                    </div>
-                  </div>
-
-                  <StatusBadge status={craft.telemetrySource.status} metadata={craft.telemetrySource} compact />
-                </div>
-
-                {/* Measurements Grid */}
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
+                  alignItems: 'center',
                   gap: '8px',
-                  background: 'var(--surface-inset)',
-                  padding: '10px 12px',
-                  borderRadius: 'var(--radius-xs)',
-                  margin: '8px 0'
+                  paddingTop: '12px',
+                  borderTop: '1px solid var(--border-hairline)'
                 }}>
-                  <div>
-                    <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                      Distance to Earth
-                    </span>
-                    <div className="mono" style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
-                      {craft.distanceFromEarthKm !== undefined ? formatDistanceKm(craft.distanceFromEarthKm, true) : 'Unavailable'}
-                    </div>
-                  </div>
+                  <button
+                    onClick={() => onSelectObject(craft)}
+                    className="btn btn-secondary"
+                    style={{ flex: 1, fontSize: '12px', padding: '6px 10px' }}
+                  >
+                    <Activity size={13} />
+                    <span>Inspect</span>
+                  </button>
 
-                  <div>
-                    <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                      Orbital Speed
-                    </span>
-                    <div className="mono" style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
-                      {craft.velocityKmS !== undefined ? formatVelocityKmS(craft.velocityKmS) : 'Unavailable'}
-                    </div>
-                  </div>
+                  <button
+                    onClick={() => setViewing3DCraft({ id: craft.id, name: craft.name })}
+                    className="btn btn-secondary"
+                    style={{ padding: '6px 10px' }}
+                    title="View 3D Spacecraft Architecture"
+                  >
+                    <Eye size={14} style={{ color: 'var(--accent-cyan)' }} />
+                  </button>
 
-                  <div>
-                    <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                      Signal Delay ($c$)
-                    </span>
-                    <div className="mono" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--accent-cyan)', marginTop: '2px' }}>
-                      {craft.lightTimeToEarthSec !== undefined ? formatLightTime(craft.lightTimeToEarthSec) : 'N/A'}
-                    </div>
-                  </div>
+                  {!isVoyager && (
+                    <button
+                      onClick={() => onFocusOnMap(craft.id)}
+                      className="btn btn-primary"
+                      style={{ padding: '6px 12px' }}
+                      title="Focus in 3D Space Map"
+                    >
+                      <Orbit size={14} />
+                    </button>
+                  )}
 
-                  <div>
-                    <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                      Coordinate System
-                    </span>
-                    <div style={{ fontSize: '11px', fontWeight: 500, color: 'var(--text-secondary)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {craft.coordinateFrame}
-                    </div>
-                  </div>
+                  {!isVoyager && (
+                    <button
+                      onClick={() => onAnalyzeObject(craft.id)}
+                      className="btn btn-secondary"
+                      style={{ padding: '6px 12px' }}
+                      title="Analyze Vectors in Workspace"
+                    >
+                      <Compass size={14} />
+                    </button>
+                  )}
                 </div>
-
-                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                  {craft.description}
-                </p>
               </div>
-
-              {/* Actions Footer */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                paddingTop: '12px',
-                borderTop: '1px solid var(--border-hairline)'
-              }}>
-                <button
-                  onClick={() => onSelectObject(craft)}
-                  className="btn btn-secondary"
-                  style={{ flex: 1, fontSize: '12px', padding: '6px 10px' }}
-                >
-                  <Activity size={13} />
-                  <span>Inspect Telemetry</span>
-                </button>
-
-                <button
-                  onClick={() => onFocusOnMap(craft.id)}
-                  className="btn btn-primary"
-                  style={{ padding: '6px 12px' }}
-                  title="Focus in 3D Space Map"
-                >
-                  <Orbit size={14} />
-                </button>
-
-                <button
-                  onClick={() => onAnalyzeObject(craft.id)}
-                  className="btn btn-secondary"
-                  style={{ padding: '6px 12px' }}
-                  title="Analyze Vectors in Workspace"
-                >
-                  <Compass size={14} />
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
+      )}
+
+      {/* 3D Spacecraft Architecture Modal */}
+      {viewing3DCraft && (
+        <Spacecraft3DViewer
+          craftId={viewing3DCraft.id}
+          craftName={viewing3DCraft.name}
+          onClose={() => setViewing3DCraft(null)}
+        />
       )}
     </div>
   );
 };
+

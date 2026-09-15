@@ -8,7 +8,7 @@ import {
   ArrowRightLeft
 } from 'lucide-react';
 import { calculatePlanetEphemeris } from '../../services/calculations/kepler';
-import { calculateAdityaL1Ephemeris, calculateVoyagerEphemeris } from '../../services/calculations/lagrange';
+import { calculateAdityaL1Ephemeris } from '../../services/calculations/lagrange';
 import { CelestrakService } from '../../services/api/celestrakService';
 import { 
   KM_PER_AU, 
@@ -18,21 +18,20 @@ import {
   calculateRelativeVelocity
 } from '../../services/calculations/physics';
 import { formatDistanceKm, formatVelocityKmS } from '../../utils/formatters';
-import type { Vector3D } from '../../types/space';
 import { StatusBadge } from '../../components/common/StatusBadge';
 
 interface AnalyzableObject {
   id: string;
   name: string;
-  category: 'Planet' | 'Deep Space Spacecraft' | 'Earth Orbit Satellite' | 'Star';
-  positionKm: Vector3D;
-  velocityKmS: Vector3D;
+  category: string;
+  positionKm: { x: number; y: number; z: number };
+  velocityKmS: { x: number; y: number; z: number };
   speedKmS: number;
 }
 
 export const ScientificAnalysis: React.FC = () => {
   const [availableObjects, setAvailableObjects] = useState<AnalyzableObject[]>([]);
-  const [selectedIds, setSelectedIds] = useState<string[]>(['earth', 'aditya-l1', 'mars', 'voyager-1']);
+  const [selectedIds, setSelectedIds] = useState<string[]>(['earth', 'aditya-l1', 'mars', 'iss']);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -52,30 +51,34 @@ export const ScientificAnalysis: React.FC = () => {
       });
 
       // 2. Planets
-      ['mercury', 'venus', 'earth', 'mars', 'jupiter', 'saturn'].forEach(p => {
-        const ephem = calculatePlanetEphemeris(p, now);
-        const spd = Math.sqrt(
-          ephem.velocityKmS.x * ephem.velocityKmS.x +
-          ephem.velocityKmS.y * ephem.velocityKmS.y +
-          ephem.velocityKmS.z * ephem.velocityKmS.z
-        );
-        list.push({
-          id: p,
-          name: p.charAt(0).toUpperCase() + p.slice(1),
-          category: 'Planet',
-          positionKm: ephem.positionKm,
-          velocityKmS: ephem.velocityKmS,
-          speedKmS: spd
-        });
+      ['mercury', 'venus', 'earth', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune'].forEach(p => {
+        try {
+          const ephem = calculatePlanetEphemeris(p, now);
+          const spd = Math.sqrt(
+            ephem.velocityKmS.x * ephem.velocityKmS.x +
+            ephem.velocityKmS.y * ephem.velocityKmS.y +
+            ephem.velocityKmS.z * ephem.velocityKmS.z
+          );
+          list.push({
+            id: p,
+            name: p.charAt(0).toUpperCase() + p.slice(1),
+            category: 'Major Planet',
+            positionKm: ephem.positionKm,
+            velocityKmS: ephem.velocityKmS,
+            speedKmS: spd
+          });
+        } catch (e) {
+          console.error(e);
+        }
       });
 
-      // 3. Aditya-L1
+      // 3. Aditya-L1 at L1
       try {
         const l1 = calculateAdityaL1Ephemeris(now);
         list.push({
           id: 'aditya-l1',
           name: 'Aditya-L1 (ISRO)',
-          category: 'Deep Space Spacecraft',
+          category: 'Solar Observatory (L1)',
           positionKm: l1.positionKm,
           velocityKmS: { x: 0, y: 0, z: 0 },
           speedKmS: l1.velocityKmS
@@ -84,48 +87,27 @@ export const ScientificAnalysis: React.FC = () => {
         console.error(e);
       }
 
-      // 4. Voyager 1 & 2
+      // 4. Real Earth-Orbiting Satellites from CelesTrak SGP4
       try {
-        const v1 = calculateVoyagerEphemeris('voyager1', now);
-        list.push({
-          id: 'voyager-1',
-          name: 'Voyager 1 (NASA)',
-          category: 'Deep Space Spacecraft',
-          positionKm: v1.positionKm,
-          velocityKmS: { x: 0, y: 0, z: 0 },
-          speedKmS: v1.velocityKmS
-        });
-
-        const v2 = calculateVoyagerEphemeris('voyager2', now);
-        list.push({
-          id: 'voyager-2',
-          name: 'Voyager 2 (NASA)',
-          category: 'Deep Space Spacecraft',
-          positionKm: v2.positionKm,
-          velocityKmS: { x: 0, y: 0, z: 0 },
-          speedKmS: v2.velocityKmS
-        });
-      } catch (e) {
-        console.error(e);
-      }
-
-      // 5. Earth Satellites (ISS)
-      try {
-        const issTrack = await CelestrakService.getPropagatedSatellite(25544, now);
+        const satellites = await CelestrakService.getSupportedEarthSatellites(now);
         const earthObj = list.find(o => o.id === 'earth');
-        if (issTrack && issTrack.state && earthObj) {
-          const eci = issTrack.state.positionEciKm;
-          list.push({
-            id: 'iss',
-            name: 'ISS (Zarya)',
-            category: 'Earth Orbit Satellite',
-            positionKm: {
-              x: earthObj.positionKm.x + eci.x,
-              y: earthObj.positionKm.y + eci.y,
-              z: earthObj.positionKm.z + eci.z
-            },
-            velocityKmS: issTrack.state.velocityVectorKmS,
-            speedKmS: issTrack.state.velocityKmS
+        if (earthObj) {
+          satellites.forEach(sat => {
+            if (sat.state) {
+              const eci = sat.state.positionEciKm;
+              list.push({
+                id: sat.noradId === 25544 ? 'iss' : `norad-${sat.noradId}`,
+                name: `${sat.name} [NORAD ${sat.noradId}]`,
+                category: `Earth Orbit (${sat.orbitClass})`,
+                positionKm: {
+                  x: earthObj.positionKm.x + eci.x,
+                  y: earthObj.positionKm.y + eci.y,
+                  z: earthObj.positionKm.z + eci.z
+                },
+                velocityKmS: sat.state.velocityVectorKmS,
+                speedKmS: sat.state.velocityKmS
+              });
+            }
           });
         }
       } catch (e) {

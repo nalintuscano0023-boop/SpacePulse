@@ -15,8 +15,10 @@ export type CoordinateFrame =
 export type OrbitType = 
   | 'Heliocentric'
   | 'Low Earth Orbit (LEO)'
+  | 'Medium Earth Orbit (MEO)'
   | 'Geostationary (GEO)'
   | 'Sun-Synchronous (SSO)'
+  | 'Highly Elliptical Orbit (HEO)'
   | 'Lagrangian Halo (L1)'
   | 'Lagrangian Halo (L2)'
   | 'Lunar Orbit'
