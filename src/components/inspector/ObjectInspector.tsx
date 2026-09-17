@@ -17,6 +17,7 @@ import { StatusBadge } from '../common/StatusBadge';
 import { formatDistanceKm, formatVelocityKmS } from '../../utils/formatters';
 import { formatLightTime, kmToAu } from '../../services/calculations/physics';
 import { Spacecraft3DViewer } from './Spacecraft3DViewer';
+import { ActionTooltip } from '../spacecraft/ActionTooltip';
 
 interface ObjectInspectorProps {
   object: SpacecraftObject | null;
@@ -438,26 +439,62 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
             <span>3D Model</span>
           </button>
 
-          {!isVoyager && onFocusOnMap && (
-            <button
-              onClick={() => onFocusOnMap(object.id)}
-              className="btn btn-primary"
-              style={{ flex: 1, fontSize: '12px' }}
-            >
-              <Crosshair size={14} />
-              <span>Focus on Map</span>
-            </button>
+          {onFocusOnMap && (
+            !isVoyager ? (
+              <button
+                onClick={() => onFocusOnMap(object.id)}
+                className="btn btn-primary"
+                style={{ flex: 1, fontSize: '12px' }}
+                title={`Focus ${object.name} on 3D Space Map`}
+              >
+                <Crosshair size={14} />
+                <span>Focus on Map</span>
+              </button>
+            ) : (
+              <ActionTooltip
+                title="FOCUS UNAVAILABLE"
+                description="Reliable positional data is unavailable for this object."
+                isUnavailable
+              >
+                <button
+                  disabled
+                  aria-disabled="true"
+                  className="btn btn-secondary"
+                  style={{ flex: 1, fontSize: '12px', opacity: 0.4, cursor: 'not-allowed' }}
+                >
+                  <Crosshair size={14} />
+                  <span>Focus on Map</span>
+                </button>
+              </ActionTooltip>
+            )
           )}
 
-          {!isVoyager && onOpenInAnalysis && (
-            <button
-              onClick={() => onOpenInAnalysis(object.id)}
-              className="btn btn-secondary"
-              style={{ fontSize: '12px', padding: '8px 10px' }}
-              title="Vector Analysis"
-            >
-              <Compass size={14} />
-            </button>
+          {onOpenInAnalysis && (
+            !isVoyager ? (
+              <button
+                onClick={() => onOpenInAnalysis(object.id)}
+                className="btn btn-secondary"
+                style={{ fontSize: '12px', padding: '8px 10px' }}
+                title="Vector Analysis"
+              >
+                <Compass size={14} />
+              </button>
+            ) : (
+              <ActionTooltip
+                title="TRACKING UNAVAILABLE"
+                description="No browser-accessible verified ephemeris is currently available."
+                isUnavailable
+              >
+                <button
+                  disabled
+                  aria-disabled="true"
+                  className="btn btn-secondary"
+                  style={{ fontSize: '12px', padding: '8px 10px', opacity: 0.4, cursor: 'not-allowed' }}
+                >
+                  <Compass size={14} />
+                </button>
+              </ActionTooltip>
+            )
           )}
         </div>
 

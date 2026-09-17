@@ -281,3 +281,134 @@ h3 {
     scroll-behavior: auto !important;
   }
 }
+
+/* Standardized Spacecraft Card & Action Styles */
+.spacecraft-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 18px;
+  position: relative;
+  overflow: visible;
+}
+
+.agency-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  height: 20px;
+  border-radius: var(--radius-xs);
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  color: var(--accent-cyan);
+  white-space: nowrap;
+}
+
+.action-bar-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 14px;
+  margin-top: auto;
+  border-top: 1px solid var(--border-hairline);
+  position: relative;
+}
+
+.btn-icon-action {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-xs);
+  flex-shrink: 0;
+  border: 1px solid var(--border-hairline);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.btn-icon-action:hover:not(:disabled):not([aria-disabled="true"]) {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: var(--border-focus);
+  color: var(--accent-cyan);
+}
+
+.btn-icon-action.btn-action-primary:not(:disabled):not([aria-disabled="true"]) {
+  background: rgba(56, 189, 248, 0.14);
+  border-color: rgba(56, 189, 248, 0.35);
+  color: var(--accent-cyan);
+}
+
+.btn-icon-action.btn-action-primary:hover:not(:disabled):not([aria-disabled="true"]) {
+  background: rgba(56, 189, 248, 0.25);
+  border-color: var(--accent-cyan);
+  color: #fff;
+}
+
+.btn-icon-action:disabled,
+.btn-icon-action[aria-disabled="true"] {
+  background: rgba(255, 255, 255, 0.015);
+  border-color: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+/* Tooltip container */
+.action-tooltip-anchor {
+  position: relative;
+  display: inline-flex;
+}
+
+.action-tooltip-popover {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 50%;
+  transform: translateX(50%);
+  width: max-content;
+  max-width: 240px;
+  padding: 8px 10px;
+  background: rgba(7, 17, 31, 0.96);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  border-radius: var(--radius-xs);
+  box-shadow: 0 10px 25px -4px rgba(0, 0, 0, 0.7), 0 0 12px rgba(56, 189, 248, 0.08);
+  z-index: 100;
+  pointer-events: none;
+  animation: tooltipFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Arrow indicator */
+.action-tooltip-popover::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 5px 5px 0 5px;
+  border-style: solid;
+  border-color: rgba(7, 17, 31, 0.96) transparent transparent transparent;
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(50%, 4px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(50%, 0);
+  }
+}
+
