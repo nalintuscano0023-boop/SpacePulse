@@ -23,7 +23,8 @@ import { calculatePlanetEphemeris } from '../../services/calculations/kepler';
 import { calculateAdityaL1Ephemeris } from '../../services/calculations/lagrange';
 import { CelestrakService, SatelliteTrackData } from '../../services/api/celestrakService';
 import { SPACECRAFT_REGISTRY, resolveSpacecraftState } from '../../services/data/spacecraftCatalog';
-import type { SpacecraftObject } from '../../types/space';
+import type { InspectableObject, SpacecraftObject } from '../../types/space';
+import { resolveInspectableObject, normalizeSpacecraftObject } from '../../services/data/objectResolver';
 import { formatDistanceKm } from '../../utils/formatters';
 import { calculateLightTimeSeconds, formatLightTime } from '../../services/calculations/physics';
 import { StatusBadge } from '../../components/common/StatusBadge';
@@ -31,7 +32,8 @@ import { createSatelliteModel, createSelectionRing, createEarthAtmosphereGlow } 
 import { Spacecraft3DViewer } from '../../components/inspector/Spacecraft3DViewer';
 
 interface SpaceMapProps {
-  onSelectObject: (obj: SpacecraftObject) => void;
+  onSelectObject?: (obj: InspectableObject) => void;
+  onInspectObject?: (obj: InspectableObject) => void;
   selectedObjectId?: string;
 }
 
@@ -201,6 +203,7 @@ function mapSatelliteVisualRadius(altKm: number): number {
 
 export const SpaceMap: React.FC<SpaceMapProps> = ({
   onSelectObject,
+  onInspectObject,
   selectedObjectId
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -256,6 +259,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
 
   const targetCamPos = useRef<THREE.Vector3 | null>(null);
   const targetLookAt = useRef<THREE.Vector3 | null>(null);
+  const handleObjectSelectionRef = useRef<(objectId: string, shouldInspect?: boolean) => void>(() => {});
 
   // Synchronize selection from parent prop
   useEffect(() => {
@@ -469,12 +473,8 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
             return;
           }
 
-          setSelectedBodyId(bodyId);
           focusOnObject(bodyId);
-          const body = bodiesRef.current.get(bodyId);
-          if (body?.craftData) {
-            onSelectObject(body.craftData);
-          }
+          handleObjectSelectionRef.current(bodyId, false);
         }
       }
     };
@@ -952,6 +952,26 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     }
   }, [viewMode]);
 
+  // Unified object selection and inspection handler
+  const handleObjectSelection = useCallback(async (objectId: string, shouldInspect: boolean = false) => {
+    setSelectedBodyId(objectId);
+    const body = bodiesRef.current.get(objectId);
+    let resolved: InspectableObject | null = null;
+    if (body?.craftData) {
+      resolved = normalizeSpacecraftObject(body.craftData);
+    } else {
+      resolved = await resolveInspectableObject(objectId, simDate);
+    }
+    if (resolved) {
+      if (shouldInspect && onInspectObject) {
+        onInspectObject(resolved);
+      } else if (onSelectObject) {
+        onSelectObject(resolved);
+      }
+    }
+  }, [simDate, onInspectObject, onSelectObject]);
+  handleObjectSelectionRef.current = handleObjectSelection;
+
   // Update HUD & Selection Ring when selection changes
   useEffect(() => {
     const selRing = selectionRingRef.current;
@@ -1068,13 +1088,10 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     setSearchQuery('');
     setShowSearchDropdown(false);
 
-    if (obj.id === 'voyager-1') {
-      setSelectedBodyId('voyager-1');
+    if (obj.id === 'voyager-1' || obj.id === 'voyager-2') {
+      setSelectedBodyId(obj.id);
       setVoyagerNotice(true);
-      const voyDef = SPACECRAFT_REGISTRY.find(s => s.id === 'voyager-1');
-      if (voyDef) {
-        resolveSpacecraftState(voyDef).then(craftState => onSelectObject(craftState));
-      }
+      handleObjectSelection(obj.id, false);
       return;
     }
 
@@ -1096,10 +1113,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
       }
     }
 
-    const body = bodiesRef.current.get(obj.id);
-    if (body?.craftData) {
-      onSelectObject(body.craftData);
-    }
+    handleObjectSelection(obj.id, false);
   };
 
   // Fallback if WebGL is completely unsupported on device
@@ -1247,10 +1261,8 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
                   <button
                     key={satId}
                     onClick={() => {
-                      setSelectedBodyId(satId);
                       focusOnObject(satId);
-                      const b = bodiesRef.current.get(satId);
-                      if (b?.craftData) onSelectObject(b.craftData);
+                      handleObjectSelection(satId, false);
                     }}
                     className={`btn ${isSel ? 'btn-active' : 'btn-secondary'}`}
                     style={{ fontSize: '11px', padding: '5px 10px' }}
@@ -1269,16 +1281,11 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
                     key={id}
                     onClick={() => {
                       if (id === 'voyager-1') {
-                        setSelectedBodyId('voyager-1');
                         setVoyagerNotice(true);
-                        const voyDef = SPACECRAFT_REGISTRY.find(s => s.id === 'voyager-1');
-                        if (voyDef) resolveSpacecraftState(voyDef).then(st => onSelectObject(st));
                       } else {
-                        setSelectedBodyId(id);
                         focusOnObject(id);
-                        const b = bodiesRef.current.get(id);
-                        if (b?.craftData) onSelectObject(b.craftData);
                       }
+                      handleObjectSelection(id, false);
                     }}
                     className={`btn ${isSel ? 'btn-active' : 'btn-secondary'}`}
                     style={{ fontSize: '11px', padding: '5px 10px' }}
@@ -1525,21 +1532,16 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
             </div>
 
             <button
-              onClick={() => {
-                const body = bodiesRef.current.get(selectedBodyId || '');
-                if (body?.craftData) onSelectObject(body.craftData);
+              onClick={(e) => {
+                e.stopPropagation();
+                if (selectedBodyId) {
+                  handleObjectSelection(selectedBodyId, true);
+                }
               }}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--accent-cyan)',
-                cursor: 'pointer',
-                fontSize: '11px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '2px 4px'
-              }}
+              type="button"
+              className="inspect-action-btn"
+              aria-label={`Inspect ${hudData.name}`}
+              title={`Inspect ${hudData.name}`}
             >
               <span>Inspect</span>
               <ChevronRight size={13} />

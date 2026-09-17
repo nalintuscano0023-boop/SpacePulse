@@ -9,13 +9,14 @@ import { ScientificAnalysis } from './features/analysis/ScientificAnalysis';
 import { MissionsExplorer } from './features/missions/MissionsExplorer';
 import { ObjectInspector } from './components/inspector/ObjectInspector';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
-import type { SpacecraftObject } from './types/space';
-import { SPACECRAFT_REGISTRY, resolveSpacecraftState } from './services/data/spacecraftCatalog';
+import type { InspectableObject, SpacecraftObject } from './types/space';
+import { resolveInspectableObject, normalizeSpacecraftObject } from './services/data/objectResolver';
 import { Radio } from 'lucide-react';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<TabType>('mission-control');
-  const [selectedObject, setSelectedObject] = useState<SpacecraftObject | null>(null);
+  const [selectedObject, setSelectedObject] = useState<InspectableObject | null>(null);
+  const [isInspectorOpen, setIsInspectorOpen] = useState(false);
   const [focusedObjectId, setFocusedObjectId] = useState<string | undefined>(undefined);
   
   // Opening Experience State: check sessionStorage so it plays once on initial session entry
@@ -28,18 +29,24 @@ export function App() {
     setShowOpening(false);
   };
 
-  const handleSelectObject = (obj: SpacecraftObject) => {
-    setSelectedObject(obj);
+  const handleSelectObject = (obj: InspectableObject | SpacecraftObject) => {
+    const inspectable = 'category' in obj ? obj : normalizeSpacecraftObject(obj);
+    setSelectedObject(inspectable);
+  };
+
+  const handleInspectObject = (obj: InspectableObject | SpacecraftObject) => {
+    const inspectable = 'category' in obj ? obj : normalizeSpacecraftObject(obj);
+    setSelectedObject(inspectable);
+    setIsInspectorOpen(true);
   };
 
   const handleFocusOnMap = async (objectId: string) => {
     setFocusedObjectId(objectId);
     setActiveTab('space-map');
     if (!selectedObject || selectedObject.id !== objectId) {
-      const def = SPACECRAFT_REGISTRY.find(s => s.id === objectId);
-      if (def) {
-        const state = await resolveSpacecraftState(def);
-        setSelectedObject(state);
+      const resolved = await resolveInspectableObject(objectId);
+      if (resolved) {
+        setSelectedObject(resolved);
       }
     }
   };
@@ -72,7 +79,7 @@ export function App() {
         <ErrorBoundary fallbackTitle="Scientific Component Notice">
           {activeTab === 'mission-control' && (
             <MissionControl
-              onSelectObject={handleSelectObject}
+              onSelectObject={handleInspectObject}
               onNavigateTab={(tab) => {
                 setActiveTab(tab);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -82,7 +89,7 @@ export function App() {
 
           {activeTab === 'spacecraft' && (
             <SpacecraftExplorer
-              onSelectObject={handleSelectObject}
+              onSelectObject={handleInspectObject}
               onFocusOnMap={handleFocusOnMap}
               onAnalyzeObject={handleAnalyzeObject}
             />
@@ -91,6 +98,7 @@ export function App() {
           {activeTab === 'space-map' && (
             <SpaceMap
               onSelectObject={handleSelectObject}
+              onInspectObject={handleInspectObject}
               selectedObjectId={focusedObjectId}
             />
           )}
@@ -106,10 +114,10 @@ export function App() {
       </main>
 
       {/* 5. Floating Object Inspector */}
-      {selectedObject && (
+      {selectedObject && isInspectorOpen && (
         <ObjectInspector
           object={selectedObject}
-          onClose={() => setSelectedObject(null)}
+          onClose={() => setIsInspectorOpen(false)}
           onFocusOnMap={activeTab !== 'space-map' ? handleFocusOnMap : undefined}
           onOpenInAnalysis={activeTab !== 'analysis' ? handleAnalyzeObject : undefined}
         />

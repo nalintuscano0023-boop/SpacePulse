@@ -412,3 +412,37 @@ h3 {
   }
 }
 
+/* Object Acquired HUD Inspect Button */
+.inspect-action-btn {
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: var(--accent-cyan);
+  cursor: pointer;
+  font-size: 11px;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: var(--radius-xs);
+  transition: all 0.15s ease;
+  outline: none;
+}
+
+.inspect-action-btn:hover {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: var(--accent-cyan);
+  color: #ffffff;
+  transform: translateX(1px);
+}
+
+.inspect-action-btn:active {
+  transform: scale(0.97);
+}
+
+.inspect-action-btn:focus-visible {
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.5);
+}
+
+

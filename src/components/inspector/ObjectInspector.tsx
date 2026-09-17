@@ -4,15 +4,18 @@ import {
   Satellite, 
   Compass, 
   Layers, 
-  Activity,
-  Zap,
-  Crosshair,
-  AlertTriangle,
-  Eye,
-  Calendar,
-  Database
+  Activity, 
+  Zap, 
+  Crosshair, 
+  AlertTriangle, 
+  Eye, 
+  Globe, 
+  Sun, 
+  Moon, 
+  Database 
 } from 'lucide-react';
-import type { SpacecraftObject } from '../../types/space';
+import type { InspectableObject, SpacecraftObject } from '../../types/space';
+import { normalizeSpacecraftObject } from '../../services/data/objectResolver';
 import { StatusBadge } from '../common/StatusBadge';
 import { formatDistanceKm, formatVelocityKmS } from '../../utils/formatters';
 import { formatLightTime, kmToAu } from '../../services/calculations/physics';
@@ -20,25 +23,35 @@ import { Spacecraft3DViewer } from './Spacecraft3DViewer';
 import { ActionTooltip } from '../spacecraft/ActionTooltip';
 
 interface ObjectInspectorProps {
-  object: SpacecraftObject | null;
+  object: InspectableObject | SpacecraftObject | null;
   onClose: () => void;
   onFocusOnMap?: (objectId: string) => void;
   onOpenInAnalysis?: (objectId: string) => void;
 }
 
 export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
-  object,
+  object: rawObject,
   onClose,
   onFocusOnMap,
   onOpenInAnalysis
 }) => {
   const [show3DViewer, setShow3DViewer] = useState(false);
 
-  if (!object) return null;
+  if (!rawObject) return null;
+
+  const object: InspectableObject = 'category' in rawObject ? rawObject : normalizeSpacecraftObject(rawObject);
 
   const isVoyager = object.id.includes('voyager');
+  const isCelestial = object.category === 'planet' || object.category === 'star' || object.category === 'moon';
   const distAu = object.distanceFromEarthKm ? kmToAu(object.distanceFromEarthKm) : undefined;
   const distSunAu = object.distanceFromSunKm ? kmToAu(object.distanceFromSunKm) : undefined;
+
+  const renderObjectIcon = () => {
+    if (object.category === 'planet') return <Globe size={19} />;
+    if (object.category === 'star') return <Sun size={19} />;
+    if (object.category === 'moon') return <Moon size={19} />;
+    return <Satellite size={19} />;
+  };
 
   return (
     <>
@@ -78,30 +91,33 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
               justifyContent: 'center',
               color: 'var(--accent-cyan)'
             }}>
-              <Satellite size={19} />
+              {renderObjectIcon()}
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <h3 style={{ fontSize: '17px', fontWeight: 700, color: '#ffffff' }}>{object.name}</h3>
                 <span style={{
                   fontSize: '10px',
-                  padding: '2px 5px',
+                  padding: '2px 6px',
                   borderRadius: '3px',
                   background: 'rgba(255, 255, 255, 0.05)',
                   color: 'var(--accent-cyan)',
-                  fontWeight: 600
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  border: '1px solid rgba(56, 189, 248, 0.2)'
                 }}>
-                  {object.agency}
+                  {object.agency || (object.category ? object.category.toUpperCase() : 'ASTRONOMICAL')}
                 </span>
               </div>
               <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                {object.mission}
+                {object.mission || object.typeText}
               </div>
             </div>
           </div>
 
           <button
             onClick={onClose}
+            type="button"
             style={{
               background: 'transparent',
               border: 'none',
@@ -114,6 +130,7 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
               justifyContent: 'center'
             }}
             aria-label="Close Inspector"
+            title="Close Inspector"
           >
             <X size={17} />
           </button>
@@ -161,10 +178,10 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
           }}>
             <div>
               <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Mission Flight Status
+                Status / Classification
               </div>
               <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginTop: '2px' }}>
-                {object.statusText}
+                {object.statusText || 'Active Astronomical Body'}
               </div>
             </div>
             <StatusBadge status={object.telemetrySource.status} metadata={object.telemetrySource} />
@@ -182,24 +199,28 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
           }}>
             <div>
               <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                Catalog ID
+                {isCelestial ? 'Object Category' : 'Catalog ID'}
               </span>
               <div className="mono" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginTop: '2px' }}>
-                {object.noradId ? `NORAD ${object.noradId}` : object.jplId ? `JPL ${object.jplId}` : 'DATA UNAVAILABLE'}
+                {object.noradId
+                  ? `NORAD ${object.noradId}`
+                  : object.jplId
+                  ? `JPL ${object.jplId}`
+                  : object.typeText || (object.category ? object.category.toUpperCase() : 'DATA UNAVAILABLE')}
               </div>
             </div>
 
             <div>
               <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                Orbit Classification
+                Coordinate Frame
               </span>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--accent-cyan)', marginTop: '2px' }}>
-                {object.orbitType || 'DATA UNAVAILABLE'}
+              <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--accent-cyan)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={object.coordinateFrame}>
+                {object.coordinateFrame || 'Heliocentric Ecliptic J2000'}
               </div>
             </div>
           </div>
 
-          {/* Primary Flight Telemetry Grid */}
+          {/* Primary Flight / Planetary Telemetry Grid */}
           <div>
             <div style={{
               fontSize: '11px',
@@ -213,7 +234,7 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
               gap: '6px'
             }}>
               <Activity size={12} style={{ color: 'var(--accent-cyan)' }} />
-              <span>Flight Telemetry Measurements</span>
+              <span>{isCelestial ? 'Planetary & Astronomical Measurements' : 'Flight Telemetry Measurements'}</span>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -223,60 +244,100 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
                   {object.geodetic?.altitudeKm ? 'Orbital Altitude' : 'Distance from Earth'}
                 </div>
                 <div className="mono" style={{ fontSize: '15px', fontWeight: 700, marginTop: '4px', color: 'var(--text-primary)' }}>
-                  {object.geodetic?.altitudeKm !== undefined
+                  {object.isEarthOrigin
+                    ? 'REFERENCE ORIGIN'
+                    : object.geodetic?.altitudeKm !== undefined
                     ? `${Math.round(object.geodetic.altitudeKm).toLocaleString()} km`
                     : object.distanceFromEarthKm !== undefined
                     ? formatDistanceKm(object.distanceFromEarthKm)
                     : 'DATA UNAVAILABLE'}
                 </div>
-                {distAu !== undefined && distAu >= 0.005 && (
+                {object.isEarthOrigin ? (
+                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                    Ground Coordinate Zero
+                  </div>
+                ) : distAu !== undefined && distAu >= 0.005 ? (
                   <div className="mono" style={{ fontSize: '11px', color: 'var(--accent-cyan)', marginTop: '2px' }}>
                     {distAu.toFixed(4)} AU
                   </div>
-                )}
-              </div>
-
-              {/* Velocity */}
-              <div style={{ background: 'var(--surface-inset)', padding: '12px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
-                <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Orbital Velocity</div>
-                <div className="mono" style={{ fontSize: '15px', fontWeight: 700, marginTop: '4px', color: 'var(--text-primary)' }}>
-                  {object.velocityKmS !== undefined ? formatVelocityKmS(object.velocityKmS) : 'DATA UNAVAILABLE'}
-                </div>
-                <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                  {object.velocityKmS !== undefined ? 'Relative to center of mass' : 'Calculated vector unavailable'}
-                </div>
+                ) : null}
               </div>
 
               {/* Distance from Sun */}
               <div style={{ background: 'var(--surface-inset)', padding: '12px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
                 <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Distance from Sun</div>
                 <div className="mono" style={{ fontSize: '15px', fontWeight: 700, marginTop: '4px', color: 'var(--text-primary)' }}>
-                  {object.distanceFromSunKm !== undefined ? formatDistanceKm(object.distanceFromSunKm, true) : 'DATA UNAVAILABLE'}
+                  {object.id === 'sun'
+                    ? 'SOLAR CENTER'
+                    : object.distanceFromSunKm !== undefined
+                    ? formatDistanceKm(object.distanceFromSunKm, true)
+                    : 'DATA UNAVAILABLE'}
                 </div>
-                {distSunAu !== undefined && (
+                {object.id === 'sun' ? (
+                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                    (0.000 AU Coordinate Center)
+                  </div>
+                ) : distSunAu !== undefined ? (
                   <div className="mono" style={{ fontSize: '11px', color: 'var(--accent-cyan)', marginTop: '2px' }}>
                     {distSunAu.toFixed(3)} AU
                   </div>
-                )}
+                ) : null}
+              </div>
+
+              {/* Distance from Moon */}
+              <div style={{ background: 'var(--surface-inset)', padding: '12px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Distance from Moon</div>
+                <div className="mono" style={{ fontSize: '15px', fontWeight: 700, marginTop: '4px', color: 'var(--text-primary)' }}>
+                  {object.id === 'moon'
+                    ? 'LUNAR SURFACE'
+                    : object.distanceFromMoonKm !== undefined
+                    ? formatDistanceKm(object.distanceFromMoonKm)
+                    : 'DATA UNAVAILABLE'}
+                </div>
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  {object.id === 'moon' ? 'Selenocentric Center' : object.distanceFromMoonKm !== undefined ? 'Calculated Baseline' : 'DATA UNAVAILABLE'}
+                </div>
+              </div>
+
+              {/* Velocity */}
+              <div style={{ background: 'var(--surface-inset)', padding: '12px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Orbital Speed</div>
+                <div className="mono" style={{ fontSize: '15px', fontWeight: 700, marginTop: '4px', color: 'var(--text-primary)' }}>
+                  {object.velocityKmS !== undefined ? formatVelocityKmS(object.velocityKmS) : 'DATA UNAVAILABLE'}
+                </div>
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  {object.velocityKmS !== undefined ? 'Relative to primary center' : 'Calculated vector unavailable'}
+                </div>
               </div>
 
               {/* Light Travel Time */}
               <div style={{ background: 'var(--surface-inset)', padding: '12px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
-                <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>One-Way Radio Latency</div>
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>One-Way Light Delay</div>
                 <div className="mono" style={{ fontSize: '15px', fontWeight: 700, marginTop: '4px', color: 'var(--accent-cyan)' }}>
                   {object.lightTimeToEarthSec !== undefined ? formatLightTime(object.lightTimeToEarthSec) : 'DATA UNAVAILABLE'}
                 </div>
                 <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                  Speed of Light ($c$)
+                  Speed of Light (c)
+                </div>
+              </div>
+
+              {/* Physical Radius / Size */}
+              <div style={{ background: 'var(--surface-inset)', padding: '12px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Mean Volumetric Radius</div>
+                <div className="mono" style={{ fontSize: '15px', fontWeight: 700, marginTop: '4px', color: 'var(--text-primary)' }}>
+                  {object.radiusKm !== undefined ? `${object.radiusKm.toLocaleString()} km` : 'DATA UNAVAILABLE'}
+                </div>
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  {object.radiusKm !== undefined ? 'IAU Physical Body Radius' : 'Payload Scale Reference'}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Calculated Vector Position (ECI / Geocentric) */}
+          {/* Calculated Vector Position (ECI / Heliocentric J2000) */}
           <div style={{ background: 'var(--surface-inset)', padding: '12px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
             <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
-              Calculated 3D State Coordinates
+              Calculated 3D State Coordinates ({object.coordinateFrame || 'J2000'})
             </div>
             {object.position ? (
               <div className="mono" style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
@@ -337,28 +398,28 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
               marginBottom: '6px'
             }}>
               <Zap size={14} />
-              <span>Mission Science & Significance</span>
+              <span>{isCelestial ? 'Astronomical Profile & Science' : 'Mission Science & Significance'}</span>
             </div>
             <p style={{ fontSize: '12px', color: 'var(--text-primary)', lineHeight: 1.6 }}>
               {object.scientificExplanation || object.significance || object.description}
             </p>
           </div>
 
-          {/* Coordinate Reference & Orbit Details */}
+          {/* Coordinate Reference & Details */}
           <div style={{ background: 'var(--surface-inset)', padding: '12px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Coordinate Frame</span>
-                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{object.coordinateFrame}</span>
+                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{object.coordinateFrame || 'Heliocentric Ecliptic J2000'}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Launch Date</span>
-                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{object.launchDate}</span>
+                <span style={{ color: 'var(--text-muted)' }}>{isCelestial ? 'Reference Epoch' : 'Launch Date'}</span>
+                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{object.launchDate || 'J2000.0 Standard Epoch'}</span>
               </div>
             </div>
           </div>
 
-          {/* Scientific Payloads */}
+          {/* Scientific Payloads or Key Planetary Features */}
           {object.payloads && object.payloads.length > 0 && (
             <div>
               <div style={{
@@ -373,7 +434,7 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
                 gap: '6px'
               }}>
                 <Layers size={12} style={{ color: 'var(--accent-cyan)' }} />
-                <span>Scientific Payloads ({object.payloads.length})</span>
+                <span>{isCelestial ? `Key Planetary Features (${object.payloads.length})` : `Scientific Payloads (${object.payloads.length})`}</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 {object.payloads.map((payload, idx) => (
@@ -428,16 +489,18 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
           gap: '8px',
           background: 'rgba(3, 5, 10, 0.95)'
         }}>
-          {/* 3D Model Architecture Viewer Button */}
-          <button
-            onClick={() => setShow3DViewer(true)}
-            className="btn btn-secondary"
-            style={{ flex: 1, fontSize: '12px' }}
-            title="Inspect 3D Spacecraft Architecture"
-          >
-            <Eye size={14} style={{ color: 'var(--accent-cyan)' }} />
-            <span>3D Model</span>
-          </button>
+          {/* 3D Model Architecture Viewer Button (for Spacecraft / Satellites) */}
+          {!isCelestial ? (
+            <button
+              onClick={() => setShow3DViewer(true)}
+              className="btn btn-secondary"
+              style={{ flex: 1, fontSize: '12px' }}
+              title="Inspect 3D Spacecraft Architecture"
+            >
+              <Eye size={14} style={{ color: 'var(--accent-cyan)' }} />
+              <span>3D Model</span>
+            </button>
+          ) : null}
 
           {onFocusOnMap && (
             !isVoyager ? (
@@ -476,6 +539,7 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
                 className="btn btn-secondary"
                 style={{ fontSize: '12px', padding: '8px 10px' }}
                 title="Vector Analysis"
+                aria-label="Open in Vector Analysis"
               >
                 <Compass size={14} />
               </button>
@@ -490,6 +554,7 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
                   aria-disabled="true"
                   className="btn btn-secondary"
                   style={{ fontSize: '12px', padding: '8px 10px', opacity: 0.4, cursor: 'not-allowed' }}
+                  aria-label="Vector tracking unavailable"
                 >
                   <Compass size={14} />
                 </button>

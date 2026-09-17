@@ -90,3 +90,49 @@ export interface SpacecraftObject {
 
   telemetrySource: SourceMetadata;
 }
+
+export type ObjectCategory = 'spacecraft' | 'satellite' | 'planet' | 'moon' | 'star';
+
+export interface InspectableObject {
+  id: string;
+  name: string;
+  category: ObjectCategory;
+  typeText: string;
+  agency?: string;
+  mission?: string;
+  launchDate?: string;
+  statusText: string;
+  isOperational?: boolean;
+  orbitType?: string;
+  coordinateFrame?: string;
+  description: string;
+  significance?: string;
+  scientificExplanation?: string;
+  payloads?: string[];
+
+  // Dynamic or calculated metrics
+  distanceFromEarthKm?: number;
+  distanceFromSunKm?: number;
+  distanceFromMoonKm?: number;
+  velocityKmS?: number;
+  lightTimeToEarthSec?: number;
+  position?: Vector3D;
+  radiusKm?: number;
+
+  // True if this object is Earth itself (reference origin, so distance to Earth is origin/ground)
+  isEarthOrigin?: boolean;
+
+  // Geodetic info if in Earth orbit
+  geodetic?: {
+    latitude: number;
+    longitude: number;
+    altitudeKm: number;
+  };
+
+  noradId?: number;
+  jplId?: string;
+  telemetrySource: SourceMetadata;
+
+  // Reference to original spacecraft object if applicable
+  rawSpacecraft?: SpacecraftObject;
+}
