@@ -15,9 +15,10 @@ export type TabType = 'mission-control' | 'spacecraft' | 'space-map' | 'analysis
 interface NavbarProps {
   activeTab: TabType;
   onSelectTab: (tab: TabType) => void;
+  onStartWalkthrough?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
+export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab, onStartWalkthrough }) => {
   const [utcTime, setUtcTime] = useState(formatUtcTime());
 
   useEffect(() => {
@@ -121,6 +122,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
               return (
                 <button
                   key={item.id}
+                  id={`nav-tab-${item.id}`}
                   onClick={() => onSelectTab(item.id)}
                   style={{
                     display: 'flex',
@@ -145,8 +147,31 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
             })}
           </nav>
 
-          {/* Right Status & Clock */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* Right Status, Clock & Tour Replay */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {onStartWalkthrough && (
+              <button
+                onClick={onStartWalkthrough}
+                className="btn btn-secondary"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  padding: '5px 10px',
+                  fontSize: '11px',
+                  fontFamily: 'var(--font-heading)',
+                  color: 'var(--accent-cyan)',
+                  border: '1px solid rgba(56, 189, 248, 0.25)',
+                  background: 'rgba(56, 189, 248, 0.08)',
+                  cursor: 'pointer'
+                }}
+                title="Replay Interactive Mission Walkthrough"
+              >
+                <Compass size={13} />
+                <span>Tour</span>
+              </button>
+            )}
+
             <div style={{
               display: 'flex',
               alignItems: 'center',

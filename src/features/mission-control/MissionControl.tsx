@@ -282,7 +282,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
   return (
     <div className="container" style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
       {/* 1. COMMAND OVERVIEW HEADER & JUDGE-FRIENDLY QUICK ACTIONS */}
-      <div className="glass-panel tech-corner" style={{
+      <div id="mission-control-overview" className="glass-panel tech-corner" style={{
         padding: '24px 28px',
         overflow: 'hidden',
         display: 'grid',
@@ -455,7 +455,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
       </div>
 
       {/* 2. ACTIVE FLEET HIGHLIGHTS & FLEET AT A GLANCE */}
-      <div className="glass-panel" style={{ padding: '20px' }}>
+      <div id="active-fleet-section" className="glass-panel" style={{ padding: '20px' }}>
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -1006,6 +1006,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
       {/* 6. "EXPLORE THE SPACE" MYSTERIOUS COSMIC INVITATION CTA */}
       {onExploreSpace && (
         <div
+          id="explore-space-cta-card"
           onClick={onExploreSpace}
           className="glass-panel explore-space-cta"
           style={{

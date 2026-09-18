@@ -84,6 +84,7 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
           animation: 'slideInRight 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
           background: 'rgba(7, 17, 31, 0.88)'
         }}
+        id="object-inspector-panel"
         className="glass-panel tech-corner object-inspector-panel"
       >
         {/* Panel Header */}
@@ -163,26 +164,7 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
           flexDirection: 'column',
           gap: '12px'
         }}>
-          {/* Voyager Ephemeris Transparency Notice */}
-          {isVoyager && (
-            <div style={{
-              background: 'rgba(245, 158, 11, 0.08)',
-              border: '1px solid rgba(245, 158, 11, 0.3)',
-              borderRadius: 'var(--radius-xs)',
-              padding: '10px 12px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '4px'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#f59e0b', fontSize: '11px', fontWeight: 700 }}>
-                <AlertTriangle size={13} />
-                <span>POSITION DATA UNAVAILABLE</span>
-              </div>
-              <p style={{ fontSize: '11px', color: '#fef08a', lineHeight: 1.45, margin: 0 }}>
-                Reliable browser-accessible positional data is currently unavailable for this object. SpacePulse adheres strictly to verified scientific data and does not invent arbitrary coordinates.
-              </p>
-            </div>
-          )}
+
 
           {/* 1. OVERVIEW SECTION (DEFAULT OPEN) */}
           <div className="inspector-accordion">
@@ -262,6 +244,25 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
 
             {sections.position && (
               <div className="inspector-accordion-content" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {!object.position && (
+                  <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '3px 8px',
+                    borderRadius: 'var(--radius-xs)',
+                    background: 'rgba(245, 158, 11, 0.08)',
+                    border: '1px solid rgba(245, 158, 11, 0.3)',
+                    color: '#f59e0b',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    letterSpacing: '0.04em',
+                    width: 'fit-content'
+                  }}>
+                    <span style={{ fontSize: '7px' }}>●</span> POSITION DATA UNAVAILABLE
+                  </div>
+                )}
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   {/* Distance from Earth */}
                   <div style={{ background: 'var(--surface-inset)', padding: '10px', borderRadius: 'var(--radius-xs)' }}>
@@ -324,8 +325,15 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
 
                 {/* 3D State Coordinates */}
                 <div style={{ background: 'var(--surface-inset)', padding: '10px', borderRadius: 'var(--radius-xs)' }}>
-                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>
-                    Calculated State Coordinates ({object.coordinateFrame || 'J2000'})
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                      Calculated State Coordinates ({object.coordinateFrame || 'J2000'})
+                    </div>
+                    {!object.position && (
+                      <span style={{ fontSize: '10px', color: '#f59e0b', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <span style={{ fontSize: '7px' }}>●</span> Unavailable
+                      </span>
+                    )}
                   </div>
                   {object.position ? (
                     <div className="mono" style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
@@ -334,8 +342,21 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
                       <div>Z: <strong style={{ color: 'var(--text-primary)' }}>{Math.round(object.position.z).toLocaleString()} km</strong></div>
                     </div>
                   ) : (
-                    <div style={{ fontSize: '11px', color: 'var(--status-last)', fontStyle: 'italic' }}>
-                      Ephemeris position vector unavailable in browser memory
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '11px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
+                        <span>Position</span>
+                        <span style={{ color: '#f59e0b', fontWeight: 600 }}>Unavailable</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
+                        <span>Distance</span>
+                        <span style={{ color: object.distanceFromEarthKm !== undefined ? 'var(--text-primary)' : '#f59e0b' }}>
+                          {object.distanceFromEarthKm !== undefined ? 'Available' : 'Unavailable'}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
+                        <span>Source</span>
+                        <span style={{ color: 'var(--text-secondary)' }}>{object.telemetrySource.sourceName}</span>
+                      </div>
                     </div>
                   )}
                 </div>

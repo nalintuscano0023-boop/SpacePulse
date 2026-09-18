@@ -1,0 +1,503 @@
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { 
+  X, 
+  ChevronRight, 
+  ChevronLeft, 
+  Sparkles, 
+  Compass, 
+  ArrowRight,
+  Radio,
+  Eye,
+  Orbit,
+  ExternalLink
+} from 'lucide-react';
+import { useWalkthrough, WALKTHROUGH_STEPS } from './WalkthroughContext';
+
+export const WalkthroughOverlay: React.FC = () => {
+  const {
+    isActive,
+    isWelcomeOpen,
+    currentStepIndex,
+    currentStep,
+    startWalkthrough,
+    nextStep,
+    prevStep,
+    skipWalkthrough,
+    finishWalkthrough,
+    closeWelcome
+  } = useWalkthrough();
+
+  const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+  const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number; placement: string }>({
+    top: 100,
+    left: 100,
+    placement: 'bottom'
+  });
+  const tooltipRef = useRef<HTMLDivElement>(null);
+
+  // Update target bounding box and position tooltip
+  const updatePosition = useCallback(() => {
+    if (!isActive || !currentStep) return;
+
+    let targetEl = document.querySelector(currentStep.targetSelector) as HTMLElement | null;
+
+    // Fallback if specific ID not yet in DOM: find by role or fallback to body center
+    if (!targetEl) {
+      if (currentStep.targetSelector.includes('inspector')) {
+        targetEl = document.querySelector('.object-inspector-panel') as HTMLElement | null;
+      }
+    }
+
+    if (targetEl) {
+      const rect = targetEl.getBoundingClientRect();
+      setTargetRect(rect);
+
+      // Scroll target into view if needed
+      if (rect.top < 70 || rect.bottom > window.innerHeight - 70) {
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+
+      // Compute tooltip positioning
+      const margin = 14;
+      const tooltipW = Math.min(360, window.innerWidth - 32);
+      const tooltipH = 220; // Estimated height
+
+      let top = rect.bottom + margin;
+      let left = rect.left + rect.width / 2 - tooltipW / 2;
+      let placement = 'bottom';
+
+      // Preferred placement adjustments
+      if (currentStep.preferredPlacement === 'top' || (top + tooltipH > window.innerHeight && rect.top - tooltipH - margin > 60)) {
+        top = rect.top - tooltipH - margin;
+        placement = 'top';
+      } else if (currentStep.preferredPlacement === 'left' && rect.left > tooltipW + margin + 20) {
+        top = Math.max(70, rect.top + rect.height / 2 - tooltipH / 2);
+        left = rect.left - tooltipW - margin;
+        placement = 'left';
+      } else if (currentStep.preferredPlacement === 'right' && rect.right + tooltipW + margin < window.innerWidth) {
+        top = Math.max(70, rect.top + rect.height / 2 - tooltipH / 2);
+        left = rect.right + margin;
+        placement = 'right';
+      }
+
+      // Constrain inside viewport
+      left = Math.max(16, Math.min(window.innerWidth - tooltipW - 16, left));
+      top = Math.max(70, Math.min(window.innerHeight - tooltipH - 20, top));
+
+      setTooltipPos({ top, left, placement });
+    } else {
+      // If target element is not in DOM, center tooltip gracefully
+      setTargetRect(null);
+      setTooltipPos({
+        top: window.innerHeight / 2 - 110,
+        left: window.innerWidth / 2 - 180,
+        placement: 'center'
+      });
+    }
+  }, [isActive, currentStep]);
+
+  useEffect(() => {
+    updatePosition();
+    const handleResize = () => updatePosition();
+    const handleScroll = () => updatePosition();
+
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('scroll', handleScroll, true);
+    const interval = setInterval(updatePosition, 300);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('scroll', handleScroll, true);
+      clearInterval(interval);
+    };
+  }, [updatePosition]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    if (!isActive && !isWelcomeOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isWelcomeOpen) closeWelcome();
+        else skipWalkthrough();
+      } else if (e.key === 'ArrowRight' || e.key === 'Enter') {
+        if (isWelcomeOpen) startWalkthrough();
+        else nextStep();
+      } else if (e.key === 'ArrowLeft') {
+        if (isActive) prevStep();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isActive, isWelcomeOpen, closeWelcome, skipWalkthrough, startWalkthrough, nextStep, prevStep]);
+
+  // 1. WELCOME MODAL (FIRST VISIT OR MANUAL TRIGGER)
+  if (isWelcomeOpen) {
+    return (
+      <div style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 10000,
+        background: 'rgba(3, 5, 10, 0.65)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px',
+        animation: 'walkthroughFadeIn 0.3s ease'
+      }}>
+        <div 
+          className="glass-panel tech-corner"
+          style={{
+            maxWidth: '520px',
+            width: '100%',
+            background: 'rgba(7, 17, 31, 0.96)',
+            border: '1px solid rgba(56, 189, 248, 0.35)',
+            boxShadow: '0 24px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(56, 189, 248, 0.15)',
+            borderRadius: 'var(--radius-md)',
+            padding: '28px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+            position: 'relative'
+          }}
+        >
+          {/* Dismiss button */}
+          <button
+            onClick={closeWelcome}
+            style={{
+              position: 'absolute',
+              top: '16px',
+              right: '16px',
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              padding: '4px'
+            }}
+            title="Dismiss"
+          >
+            <X size={16} />
+          </button>
+
+          {/* Header Badge */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: 'var(--radius-xs)',
+              background: 'rgba(56, 189, 248, 0.12)',
+              border: '1px solid rgba(56, 189, 248, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--accent-cyan)'
+            }}>
+              <Radio size={20} />
+            </div>
+            <div>
+              <div style={{
+                fontFamily: 'var(--font-heading)',
+                fontSize: '18px',
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                color: '#ffffff'
+              }}>
+                SPACE<span style={{ color: 'var(--accent-cyan)' }}>PULSE</span>
+              </div>
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                Space Intelligence Console
+              </div>
+            </div>
+          </div>
+
+          <div style={{ borderTop: '1px solid var(--border-hairline)', paddingTop: '14px' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 600, color: '#ffffff', margin: '0 0 8px' }}>
+              Welcome to your space intelligence console.
+            </h2>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.55, margin: 0 }}>
+              Let's take a quick mission walkthrough to discover active spacecraft telemetry, interactive 3D solar system orbits, scientific vector analysis, and deep space exploration.
+            </p>
+          </div>
+
+          {/* Feature Highlights Minimal Pills */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', margin: '4px 0' }}>
+            <span style={{ fontSize: '11px', padding: '3px 9px', borderRadius: '4px', background: 'var(--surface-inset)', border: '1px solid var(--border-hairline)', color: 'var(--text-secondary)' }}>
+              ✦ Real NOAA & CelesTrak Data
+            </span>
+            <span style={{ fontSize: '11px', padding: '3px 9px', borderRadius: '4px', background: 'var(--surface-inset)', border: '1px solid var(--border-hairline)', color: 'var(--text-secondary)' }}>
+              ✦ Authentic 3D Spacecraft
+            </span>
+            <span style={{ fontSize: '11px', padding: '3px 9px', borderRadius: '4px', background: 'var(--surface-inset)', border: '1px solid var(--border-hairline)', color: 'var(--text-secondary)' }}>
+              ✦ Interactive Space Map
+            </span>
+          </div>
+
+          {/* Action Buttons */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            gap: '10px',
+            marginTop: '8px',
+            paddingTop: '12px',
+            borderTop: '1px solid var(--border-hairline)'
+          }}>
+            <button
+              onClick={skipWalkthrough}
+              className="btn btn-secondary"
+              style={{ fontSize: '12px', padding: '7px 14px' }}
+            >
+              Skip
+            </button>
+            <button
+              onClick={startWalkthrough}
+              className="btn btn-primary"
+              style={{
+                fontSize: '12px',
+                padding: '7px 18px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 0 15px rgba(56, 189, 248, 0.3)'
+              }}
+            >
+              <span>Start Walkthrough</span>
+              <ArrowRight size={14} />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. ACTIVE INTERACTIVE GUIDED TOUR
+  if (!isActive || !currentStep) return null;
+
+  const stepFormatted = String(currentStep.stepNumber).padStart(2, '0');
+  const totalFormatted = String(currentStep.totalSteps).padStart(2, '0');
+  const isFinalStep = currentStep.stepNumber === currentStep.totalSteps;
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, pointerEvents: 'none' }}>
+      {/* Dimmed Background Overlay */}
+      <div 
+        onClick={skipWalkthrough}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(2, 6, 14, 0.55)',
+          pointerEvents: 'auto',
+          transition: 'all 0.3s ease'
+        }} 
+      />
+
+      {/* Target Element Highlight Box (Focus Ring) */}
+      {targetRect && (
+        <div
+          style={{
+            position: 'fixed',
+            top: targetRect.top - 4,
+            left: targetRect.left - 4,
+            width: targetRect.width + 8,
+            height: targetRect.height + 8,
+            borderRadius: 'var(--radius-sm)',
+            border: '2px solid var(--accent-cyan)',
+            boxShadow: '0 0 24px rgba(56, 189, 248, 0.45), inset 0 0 12px rgba(56, 189, 248, 0.15)',
+            pointerEvents: 'none',
+            transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+            animation: 'walkthroughPulse 2s infinite ease-in-out'
+          }}
+        />
+      )}
+
+      {/* Floating Contextual Tooltip */}
+      <div
+        ref={tooltipRef}
+        className="glass-panel tech-corner"
+        style={{
+          position: 'fixed',
+          top: tooltipPos.top,
+          left: tooltipPos.left,
+          width: '360px',
+          maxWidth: 'calc(100vw - 32px)',
+          background: 'rgba(7, 17, 31, 0.96)',
+          border: '1px solid rgba(56, 189, 248, 0.4)',
+          borderRadius: 'var(--radius-sm)',
+          boxShadow: '0 20px 48px rgba(0, 0, 0, 0.8), 0 0 25px rgba(56, 189, 248, 0.2)',
+          padding: '16px 18px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
+          pointerEvents: 'auto',
+          transition: 'top 0.25s ease, left 0.25s ease',
+          animation: 'walkthroughTooltipPop 0.25s ease'
+        }}
+      >
+        {/* Step Indicator & Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '11px',
+              fontWeight: 700,
+              color: 'var(--accent-cyan)',
+              background: 'rgba(56, 189, 248, 0.12)',
+              padding: '2px 6px',
+              borderRadius: '3px',
+              border: '1px solid rgba(56, 189, 248, 0.25)'
+            }}>
+              {stepFormatted} / {totalFormatted}
+            </span>
+            {currentStep.subtitle && (
+              <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                {currentStep.subtitle}
+              </span>
+            )}
+          </div>
+
+          <button
+            onClick={skipWalkthrough}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              padding: '2px',
+              display: 'flex',
+              alignItems: 'center'
+            }}
+            title="Close Tour (Esc)"
+          >
+            <X size={15} />
+          </button>
+        </div>
+
+        {/* Step Title & Description */}
+        <div>
+          <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#ffffff', margin: '0 0 4px' }}>
+            {currentStep.title}
+          </h3>
+          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
+            {currentStep.description}
+          </p>
+        </div>
+
+        {/* Visual Progress Dots */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', margin: '2px 0' }}>
+          {WALKTHROUGH_STEPS.map((step, idx) => (
+            <div
+              key={step.id}
+              style={{
+                width: idx === currentStepIndex ? '16px' : '6px',
+                height: '4px',
+                borderRadius: '2px',
+                background: idx === currentStepIndex 
+                  ? 'var(--accent-cyan)' 
+                  : idx < currentStepIndex 
+                  ? 'rgba(56, 189, 248, 0.4)' 
+                  : 'rgba(255, 255, 255, 0.1)',
+                transition: 'all 0.2s ease'
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Footer Navigation Controls */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingTop: '8px',
+          borderTop: '1px solid var(--border-hairline)',
+          gap: '8px'
+        }}>
+          <button
+            onClick={skipWalkthrough}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-muted)',
+              fontSize: '11px',
+              cursor: 'pointer',
+              padding: '4px 6px'
+            }}
+          >
+            Skip
+          </button>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <button
+              onClick={prevStep}
+              disabled={currentStepIndex === 0}
+              className="btn btn-secondary"
+              style={{
+                fontSize: '11px',
+                padding: '5px 10px',
+                opacity: currentStepIndex === 0 ? 0.35 : 1,
+                cursor: currentStepIndex === 0 ? 'not-allowed' : 'pointer'
+              }}
+            >
+              <ChevronLeft size={13} />
+              <span>Back</span>
+            </button>
+
+            {isFinalStep ? (
+              <button
+                onClick={() => finishWalkthrough(true)}
+                className="btn btn-primary"
+                style={{
+                  fontSize: '11px',
+                  padding: '5px 14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  boxShadow: '0 0 12px rgba(56, 189, 248, 0.35)'
+                }}
+              >
+                <span>{currentStep.actionLabel || 'Enter Explore the Space'}</span>
+                <Sparkles size={13} />
+              </button>
+            ) : (
+              <button
+                onClick={nextStep}
+                className="btn btn-primary"
+                style={{
+                  fontSize: '11px',
+                  padding: '5px 14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px'
+                }}
+              >
+                <span>{currentStep.actionLabel || 'Next'}</span>
+                <ChevronRight size={13} />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes walkthroughPulse {
+          0%, 100% {
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.45), inset 0 0 10px rgba(56, 189, 248, 0.15);
+          }
+          50% {
+            box-shadow: 0 0 32px rgba(56, 189, 248, 0.7), inset 0 0 16px rgba(56, 189, 248, 0.25);
+          }
+        }
+        @keyframes walkthroughTooltipPop {
+          from { opacity: 0; transform: scale(0.96) translateY(4px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes walkthroughFadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+      `}</style>
+    </div>
+  );
+};

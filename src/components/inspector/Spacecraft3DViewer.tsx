@@ -2,8 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { X, RotateCw, ZoomIn, Info, AlertTriangle } from 'lucide-react';
-import { createVoyagerSpacecraftModel } from '../models/voyagerModel';
-import { createSatelliteModel } from '../models/satellite3D';
+import { getSpacecraft3DModel } from '../space/spacecraftModelRegistry';
 
 interface Spacecraft3DViewerProps {
   craftId: string;
@@ -17,8 +16,7 @@ export const Spacecraft3DViewer: React.FC<Spacecraft3DViewerProps> = ({
   onClose
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
-  const isVoyager = craftId.includes('voyager');
-  const isStation = craftId === 'iss' || craftId.includes('tiangong');
+  const isVoyager = craftId.toLowerCase().includes('voyager');
 
   useEffect(() => {
     const container = mountRef.current;
@@ -31,7 +29,7 @@ export const Spacecraft3DViewer: React.FC<Spacecraft3DViewerProps> = ({
     scene.background = new THREE.Color('#030712');
 
     const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100);
-    camera.position.set(4, 3, 5);
+    camera.position.set(4.5, 3.2, 5.5);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setSize(width, height);
@@ -46,15 +44,15 @@ export const Spacecraft3DViewer: React.FC<Spacecraft3DViewerProps> = ({
     controls.dampingFactor = 0.05;
     controls.autoRotate = true;
     controls.autoRotateSpeed = 1.2;
-    controls.minDistance = 2.5;
-    controls.maxDistance = 14;
+    controls.minDistance = 2.0;
+    controls.maxDistance = 15;
 
     // Professional Studio Lighting
-    const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
+    const keyLight = new THREE.DirectionalLight(0xffffff, 2.4);
     keyLight.position.set(5, 8, 6);
     scene.add(keyLight);
 
-    const fillLight = new THREE.DirectionalLight(0x38bdf8, 0.8);
+    const fillLight = new THREE.DirectionalLight(0x38bdf8, 0.85);
     fillLight.position.set(-6, -2, -4);
     scene.add(fillLight);
 
@@ -70,13 +68,8 @@ export const Spacecraft3DViewer: React.FC<Spacecraft3DViewerProps> = ({
     grid.position.y = -1.8;
     scene.add(grid);
 
-    // Model Mount
-    let model: THREE.Group;
-    if (isVoyager) {
-      model = createVoyagerSpacecraftModel();
-    } else {
-      model = createSatelliteModel(1.6, isStation);
-    }
+    // Mount Authentic Spacecraft-Specific 3D Model from Registry
+    const model = getSpacecraft3DModel(craftId, { scale: 1.5 });
     scene.add(model);
 
     // Resize Handler
@@ -107,7 +100,7 @@ export const Spacecraft3DViewer: React.FC<Spacecraft3DViewerProps> = ({
         container.removeChild(renderer.domElement);
       }
     };
-  }, [craftId, isVoyager, isStation]);
+  }, [craftId, isVoyager]);
 
   return (
     <div
@@ -204,23 +197,25 @@ export const Spacecraft3DViewer: React.FC<Spacecraft3DViewerProps> = ({
           </button>
         </div>
 
-        {/* Positional Transparency Alert for Voyager */}
+        {/* Positional Transparency Indicator for Voyager */}
         {isVoyager && (
           <div
             style={{
-              padding: '8px 20px',
+              padding: '6px 20px',
               background: 'rgba(245, 158, 11, 0.08)',
-              borderBottom: '1px solid rgba(245, 158, 11, 0.25)',
+              borderBottom: '1px solid rgba(245, 158, 11, 0.2)',
               display: 'flex',
               alignItems: 'center',
-              gap: '10px',
-              fontSize: '11px',
-              color: '#fef08a'
+              justifyContent: 'space-between',
+              fontSize: '11px'
             }}
           >
-            <AlertTriangle size={14} style={{ flexShrink: 0, color: '#f59e0b' }} />
-            <span>
-              <strong>EPHEMERIS SOURCE UNAVAILABLE:</strong> Reliable browser-accessible positional data is currently unavailable for this object. Displayed in non-positional architectural context; no fabricated Solar System coordinates are rendered.
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#f59e0b', fontWeight: 700 }}>
+              <span style={{ fontSize: '7px' }}>●</span>
+              <span>POSITION DATA UNAVAILABLE</span>
+            </div>
+            <span style={{ color: 'var(--text-muted)', fontSize: '10px' }}>
+              Architectural 3D Model Inspection
             </span>
           </div>
         )}
@@ -256,36 +251,123 @@ export const Spacecraft3DViewer: React.FC<Spacecraft3DViewerProps> = ({
           </div>
 
           {/* Subsystems Breakdown Overlay (Right Side) */}
-          {isVoyager && (
-            <div
-              style={{
-                position: 'absolute',
-                top: '16px',
-                right: '16px',
-                width: '260px',
-                background: 'rgba(7, 17, 31, 0.85)',
-                border: '1px solid var(--border-hairline)',
-                borderRadius: 'var(--radius-xs)',
-                padding: '12px',
-                fontSize: '11px',
-                color: 'var(--text-secondary)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px'
-              }}
-            >
-              <div style={{ fontWeight: 600, color: '#ffffff', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Info size={13} style={{ color: 'var(--accent-cyan)' }} />
-                <span>Voyager Subsystem Architecture</span>
-              </div>
-              <div>• <strong>High-Gain Antenna:</strong> 3.7m parabolic dish reflector for DSN communications.</div>
-              <div>• <strong>Central Bus:</strong> 10-sided decagonal equipment bay in gold thermal insulation.</div>
-              <div>• <strong>RTG Power Boom:</strong> 3 radioisotope thermoelectric generators on lateral boom.</div>
-              <div>• <strong>Magnetometer Boom:</strong> 13m fiberglass deployable truss with dual sensors.</div>
-              <div>• <strong>Scan Platform:</strong> Narrow & wide angle television cameras, IR & UV spectrometers.</div>
-              <div>• <strong>The Golden Record:</strong> 12-inch gold-plated copper phonograph record.</div>
-            </div>
-          )}
+          <div
+            style={{
+              position: 'absolute',
+              top: '16px',
+              right: '16px',
+              width: '280px',
+              background: 'rgba(7, 17, 31, 0.88)',
+              border: '1px solid var(--border-hairline)',
+              borderRadius: 'var(--radius-xs)',
+              padding: '12px 14px',
+              fontSize: '11px',
+              color: 'var(--text-secondary)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px'
+            }}
+          >
+            {(() => {
+              const nid = craftId.toLowerCase();
+              let title = 'Spacecraft Architecture';
+              let items: string[] = [];
+
+              if (nid.includes('voyager')) {
+                title = 'Voyager Subsystem Architecture';
+                items = [
+                  'High-Gain Antenna: 3.7m parabolic dish for DSN communications',
+                  'Decagonal Bus: 10-sided equipment bay wrapped in gold thermal blanket',
+                  'RTG Power Boom: 3 radioisotope thermoelectric generators',
+                  'Magnetometer Boom: 13m deployable truss with dual sensors',
+                  'Science Scan Platform: TV cameras, infrared & UV spectrometers',
+                  'The Golden Record: 12-inch gold-plated phonograph record'
+                ];
+              } else if (nid.includes('aditya') || nid === '164') {
+                title = 'Aditya-L1 Subsystem Architecture';
+                items = [
+                  'VELC: Visible Emission Line Coronagraph aperture pointing at Sun',
+                  'SUIT: Solar Ultraviolet Imaging Telescope optical barrel',
+                  'I-2K Bus: Gold Kapton MLI chassis with thermal control radiators',
+                  'Stepped Solar Wings: Dual articulated photovoltaic panel arrays',
+                  'MAG Boom: 6-meter deployable digital magnetometer boom',
+                  'ASPEX & PAPA: Solar wind and plasma particle analyzer suites'
+                ];
+              } else if (nid.includes('chandrayaan-3') || nid.includes('vikram')) {
+                title = 'Chandrayaan-3 Vikram Architecture';
+                items = [
+                  'Octagonal Lander Body: Gold MLI wrapped core avionics structure',
+                  'Landing Gear: 4 canted shock-absorbing legs with footplates',
+                  'Main Propulsion: 4 liquid throttleable engines (800N each)',
+                  'ChaSTE Probe: Lunar regolith thermal gradient penetrator',
+                  'ILSA: Instrument for Lunar Seismic Activity sensor',
+                  'Pragyan Rover Ramp: Deployment ramp for 6-wheeled surface rover'
+                ];
+              } else if (nid === 'iss' || nid === '25544') {
+                title = 'ISS Orbital Complex Architecture';
+                items = [
+                  'Integrated Truss Structure: 108m central carbon-composite backbone',
+                  'Solar Array Wings: 8 dual photovoltaic wings (cobalt silicon cells)',
+                  'Thermal Radiators: Ammonia active thermal control system panels',
+                  'US/ESA/JAXA Modules: Destiny, Columbus, Kibo with exposed porch',
+                  'Russian Segment: Zarya FGB and Zvezda service module',
+                  'Cupola: 7-window nadir Earth observation dome'
+                ];
+              } else if (nid.includes('tiangong') || nid === '48274') {
+                title = 'CSS Tiangong Subsystem Architecture';
+                items = [
+                  'Tianhe Core Module: Central command and living habitat cylinder',
+                  'Wentian Lab Module: Dedicated life science laboratory cabin',
+                  'Mengtian Lab Module: Microgravity and physics research cabin',
+                  'Flexible Solar Wings: Huge articulated multi-joint solar arrays',
+                  'Robotic Arm: 10.2m Chinese large robotic arm for station assembly',
+                  'Docking Hub: Spherical forward node with 5 docking ports'
+                ];
+              } else if (nid.includes('astrosat') || nid === '40930') {
+                title = 'Astrosat Subsystem Architecture';
+                items = [
+                  'UVIT: Twin parallel Ultraviolet Imaging Telescopes',
+                  'LAXPC: 3 Large Area X-ray Proportional Counter detector boxes',
+                  'SXT: Soft X-ray Telescope conical foil mirror assembly',
+                  'SSM: Scanning Sky Monitor rotatable boom',
+                  'Dual Solar Arrays: Articulated solar wings with carbon yokes',
+                  'Downlink Dish: Steerable X-band science data antenna'
+                ];
+              } else if (nid.includes('hubble') || nid === '20580') {
+                title = 'Hubble Space Telescope Architecture';
+                items = [
+                  'Optical Assembly: 2.4m Ritchey-Chrétien primary mirror assembly',
+                  'Aperture Door: 45° open sunshade with baffled light shield',
+                  'Solar Arrays: Dual articulated rectangular solar array wings',
+                  'High-Gain Antennas: Steerable communication dishes on booms',
+                  'Aft Equipment Shroud: Gold foil wrapped avionics and instrument bay'
+                ];
+              } else {
+                title = `${craftName} Subsystem Architecture`;
+                items = [
+                  'Payload Assembly: Documented agency science/observation sensors',
+                  'Equipment Bus: Spacecraft chassis with thermal blankets & avionics',
+                  'Solar Arrays: Photovoltaic panels for continuous orbital power',
+                  'Communications: High-gain parabolic antenna for telemetry download',
+                  'Attitude Control: Reaction wheels, thrusters, and star trackers'
+                ];
+              }
+
+              return (
+                <>
+                  <div style={{ fontWeight: 600, color: '#ffffff', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+                    <Info size={13} style={{ color: 'var(--accent-cyan)' }} />
+                    <span>{title}</span>
+                  </div>
+                  {items.map((item, idx) => (
+                    <div key={idx} style={{ lineHeight: 1.45 }}>
+                      • <strong>{item.split(':')[0]}:</strong>{item.split(':')[1] || ''}
+                    </div>
+                  ))}
+                </>
+              );
+            })()}
+          </div>
         </div>
       </div>
     </div>

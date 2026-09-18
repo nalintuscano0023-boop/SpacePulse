@@ -17,7 +17,8 @@ import {
   Sliders,
   Check,
   RefreshCw,
-  Info
+  Info,
+  X
 } from 'lucide-react';
 import { calculatePlanetEphemeris } from '../../services/calculations/kepler';
 import { calculateAdityaL1Ephemeris } from '../../services/calculations/lagrange';
@@ -34,6 +35,7 @@ import {
   createRealisticCloudMesh, 
   getRealisticEarthDayTexture 
 } from '../../components/space/earthRealistic';
+import { getSpacecraft3DModel } from '../../components/space/spacecraftModelRegistry';
 import { 
   createMilkyWayDome, 
   createRealisticStarfield 
@@ -731,10 +733,10 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
           const dirToSun = new THREE.Vector3().subVectors(new THREE.Vector3(0, 0, 0), earthBody.position).normalize();
           const l1VisualPos = earthBody.position.clone().add(dirToSun.multiplyScalar(3.2));
 
-          const l1Geo = new THREE.OctahedronGeometry(0.55);
-          const l1Mat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 0.6 });
-          const l1Mesh = new THREE.Mesh(l1Geo, l1Mat);
+          // Authentic Aditya-L1 Solar Observatory 3D model
+          const l1Mesh = getSpacecraft3DModel('aditya-l1', { scale: 0.45, isMapMode: true });
           l1Mesh.position.copy(l1VisualPos);
+          l1Mesh.lookAt(0, 0, 0); // Point optical instruments toward the Sun
           l1Mesh.userData = { bodyId: 'aditya-l1' };
           l1Mesh.visible = showSpacecraft;
           scene.add(l1Mesh);
@@ -876,11 +878,12 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
             };
             const satColor = orbitColors[sat.orbitClass] || 0x38bdf8;
             const isStation = sat.noradId === 25544 || sat.noradId === 48274;
-            const isTelescope = sat.noradId === 20580 || sat.noradId === 40930;
-            const craftCategory = isStation ? 'station' : isTelescope ? 'telescope' : 'observation';
 
-            // Level 2: High-detail PBR Satellite Model
-            const satMesh = createDetailedSatelliteModel(isStation ? 0.38 : 0.28, craftCategory);
+            // Level 2: Spacecraft-Specific Authentic PBR 3D Model from Registry
+            const satMesh = getSpacecraft3DModel(String(sat.noradId), {
+              scale: isStation ? 0.38 : 0.28,
+              isMapMode: true
+            });
             satMesh.position.copy(satPos);
             satMesh.lookAt(0, 0, 0); // Nadir pointing towards Earth center
             satMesh.userData = { bodyId: `norad-${sat.noradId}`, noradId: sat.noradId };
@@ -1255,7 +1258,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
           flexWrap: 'wrap'
         }}>
           {/* Left: View Mode Toggle, Quick Selectors, Search */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', pointerEvents: 'auto', flexWrap: 'wrap' }}>
+          <div id="space-map-controls-panel" style={{ display: 'flex', alignItems: 'center', gap: '8px', pointerEvents: 'auto', flexWrap: 'wrap' }}>
             {/* Mode Switcher */}
             <div className="glass-panel" style={{ display: 'flex', padding: '3px', borderRadius: 'var(--radius-xs)', gap: '3px' }}>
               <button
@@ -1545,7 +1548,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         </div>
       )}
 
-      {/* Voyager Ephemeris Transparency Notice */}
+      {/* Voyager Ephemeris Notice - Compact Status Indicator */}
       {voyagerNotice && (
         <div
           className="glass-panel tech-corner"
@@ -1553,52 +1556,53 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
             position: 'absolute',
             bottom: '24px',
             left: '20px',
-            padding: '16px 20px',
+            padding: '12px 16px',
             borderRadius: 'var(--radius-sm)',
             zIndex: 25,
-            maxWidth: '420px',
-            border: '1px solid rgba(245, 158, 11, 0.4)',
-            background: 'rgba(7, 17, 31, 0.95)'
+            maxWidth: '320px',
+            border: '1px solid rgba(245, 158, 11, 0.35)',
+            background: 'rgba(7, 17, 31, 0.94)'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#f59e0b', fontSize: '11px', fontWeight: 700 }}>
-              <AlertTriangle size={15} />
-              <span>POSITION DATA UNAVAILABLE</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#f59e0b', fontSize: '10px', fontWeight: 700, letterSpacing: '0.04em' }}>
+              <span style={{ fontSize: '7px' }}>●</span> POSITION DATA UNAVAILABLE
             </div>
-            <StatusBadge status="UNAVAILABLE" compact />
+            <button
+              onClick={() => setVoyagerNotice(false)}
+              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px' }}
+              title="Close"
+            >
+              <X size={13} />
+            </button>
           </div>
 
-          <div style={{ fontSize: '17px', fontWeight: 700, color: '#ffffff' }}>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: '#ffffff' }}>
             Voyager 1 (Interstellar Probe)
           </div>
-          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
-            EPHEMERIS: SOURCE UNAVAILABLE
+          <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
+            Ephemeris: Source Unavailable
           </div>
-
-          <p style={{ fontSize: '12px', color: '#fef08a', lineHeight: 1.5, marginTop: '8px' }}>
-            Reliable browser-accessible positional data is currently unavailable for this object. SpacePulse does not place spacecraft at arbitrary Solar System coordinates or fabricate fake positions.
-          </p>
 
           <div style={{
             display: 'flex',
             gap: '8px',
-            marginTop: '12px',
-            paddingTop: '10px',
+            marginTop: '10px',
+            paddingTop: '8px',
             borderTop: '1px solid var(--border-hairline)'
           }}>
             <button
               onClick={() => setViewing3DViewer({ id: 'voyager-1', name: 'Voyager 1' })}
               className="btn btn-primary"
-              style={{ flex: 1, fontSize: '12px' }}
+              style={{ flex: 1, fontSize: '11px', padding: '6px 10px' }}
             >
-              <Eye size={14} />
-              <span>Inspect 3D Architecture</span>
+              <Eye size={13} />
+              <span>3D Architecture</span>
             </button>
             <button
               onClick={() => setVoyagerNotice(false)}
               className="btn btn-secondary"
-              style={{ fontSize: '12px', padding: '6px 12px' }}
+              style={{ fontSize: '11px', padding: '6px 10px' }}
             >
               Dismiss
             </button>

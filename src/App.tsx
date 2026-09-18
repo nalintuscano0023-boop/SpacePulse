@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Navbar, type TabType } from './components/common/Navbar';
 import { SpaceEnvironment } from './components/environment/SpaceEnvironment';
 import { OpeningExperience } from './components/common/OpeningExperience';
@@ -12,15 +12,43 @@ import { ExploreTheSpace } from './features/explore-space/ExploreTheSpace';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import type { InspectableObject, SpacecraftObject } from './types/space';
 import { resolveInspectableObject, normalizeSpacecraftObject } from './services/data/objectResolver';
+import { WalkthroughProvider, useWalkthrough } from './components/walkthrough/WalkthroughContext';
+import { WalkthroughOverlay } from './components/walkthrough/WalkthroughOverlay';
 import { Radio } from 'lucide-react';
 
-export function App() {
-  const [activeTab, setActiveTab] = useState<TabType>('mission-control');
-  const [selectedObject, setSelectedObject] = useState<InspectableObject | null>(null);
-  const [isInspectorOpen, setIsInspectorOpen] = useState(false);
-  const [focusedObjectId, setFocusedObjectId] = useState<string | undefined>(undefined);
-  const [isExploringSpace, setIsExploringSpace] = useState(false);
-  
+function AppContent({
+  activeTab,
+  setActiveTab,
+  selectedObject,
+  setSelectedObject,
+  isInspectorOpen,
+  setIsInspectorOpen,
+  focusedObjectId,
+  setFocusedObjectId,
+  isExploringSpace,
+  setIsExploringSpace,
+  analyzedObjectId,
+  setAnalyzedObjectId,
+  analysisMode,
+  setAnalysisMode
+}: {
+  activeTab: TabType;
+  setActiveTab: (tab: TabType) => void;
+  selectedObject: InspectableObject | null;
+  setSelectedObject: (obj: InspectableObject | null) => void;
+  isInspectorOpen: boolean;
+  setIsInspectorOpen: (open: boolean) => void;
+  focusedObjectId: string | undefined;
+  setFocusedObjectId: (id: string | undefined) => void;
+  isExploringSpace: boolean;
+  setIsExploringSpace: (exploring: boolean) => void;
+  analyzedObjectId: string | undefined;
+  setAnalyzedObjectId: (id: string | undefined) => void;
+  analysisMode: AnalysisType | undefined;
+  setAnalysisMode: (mode: AnalysisType | undefined) => void;
+}) {
+  const { startWalkthrough } = useWalkthrough();
+
   // Opening Experience State: check sessionStorage so it plays once on initial session entry
   const [showOpening, setShowOpening] = useState(() => {
     return !sessionStorage.getItem('spacepulse_intro_shown');
@@ -53,9 +81,6 @@ export function App() {
     }
   };
 
-  const [analyzedObjectId, setAnalyzedObjectId] = useState<string | undefined>(undefined);
-  const [analysisMode, setAnalysisMode] = useState<AnalysisType | undefined>(undefined);
-
   const handleAnalyzeObject = (objectId: string, mode?: AnalysisType) => {
     setAnalyzedObjectId(objectId);
     setAnalysisMode(mode);
@@ -79,6 +104,7 @@ export function App() {
           setActiveTab(tab);
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
+        onStartWalkthrough={startWalkthrough}
       />
 
       {/* 4. Main Scientific Operations Console */}
@@ -206,7 +232,58 @@ export function App() {
       {isExploringSpace && (
         <ExploreTheSpace onExit={() => setIsExploringSpace(false)} />
       )}
+
+      {/* 8. Interactive Walkthrough Guided Overlay */}
+      <WalkthroughOverlay />
     </div>
+  );
+}
+
+export function App() {
+  const [activeTab, setActiveTab] = useState<TabType>('mission-control');
+  const [selectedObject, setSelectedObject] = useState<InspectableObject | null>(null);
+  const [isInspectorOpen, setIsInspectorOpen] = useState(false);
+  const [focusedObjectId, setFocusedObjectId] = useState<string | undefined>(undefined);
+  const [isExploringSpace, setIsExploringSpace] = useState(false);
+  const [analyzedObjectId, setAnalyzedObjectId] = useState<string | undefined>(undefined);
+  const [analysisMode, setAnalysisMode] = useState<AnalysisType | undefined>(undefined);
+
+  const handleNavigateTab = (tab: TabType) => {
+    setActiveTab(tab);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleInspectSampleObject = async () => {
+    const sample = await resolveInspectableObject('aditya-l1');
+    if (sample) {
+      setSelectedObject(sample);
+      setIsInspectorOpen(true);
+    }
+  };
+
+  return (
+    <WalkthroughProvider
+      onNavigateTab={handleNavigateTab}
+      onInspectSampleObject={handleInspectSampleObject}
+      onExploreSpace={() => setIsExploringSpace(true)}
+    >
+      <AppContent
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        selectedObject={selectedObject}
+        setSelectedObject={setSelectedObject}
+        isInspectorOpen={isInspectorOpen}
+        setIsInspectorOpen={setIsInspectorOpen}
+        focusedObjectId={focusedObjectId}
+        setFocusedObjectId={setFocusedObjectId}
+        isExploringSpace={isExploringSpace}
+        setIsExploringSpace={setIsExploringSpace}
+        analyzedObjectId={analyzedObjectId}
+        setAnalyzedObjectId={setAnalyzedObjectId}
+        analysisMode={analysisMode}
+        setAnalysisMode={setAnalysisMode}
+      />
+    </WalkthroughProvider>
   );
 }
 
