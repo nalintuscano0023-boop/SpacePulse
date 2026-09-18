@@ -78,10 +78,15 @@ export const SpacecraftActions: React.FC<SpacecraftActionsProps> = ({
         <span>Inspect</span>
       </button>
 
-      {/* 2. Visibility / 3D Spacecraft Architecture */}
+      {/* 2. Visibility / 3D Spacecraft Architecture - Always visible by default without hover */}
       <button
         onClick={() => onView3D(craft)}
-        className="btn-icon-action"
+        className="btn-icon-action btn-eye-view"
+        style={{
+          opacity: 1,
+          visibility: 'visible',
+          display: 'inline-flex'
+        }}
         aria-label={`Show 3D architecture for ${craft.name}`}
         title={`Show 3D architecture for ${craft.name}`}
       >

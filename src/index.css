@@ -335,6 +335,17 @@ h3 {
   cursor: pointer;
   transition: all 0.15s ease;
   position: relative;
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Eye / 3D View button: always visible by default without hover */
+.spacecraft-card .btn-icon-action,
+.spacecraft-card .btn-eye-view,
+.btn-icon-action.btn-eye-view {
+  opacity: 1;
+  visibility: visible;
+  display: inline-flex;
 }
 
 .btn-icon-action:hover:not(:disabled):not([aria-disabled="true"]) {
