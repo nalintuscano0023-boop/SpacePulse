@@ -12,7 +12,9 @@ import {
   Globe, 
   Sun, 
   Moon, 
-  Database 
+  Database,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import type { InspectableObject, SpacecraftObject } from '../../types/space';
 import { normalizeSpacecraftObject } from '../../services/data/objectResolver';
@@ -36,6 +38,15 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
   onOpenInAnalysis
 }) => {
   const [show3DViewer, setShow3DViewer] = useState(false);
+  
+  // Progressive disclosure: Overview is open by default; technical sections collapsed
+  const [sections, setSections] = useState<Record<string, boolean>>({
+    overview: true,
+    position: false,
+    orbit: false,
+    mission: false,
+    data: false
+  });
 
   if (!rawObject) return null;
 
@@ -46,11 +57,15 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
   const distAu = object.distanceFromEarthKm ? kmToAu(object.distanceFromEarthKm) : undefined;
   const distSunAu = object.distanceFromSunKm ? kmToAu(object.distanceFromSunKm) : undefined;
 
+  const toggleSection = (section: string) => {
+    setSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
   const renderObjectIcon = () => {
-    if (object.category === 'planet') return <Globe size={19} />;
-    if (object.category === 'star') return <Sun size={19} />;
-    if (object.category === 'moon') return <Moon size={19} />;
-    return <Satellite size={19} />;
+    if (object.category === 'planet') return <Globe size={18} />;
+    if (object.category === 'star') return <Sun size={18} />;
+    if (object.category === 'moon') return <Moon size={18} />;
+    return <Satellite size={18} />;
   };
 
   return (
@@ -66,20 +81,21 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
           zIndex: 150,
           display: 'flex',
           flexDirection: 'column',
-          animation: 'slideInRight 0.22s cubic-bezier(0.16, 1, 0.3, 1)'
+          animation: 'slideInRight 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
+          background: 'rgba(7, 17, 31, 0.88)'
         }}
-        className="glass-panel tech-corner"
+        className="glass-panel tech-corner object-inspector-panel"
       >
         {/* Panel Header */}
         <div style={{
           padding: '16px 20px',
           borderBottom: '1px solid var(--border-hairline)',
           display: 'flex',
-          alignItems: 'flex-start',
+          alignItems: 'center',
           justifyContent: 'space-between',
           background: 'rgba(255, 255, 255, 0.015)'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
             <div style={{
               width: '36px',
               height: '36px',
@@ -89,18 +105,19 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: 'var(--accent-cyan)'
+              color: 'var(--accent-cyan)',
+              flexShrink: 0
             }}>
               {renderObjectIcon()}
             </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h3 style={{ fontSize: '17px', fontWeight: 700, color: '#ffffff' }}>{object.name}</h3>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#ffffff', lineHeight: 1.25 }}>{object.name}</h2>
                 <span style={{
-                  fontSize: '10px',
+                  fontSize: '9px',
                   padding: '2px 6px',
                   borderRadius: '3px',
-                  background: 'rgba(255, 255, 255, 0.05)',
+                  background: 'rgba(56, 189, 248, 0.08)',
                   color: 'var(--accent-cyan)',
                   fontWeight: 600,
                   textTransform: 'uppercase',
@@ -109,7 +126,7 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
                   {object.agency || (object.category ? object.category.toUpperCase() : 'ASTRONOMICAL')}
                 </span>
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {object.mission || object.typeText}
               </div>
             </div>
@@ -123,11 +140,12 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
               border: 'none',
               color: 'var(--text-muted)',
               cursor: 'pointer',
-              padding: '4px',
+              padding: '6px',
               borderRadius: '4px',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              flexShrink: 0
             }}
             aria-label="Close Inspector"
             title="Close Inspector"
@@ -136,354 +154,332 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
           </button>
         </div>
 
-        {/* Panel Scrollable Content */}
+        {/* Panel Scrollable Body */}
         <div style={{
           flex: 1,
           overflowY: 'auto',
-          padding: '18px 20px',
+          padding: '16px 20px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '16px'
+          gap: '12px'
         }}>
-          {/* Voyager Ephemeris Transparency Alert */}
+          {/* Voyager Ephemeris Transparency Notice */}
           {isVoyager && (
             <div style={{
               background: 'rgba(245, 158, 11, 0.08)',
               border: '1px solid rgba(245, 158, 11, 0.3)',
               borderRadius: 'var(--radius-xs)',
-              padding: '12px 14px',
+              padding: '10px 12px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '6px'
+              gap: '4px'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#f59e0b', fontSize: '12px', fontWeight: 700 }}>
-                <AlertTriangle size={15} />
-                <span>POSITION DATA UNAVAILABLE // EPHEMERIS SOURCE UNAVAILABLE</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#f59e0b', fontSize: '11px', fontWeight: 700 }}>
+                <AlertTriangle size={13} />
+                <span>POSITION DATA UNAVAILABLE</span>
               </div>
-              <p style={{ fontSize: '11px', color: '#fef08a', lineHeight: 1.5, margin: 0 }}>
-                Reliable browser-accessible positional data is currently unavailable for this object. SpacePulse strictly adheres to verified orbital telemetry and does not invent spacecraft coordinates or render fabricated Solar System locations.
+              <p style={{ fontSize: '11px', color: '#fef08a', lineHeight: 1.45, margin: 0 }}>
+                Reliable browser-accessible positional data is currently unavailable for this object. SpacePulse adheres strictly to verified scientific data and does not invent arbitrary coordinates.
               </p>
             </div>
           )}
 
-          {/* Status & Provenance Bar */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: 'var(--surface-inset)',
-            padding: '10px 14px',
-            borderRadius: 'var(--radius-xs)',
-            border: '1px solid var(--border-hairline)'
-          }}>
-            <div>
-              <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Status / Classification
+          {/* 1. OVERVIEW SECTION (DEFAULT OPEN) */}
+          <div className="inspector-accordion">
+            <button
+              type="button"
+              className="inspector-accordion-header"
+              onClick={() => toggleSection('overview')}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Activity size={14} style={{ color: 'var(--accent-cyan)' }} />
+                <span>Executive Overview</span>
               </div>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginTop: '2px' }}>
-                {object.statusText || 'Active Astronomical Body'}
-              </div>
-            </div>
-            <StatusBadge status={object.telemetrySource.status} metadata={object.telemetrySource} />
-          </div>
+              {sections.overview ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+            </button>
 
-          {/* Catalog & Orbital Classification */}
-          <div style={{
-            background: 'var(--surface-inset)',
-            padding: '12px',
-            borderRadius: 'var(--radius-xs)',
-            border: '1px solid var(--border-hairline)',
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '8px'
-          }}>
-            <div>
-              <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                {isCelestial ? 'Object Category' : 'Catalog ID'}
-              </span>
-              <div className="mono" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginTop: '2px' }}>
-                {object.noradId
-                  ? `NORAD ${object.noradId}`
-                  : object.jplId
-                  ? `JPL ${object.jplId}`
-                  : object.typeText || (object.category ? object.category.toUpperCase() : 'DATA UNAVAILABLE')}
-              </div>
-            </div>
-
-            <div>
-              <span style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                Coordinate Frame
-              </span>
-              <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--accent-cyan)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={object.coordinateFrame}>
-                {object.coordinateFrame || 'Heliocentric Ecliptic J2000'}
-              </div>
-            </div>
-          </div>
-
-          {/* Primary Flight / Planetary Telemetry Grid */}
-          <div>
-            <div style={{
-              fontSize: '11px',
-              fontFamily: 'var(--font-heading)',
-              color: 'var(--text-muted)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.06em',
-              marginBottom: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}>
-              <Activity size={12} style={{ color: 'var(--accent-cyan)' }} />
-              <span>{isCelestial ? 'Planetary & Astronomical Measurements' : 'Flight Telemetry Measurements'}</span>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-              {/* Distance from Earth / Altitude */}
-              <div style={{ background: 'var(--surface-inset)', padding: '12px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
-                <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                  {object.geodetic?.altitudeKm ? 'Orbital Altitude' : 'Distance from Earth'}
-                </div>
-                <div className="mono" style={{ fontSize: '15px', fontWeight: 700, marginTop: '4px', color: 'var(--text-primary)' }}>
-                  {object.isEarthOrigin
-                    ? 'REFERENCE ORIGIN'
-                    : object.geodetic?.altitudeKm !== undefined
-                    ? `${Math.round(object.geodetic.altitudeKm).toLocaleString()} km`
-                    : object.distanceFromEarthKm !== undefined
-                    ? formatDistanceKm(object.distanceFromEarthKm)
-                    : 'DATA UNAVAILABLE'}
-                </div>
-                {object.isEarthOrigin ? (
-                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                    Ground Coordinate Zero
+            {sections.overview && (
+              <div className="inspector-accordion-content" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Operating Status</div>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginTop: '2px' }}>
+                      {object.statusText || (object.isOperational ? 'Active Flight State' : 'Mission Completed')}
+                    </div>
                   </div>
-                ) : distAu !== undefined && distAu >= 0.005 ? (
-                  <div className="mono" style={{ fontSize: '11px', color: 'var(--accent-cyan)', marginTop: '2px' }}>
-                    {distAu.toFixed(4)} AU
+                  <StatusBadge status={object.telemetrySource.status} metadata={object.telemetrySource} />
+                </div>
+
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.55, margin: 0 }}>
+                  {object.scientificExplanation || object.significance || object.description}
+                </p>
+
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '8px',
+                  paddingTop: '6px'
+                }}>
+                  <div style={{ background: 'var(--surface-inset)', padding: '8px 10px', borderRadius: 'var(--radius-xs)' }}>
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                      {isCelestial ? 'Object Class' : 'Catalog Reference'}
+                    </div>
+                    <div className="mono" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', marginTop: '2px' }}>
+                      {object.noradId
+                        ? `NORAD ${object.noradId}`
+                        : object.jplId
+                        ? `JPL ${object.jplId}`
+                        : object.typeText || (object.category ? object.category.toUpperCase() : 'ASTRONOMICAL')}
+                    </div>
                   </div>
-                ) : null}
-              </div>
 
-              {/* Distance from Sun */}
-              <div style={{ background: 'var(--surface-inset)', padding: '12px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
-                <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Distance from Sun</div>
-                <div className="mono" style={{ fontSize: '15px', fontWeight: 700, marginTop: '4px', color: 'var(--text-primary)' }}>
-                  {object.id === 'sun'
-                    ? 'SOLAR CENTER'
-                    : object.distanceFromSunKm !== undefined
-                    ? formatDistanceKm(object.distanceFromSunKm, true)
-                    : 'DATA UNAVAILABLE'}
-                </div>
-                {object.id === 'sun' ? (
-                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                    (0.000 AU Coordinate Center)
+                  <div style={{ background: 'var(--surface-inset)', padding: '8px 10px', borderRadius: 'var(--radius-xs)' }}>
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                      {isCelestial ? 'Reference Orbit' : 'Orbit Regime'}
+                    </div>
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--accent-cyan)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {object.orbitType || 'Heliocentric'}
+                    </div>
                   </div>
-                ) : distSunAu !== undefined ? (
-                  <div className="mono" style={{ fontSize: '11px', color: 'var(--accent-cyan)', marginTop: '2px' }}>
-                    {distSunAu.toFixed(3)} AU
-                  </div>
-                ) : null}
-              </div>
-
-              {/* Distance from Moon */}
-              <div style={{ background: 'var(--surface-inset)', padding: '12px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
-                <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Distance from Moon</div>
-                <div className="mono" style={{ fontSize: '15px', fontWeight: 700, marginTop: '4px', color: 'var(--text-primary)' }}>
-                  {object.id === 'moon'
-                    ? 'LUNAR SURFACE'
-                    : object.distanceFromMoonKm !== undefined
-                    ? formatDistanceKm(object.distanceFromMoonKm)
-                    : 'DATA UNAVAILABLE'}
                 </div>
-                <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                  {object.id === 'moon' ? 'Selenocentric Center' : object.distanceFromMoonKm !== undefined ? 'Calculated Baseline' : 'DATA UNAVAILABLE'}
-                </div>
-              </div>
-
-              {/* Velocity */}
-              <div style={{ background: 'var(--surface-inset)', padding: '12px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
-                <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Orbital Speed</div>
-                <div className="mono" style={{ fontSize: '15px', fontWeight: 700, marginTop: '4px', color: 'var(--text-primary)' }}>
-                  {object.velocityKmS !== undefined ? formatVelocityKmS(object.velocityKmS) : 'DATA UNAVAILABLE'}
-                </div>
-                <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                  {object.velocityKmS !== undefined ? 'Relative to primary center' : 'Calculated vector unavailable'}
-                </div>
-              </div>
-
-              {/* Light Travel Time */}
-              <div style={{ background: 'var(--surface-inset)', padding: '12px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
-                <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>One-Way Light Delay</div>
-                <div className="mono" style={{ fontSize: '15px', fontWeight: 700, marginTop: '4px', color: 'var(--accent-cyan)' }}>
-                  {object.lightTimeToEarthSec !== undefined ? formatLightTime(object.lightTimeToEarthSec) : 'DATA UNAVAILABLE'}
-                </div>
-                <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                  Speed of Light (c)
-                </div>
-              </div>
-
-              {/* Physical Radius / Size */}
-              <div style={{ background: 'var(--surface-inset)', padding: '12px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
-                <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Mean Volumetric Radius</div>
-                <div className="mono" style={{ fontSize: '15px', fontWeight: 700, marginTop: '4px', color: 'var(--text-primary)' }}>
-                  {object.radiusKm !== undefined ? `${object.radiusKm.toLocaleString()} km` : 'DATA UNAVAILABLE'}
-                </div>
-                <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                  {object.radiusKm !== undefined ? 'IAU Physical Body Radius' : 'Payload Scale Reference'}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Calculated Vector Position (ECI / Heliocentric J2000) */}
-          <div style={{ background: 'var(--surface-inset)', padding: '12px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
-            <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
-              Calculated 3D State Coordinates ({object.coordinateFrame || 'J2000'})
-            </div>
-            {object.position ? (
-              <div className="mono" style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                <div>X: <strong style={{ color: 'var(--text-primary)' }}>{Math.round(object.position.x).toLocaleString()} km</strong></div>
-                <div>Y: <strong style={{ color: 'var(--text-primary)' }}>{Math.round(object.position.y).toLocaleString()} km</strong></div>
-                <div>Z: <strong style={{ color: 'var(--text-primary)' }}>{Math.round(object.position.z).toLocaleString()} km</strong></div>
-              </div>
-            ) : (
-              <div style={{ fontSize: '12px', color: 'var(--status-last)', fontStyle: 'italic' }}>
-                POSITION DATA UNAVAILABLE
               </div>
             )}
           </div>
 
-          {/* Sub-Satellite Geodetic Track if in Earth Orbit */}
-          {object.geodetic && (
-            <div style={{ background: 'var(--surface-inset)', padding: '12px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
-              <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
-                Sub-Satellite Ground Track
+          {/* 2. POSITION & DISTANCE SECTION (COLLAPSIBLE) */}
+          <div className="inspector-accordion">
+            <button
+              type="button"
+              className="inspector-accordion-header"
+              onClick={() => toggleSection('position')}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Compass size={14} style={{ color: 'var(--accent-cyan)' }} />
+                <span>Position & Distance Metrics</span>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-                <div>
-                  <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Latitude</span>
-                  <div className="mono" style={{ fontSize: '13px', fontWeight: 600 }}>
-                    {object.geodetic.latitude.toFixed(2)}°
+              {sections.position ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+            </button>
+
+            {sections.position && (
+              <div className="inspector-accordion-content" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  {/* Distance from Earth */}
+                  <div style={{ background: 'var(--surface-inset)', padding: '10px', borderRadius: 'var(--radius-xs)' }}>
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                      {object.geodetic?.altitudeKm ? 'Orbital Altitude' : 'Distance to Earth'}
+                    </div>
+                    <div className="mono" style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '3px' }}>
+                      {object.isEarthOrigin
+                        ? 'REFERENCE ORIGIN'
+                        : object.geodetic?.altitudeKm !== undefined
+                        ? `${Math.round(object.geodetic.altitudeKm).toLocaleString()} km`
+                        : object.distanceFromEarthKm !== undefined
+                        ? formatDistanceKm(object.distanceFromEarthKm, true)
+                        : 'DATA UNAVAILABLE'}
+                    </div>
+                    {distAu !== undefined && distAu >= 0.005 && !object.isEarthOrigin && (
+                      <div className="mono" style={{ fontSize: '10px', color: 'var(--accent-cyan)', marginTop: '2px' }}>
+                        {distAu.toFixed(4)} AU
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Distance from Sun */}
+                  <div style={{ background: 'var(--surface-inset)', padding: '10px', borderRadius: 'var(--radius-xs)' }}>
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Distance to Sun</div>
+                    <div className="mono" style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '3px' }}>
+                      {object.id === 'sun'
+                        ? 'SOLAR CENTER'
+                        : object.distanceFromSunKm !== undefined
+                        ? formatDistanceKm(object.distanceFromSunKm, true)
+                        : 'DATA UNAVAILABLE'}
+                    </div>
+                    {distSunAu !== undefined && object.id !== 'sun' && (
+                      <div className="mono" style={{ fontSize: '10px', color: 'var(--accent-cyan)', marginTop: '2px' }}>
+                        {distSunAu.toFixed(3)} AU
+                      </div>
+                    )}
+                  </div>
+
+                  {/* One-Way Light Delay */}
+                  <div style={{ background: 'var(--surface-inset)', padding: '10px', borderRadius: 'var(--radius-xs)' }}>
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Signal Delay (c)</div>
+                    <div className="mono" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--accent-cyan)', marginTop: '3px' }}>
+                      {object.lightTimeToEarthSec !== undefined ? formatLightTime(object.lightTimeToEarthSec) : 'DATA UNAVAILABLE'}
+                    </div>
+                  </div>
+
+                  {/* Distance from Moon */}
+                  <div style={{ background: 'var(--surface-inset)', padding: '10px', borderRadius: 'var(--radius-xs)' }}>
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Distance to Moon</div>
+                    <div className="mono" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginTop: '3px' }}>
+                      {object.id === 'moon'
+                        ? 'LUNAR SURFACE'
+                        : object.distanceFromMoonKm !== undefined
+                        ? formatDistanceKm(object.distanceFromMoonKm, true)
+                        : 'DATA UNAVAILABLE'}
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Longitude</span>
-                  <div className="mono" style={{ fontSize: '13px', fontWeight: 600 }}>
-                    {object.geodetic.longitude.toFixed(2)}°
+
+                {/* 3D State Coordinates */}
+                <div style={{ background: 'var(--surface-inset)', padding: '10px', borderRadius: 'var(--radius-xs)' }}>
+                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>
+                    Calculated State Coordinates ({object.coordinateFrame || 'J2000'})
                   </div>
+                  {object.position ? (
+                    <div className="mono" style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                      <div>X: <strong style={{ color: 'var(--text-primary)' }}>{Math.round(object.position.x).toLocaleString()} km</strong></div>
+                      <div>Y: <strong style={{ color: 'var(--text-primary)' }}>{Math.round(object.position.y).toLocaleString()} km</strong></div>
+                      <div>Z: <strong style={{ color: 'var(--text-primary)' }}>{Math.round(object.position.z).toLocaleString()} km</strong></div>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '11px', color: 'var(--status-last)', fontStyle: 'italic' }}>
+                      Ephemeris position vector unavailable in browser memory
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Altitude</span>
-                  <div className="mono" style={{ fontSize: '13px', fontWeight: 600 }}>
-                    {Math.round(object.geodetic.altitudeKm)} km
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Plain English Scientific Explanation */}
-          <div style={{
-            background: 'rgba(56, 189, 248, 0.04)',
-            border: '1px solid rgba(56, 189, 248, 0.2)',
-            borderRadius: 'var(--radius-xs)',
-            padding: '14px'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              color: 'var(--accent-cyan)',
-              fontWeight: 600,
-              fontSize: '12px',
-              marginBottom: '6px'
-            }}>
-              <Zap size={14} />
-              <span>{isCelestial ? 'Astronomical Profile & Science' : 'Mission Science & Significance'}</span>
-            </div>
-            <p style={{ fontSize: '12px', color: 'var(--text-primary)', lineHeight: 1.6 }}>
-              {object.scientificExplanation || object.significance || object.description}
-            </p>
-          </div>
-
-          {/* Coordinate Reference & Details */}
-          <div style={{ background: 'var(--surface-inset)', padding: '12px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Coordinate Frame</span>
-                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{object.coordinateFrame || 'Heliocentric Ecliptic J2000'}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                <span style={{ color: 'var(--text-muted)' }}>{isCelestial ? 'Reference Epoch' : 'Launch Date'}</span>
-                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{object.launchDate || 'J2000.0 Standard Epoch'}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Scientific Payloads or Key Planetary Features */}
-          {object.payloads && object.payloads.length > 0 && (
-            <div>
-              <div style={{
-                fontSize: '10px',
-                fontFamily: 'var(--font-heading)',
-                color: 'var(--text-muted)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.06em',
-                marginBottom: '6px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}>
-                <Layers size={12} style={{ color: 'var(--accent-cyan)' }} />
-                <span>{isCelestial ? `Key Planetary Features (${object.payloads.length})` : `Scientific Payloads (${object.payloads.length})`}</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                {object.payloads.map((payload, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      fontSize: '11px',
-                      padding: '6px 10px',
-                      background: 'var(--surface-inset)',
-                      border: '1px solid var(--border-hairline)',
-                      borderRadius: 'var(--radius-xs)',
-                      color: 'var(--text-secondary)'
-                    }}
-                  >
-                    {payload}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Data Provenance Footnote */}
-          <div style={{
-            padding: '10px 12px',
-            background: 'rgba(3, 5, 10, 0.5)',
-            borderRadius: 'var(--radius-xs)',
-            border: '1px solid var(--border-hairline)',
-            fontSize: '11px',
-            color: 'var(--text-muted)'
-          }}>
-            <div style={{ fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Database size={12} />
-              <span>Data Provenance & Verification</span>
-            </div>
-            <div>Source: <strong style={{ color: 'var(--text-primary)' }}>{object.telemetrySource.sourceName}</strong></div>
-            {object.telemetrySource.statusNote && (
-              <div style={{ marginTop: '3px', color: 'var(--accent-cyan)' }}>
-                {object.telemetrySource.statusNote}
               </div>
             )}
-            <div style={{ marginTop: '4px', fontSize: '10px', color: 'var(--text-muted)' }}>
-              Last Verified: {new Date(object.telemetrySource.timestamp).toUTCString()}
-            </div>
+          </div>
+
+          {/* 3. ORBIT & MOTION SECTION (COLLAPSIBLE) */}
+          <div className="inspector-accordion">
+            <button
+              type="button"
+              className="inspector-accordion-header"
+              onClick={() => toggleSection('orbit')}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Zap size={14} style={{ color: 'var(--accent-cyan)' }} />
+                <span>Orbit & Dynamic Motion</span>
+              </div>
+              {sections.orbit ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+            </button>
+
+            {sections.orbit && (
+              <div className="inspector-accordion-content" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <div style={{ background: 'var(--surface-inset)', padding: '10px', borderRadius: 'var(--radius-xs)' }}>
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Orbital Velocity</div>
+                    <div className="mono" style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '3px' }}>
+                      {object.velocityKmS !== undefined ? formatVelocityKmS(object.velocityKmS) : 'DATA UNAVAILABLE'}
+                    </div>
+                  </div>
+
+                  <div style={{ background: 'var(--surface-inset)', padding: '10px', borderRadius: 'var(--radius-xs)' }}>
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Coordinate Frame</div>
+                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--accent-cyan)', marginTop: '3px' }}>
+                      {object.coordinateFrame || 'Heliocentric J2000'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sub-Satellite Geodetic Track for Earth Orbit Satellites */}
+                {object.geodetic && (
+                  <div style={{ background: 'var(--surface-inset)', padding: '10px', borderRadius: 'var(--radius-xs)' }}>
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
+                      SGP4 Geodetic Sub-Satellite Track
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
+                      <div>
+                        <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>LATITUDE</span>
+                        <div className="mono" style={{ fontSize: '12px', fontWeight: 600 }}>{object.geodetic.latitude.toFixed(2)}°</div>
+                      </div>
+                      <div>
+                        <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>LONGITUDE</span>
+                        <div className="mono" style={{ fontSize: '12px', fontWeight: 600 }}>{object.geodetic.longitude.toFixed(2)}°</div>
+                      </div>
+                      <div>
+                        <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>ALTITUDE</span>
+                        <div className="mono" style={{ fontSize: '12px', fontWeight: 600 }}>{Math.round(object.geodetic.altitudeKm)} km</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* 4. MISSION & INSTRUMENTATION SECTION (COLLAPSIBLE) */}
+          <div className="inspector-accordion">
+            <button
+              type="button"
+              className="inspector-accordion-header"
+              onClick={() => toggleSection('mission')}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Layers size={14} style={{ color: 'var(--accent-cyan)' }} />
+                <span>Mission & Payloads ({object.payloads?.length || 0})</span>
+              </div>
+              {sections.mission ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+            </button>
+
+            {sections.mission && (
+              <div className="inspector-accordion-content" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', paddingBottom: '4px' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Launch Date / Epoch</span>
+                  <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{object.launchDate || 'Astronomical Epoch'}</span>
+                </div>
+
+                {object.payloads && object.payloads.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                    {object.payloads.map((payload, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          fontSize: '11px',
+                          padding: '6px 10px',
+                          background: 'var(--surface-inset)',
+                          border: '1px solid var(--border-hairline)',
+                          borderRadius: 'var(--radius-xs)',
+                          color: 'var(--text-secondary)'
+                        }}
+                      >
+                        {payload}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                    No discrete instrumentation payloads cataloged.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* 5. DATA SOURCE & UPSTREAM VERIFICATION (COLLAPSIBLE) */}
+          <div className="inspector-accordion">
+            <button
+              type="button"
+              className="inspector-accordion-header"
+              onClick={() => toggleSection('data')}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Database size={14} style={{ color: 'var(--accent-cyan)' }} />
+                <span>Data Source & Health</span>
+              </div>
+              {sections.data ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+            </button>
+
+            {sections.data && (
+              <div className="inspector-accordion-content" style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '11px' }}>
+                <div>Primary Stream: <strong style={{ color: 'var(--text-primary)' }}>{object.telemetrySource.sourceName}</strong></div>
+                {object.telemetrySource.statusNote && (
+                  <div style={{ color: 'var(--accent-cyan)' }}>{object.telemetrySource.statusNote}</div>
+                )}
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  Last Stream Synchronized: {new Date(object.telemetrySource.timestamp).toUTCString()}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Action Footer */}
         <div style={{
-          padding: '14px 20px',
+          padding: '12px 20px',
           borderTop: '1px solid var(--border-hairline)',
           display: 'flex',
           gap: '8px',

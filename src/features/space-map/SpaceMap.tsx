@@ -1614,25 +1614,28 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
             position: 'absolute',
             bottom: '24px',
             left: '20px',
-            padding: '16px 20px',
+            padding: '12px 16px',
             borderRadius: 'var(--radius-sm)',
             zIndex: 15,
-            maxWidth: '390px',
-            animation: 'fadeIn 0.2s ease'
+            width: '320px',
+            maxWidth: 'calc(100vw - 40px)',
+            animation: 'fadeIn 0.2s ease',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.65)'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+          {/* Header Row: Reticle indicator & Inspect Button */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
             <div style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '4px',
+              gap: '5px',
               fontSize: '10px',
               fontFamily: 'var(--font-mono)',
               color: 'var(--accent-cyan)',
               letterSpacing: '0.06em',
-              fontWeight: 600
+              fontWeight: 700
             }}>
-              <Crosshair size={12} />
+              <Crosshair size={12} className="radar-sweep" />
               <span>OBJECT ACQUIRED</span>
             </div>
 
@@ -1644,68 +1647,79 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
                 }
               }}
               type="button"
-              className="inspect-action-btn"
+              className="btn btn-primary"
+              style={{
+                padding: '3px 10px',
+                fontSize: '11px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                borderRadius: 'var(--radius-full)'
+              }}
               aria-label={`Inspect ${hudData.name}`}
-              title={`Inspect ${hudData.name}`}
+              title={`Open comprehensive telemetry inspector for ${hudData.name}`}
             >
               <span>Inspect</span>
-              <ChevronRight size={13} />
+              <ChevronRight size={12} />
             </button>
           </div>
 
-          <div style={{ fontSize: '18px', fontWeight: 700, color: '#ffffff', letterSpacing: '-0.01em' }}>
+          {/* Object Name & Category */}
+          <div style={{ fontSize: '15px', fontWeight: 700, color: '#ffffff', letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {hudData.name}
           </div>
-          {hudData.catalogId && (
-            <div style={{ fontSize: '11px', color: 'var(--accent-cyan)', marginTop: '2px' }}>
-              {hudData.catalogId} • {hudData.orbitClass}
-            </div>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
+            {hudData.catalogId && <span>{hudData.catalogId}</span>}
+            {hudData.catalogId && hudData.orbitClass && <span>•</span>}
+            {hudData.orbitClass && <span>{hudData.orbitClass}</span>}
+          </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '10px' }}>
-            <div style={{ background: 'var(--surface-inset)', padding: '8px 10px', borderRadius: 'var(--radius-xs)' }}>
-              <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                {hudData.altitudeKm !== undefined ? 'Orbital Altitude' : 'Distance to Earth'}
+          {/* Compact Telemetry Metrics in a single horizontal strip */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: 'var(--surface-inset)',
+            borderRadius: 'var(--radius-xs)',
+            padding: '6px 10px',
+            marginTop: '8px',
+            fontSize: '11px'
+          }}>
+            <div>
+              <div style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                {hudData.altitudeKm !== undefined ? 'Altitude' : 'Dist to Earth'}
               </div>
-              <div className="mono" style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+              <div className="mono" style={{ fontWeight: 700, color: 'var(--text-primary)', marginTop: '1px' }}>
                 {hudData.altitudeKm !== undefined 
                   ? `${Math.round(hudData.altitudeKm)} km`
                   : formatDistanceKm(hudData.distEarthKm, true)}
               </div>
-              <div className="mono" style={{ fontSize: '10px', color: 'var(--accent-cyan)' }}>
-                {hudData.status}
-              </div>
             </div>
 
-            <div style={{ background: 'var(--surface-inset)', padding: '8px 10px', borderRadius: 'var(--radius-xs)' }}>
-              <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 {hudData.velocityKmS !== undefined ? 'Orbital Speed' : 'Radio Delay ($c$)'}
               </div>
-              <div className="mono" style={{ fontSize: '14px', fontWeight: 700, color: 'var(--accent-cyan)', marginTop: '2px' }}>
+              <div className="mono" style={{ fontWeight: 700, color: 'var(--accent-cyan)', marginTop: '1px' }}>
                 {hudData.velocityKmS !== undefined 
                   ? `${hudData.velocityKmS.toFixed(2)} km/s`
                   : hudData.lightTimeStr}
               </div>
-              <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-                {hudData.velocityKmS !== undefined ? 'ECI velocity' : 'Speed of Light'}
-              </div>
             </div>
           </div>
 
+          {/* Source Provenance */}
           <div style={{
-            marginTop: '10px',
+            marginTop: '6px',
             paddingTop: '6px',
             borderTop: '1px solid var(--border-hairline)',
-            fontSize: '10px',
+            fontSize: '9px',
             color: 'var(--text-muted)',
             display: 'flex',
             justifyContent: 'space-between'
           }}>
-            <span>SOURCE: {hudData.source.substring(0, 24)}</span>
+            <span>SRC: {hudData.source.substring(0, 22)}</span>
             <span style={{ color: 'var(--accent-cyan)' }}>SGP4 PROPAGATED</span>
-          </div>
-          <div style={{ fontSize: '9px', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '6px' }}>
-            Object markers are visually enlarged for exploration.
           </div>
         </div>
       )}

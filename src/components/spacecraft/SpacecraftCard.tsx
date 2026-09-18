@@ -1,7 +1,7 @@
 import React from 'react';
+import { Orbit } from 'lucide-react';
 import type { SpacecraftObject } from '../../types/space';
 import { SpacecraftHeader } from './SpacecraftHeader';
-import { SpacecraftMetrics } from './SpacecraftMetrics';
 import { SpacecraftActions } from './SpacecraftActions';
 
 export interface SpacecraftCardProps {
@@ -19,29 +19,67 @@ export const SpacecraftCard: React.FC<SpacecraftCardProps> = ({
   onFocus,
   onTrack
 }) => {
+  const orbitSummary = craft.orbitType || 'Trajectory in propagation';
+  const objectType = craft.noradId
+    ? 'Orbital Satellite'
+    : craft.id.includes('voyager')
+    ? 'Interstellar Probe'
+    : 'Planetary Spacecraft';
+
   return (
     <div className="glass-card spacecraft-card">
-      <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-        {/* 1. Header (Title, Organization Badge, Mission Subtitle, Status Badge) */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {/* 1. Header with Name, Operator, Mission Subtitle, and Data Status */}
         <SpacecraftHeader craft={craft} />
 
-        {/* 2. Standardized 2x2 Telemetry Metrics Grid */}
-        <SpacecraftMetrics craft={craft} />
+        {/* 2. Key Values Chip Bar (Clean essential parameters) */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          flexWrap: 'wrap',
+          margin: '2px 0 4px'
+        }}>
+          <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            padding: '2px 8px',
+            background: 'var(--surface-inset)',
+            borderRadius: 'var(--radius-xs)',
+            border: '1px solid var(--border-hairline)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: '10px',
+            color: 'var(--accent-cyan)'
+          }}>
+            <Orbit size={11} />
+            <span>{orbitSummary}</span>
+          </span>
 
-        {/* 3. Description Area with Uniform Alignment */}
+          <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            padding: '2px 7px',
+            background: 'rgba(255, 255, 255, 0.02)',
+            borderRadius: 'var(--radius-xs)',
+            border: '1px solid var(--border-hairline)',
+            fontSize: '10px',
+            color: 'var(--text-muted)'
+          }}>
+            <span>{objectType}</span>
+          </span>
+        </div>
+
+        {/* 3. Concise Overview Snippet */}
         <div
           style={{
-            flex: 1,
             fontSize: '12px',
             color: 'var(--text-secondary)',
-            lineHeight: 1.5,
-            margin: '4px 0 10px',
-            display: '-webkit-box',
-            WebkitLineClamp: 3,
-            WebkitBoxOrient: 'vertical',
+            lineHeight: 1.45,
+            whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
-            minHeight: '54px'
+            marginBottom: '4px'
           }}
           title={craft.description}
         >
@@ -49,7 +87,7 @@ export const SpacecraftCard: React.FC<SpacecraftCardProps> = ({
         </div>
       </div>
 
-      {/* 4. Unified Action Bar: [ Inspect ] [ Visibility ] [ Focus ] [ Track ] */}
+      {/* 4. Unified Action Bar: [ Inspect ] [ Visibility / 3D ] [ Focus ] [ Track ] */}
       <SpacecraftActions
         craft={craft}
         onSelect={onSelect}
@@ -60,3 +98,4 @@ export const SpacecraftCard: React.FC<SpacecraftCardProps> = ({
     </div>
   );
 };
+

@@ -284,13 +284,114 @@ h3 {
 
 /* Standardized Spacecraft Card & Action Styles */
 .spacecraft-card {
-  height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 18px;
+  padding: 16px 18px;
   position: relative;
   overflow: visible;
+  min-height: 190px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-card);
+  border: 1px solid var(--border-hairline);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.spacecraft-card:hover {
+  background: var(--surface-card-hover);
+  border-color: var(--border-subtle);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.5), 0 0 12px rgba(56, 189, 248, 0.05);
+}
+
+/* Collapsible Section Styles for Object Inspector */
+.inspector-accordion {
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-xs);
+  background: var(--surface-inset);
+  overflow: hidden;
+  transition: border-color 0.15s ease;
+}
+
+.inspector-accordion:hover {
+  border-color: var(--border-subtle);
+}
+
+.inspector-accordion-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-family: var(--font-heading);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-align: left;
+  outline: none;
+}
+
+.inspector-accordion-header:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.inspector-accordion-content {
+  padding: 12px 14px;
+  border-top: 1px solid var(--border-hairline);
+  background: rgba(3, 5, 10, 0.4);
+}
+
+/* Compact Data Table Styles */
+.data-table-container {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.data-table-row {
+  border-bottom: 1px solid var(--border-hairline);
+  transition: background 0.15s ease;
+  cursor: pointer;
+}
+
+.data-table-row:hover {
+  background: rgba(56, 189, 248, 0.05);
+}
+
+.data-table-row.selected {
+  background: rgba(56, 189, 248, 0.1);
+  border-left: 2px solid var(--accent-cyan);
+}
+
+/* Mobile Inspector Responsive Bottom Sheet */
+@media (max-width: 768px) {
+  .object-inspector-panel {
+    position: fixed !important;
+    top: auto !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 82vh !important;
+    border-radius: 16px 16px 0 0 !important;
+    border-bottom: none !important;
+    animation: slideUpBottom 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    z-index: 1000 !important;
+  }
+}
+
+@keyframes slideUpBottom {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
 }
 
 .agency-badge {

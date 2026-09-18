@@ -6,25 +6,32 @@ import {
   Layers, 
   BookOpen,
   Award,
-  ChevronRight
+  ChevronRight,
+  X,
+  Radio
 } from 'lucide-react';
 import { MISSIONS_DATABASE, ARCHIVE_DATASETS } from '../../services/data/missionsCatalog';
 import type { MissionRecord, ArchiveDataset } from '../../types/missions';
 import { StatusBadge } from '../../components/common/StatusBadge';
 
+type AgencyFilter = 'ALL' | 'ISRO' | 'NASA' | 'ESA' | 'OTHER';
+
 export const MissionsExplorer: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'missions' | 'archives'>('missions');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedAgency, setSelectedAgency] = useState<'ALL' | 'ISRO' | 'NASA'>('ALL');
-  const [selectedMission, setSelectedMission] = useState<MissionRecord | null>(MISSIONS_DATABASE[0]);
+  const [selectedAgency, setSelectedAgency] = useState<AgencyFilter>('ALL');
+  const [previewMission, setPreviewMission] = useState<MissionRecord | null>(null);
 
   const filteredMissions = MISSIONS_DATABASE.filter(m => {
     const matchesSearch = m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       m.overview.toLowerCase().includes(searchQuery.toLowerCase()) ||
       m.target.toLowerCase().includes(searchQuery.toLowerCase());
     if (!matchesSearch) return false;
+    
     if (selectedAgency === 'ISRO') return m.agency === 'ISRO';
     if (selectedAgency === 'NASA') return m.agency === 'NASA';
+    if (selectedAgency === 'ESA') return m.agency === 'ESA';
+    if (selectedAgency === 'OTHER') return m.agency !== 'ISRO' && m.agency !== 'NASA' && m.agency !== 'ESA';
     return true;
   });
 
@@ -37,66 +44,97 @@ export const MissionsExplorer: React.FC = () => {
   return (
     <div className="container" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Header */}
-      <div style={{ padding: '16px 0 6px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+      <div style={{ padding: '12px 0 4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
           <div style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: '6px',
             padding: '3px 8px',
             borderRadius: 'var(--radius-xs)',
-            background: 'rgba(16, 185, 129, 0.1)',
-            border: '1px solid rgba(16, 185, 129, 0.25)',
+            background: 'rgba(56, 189, 248, 0.1)',
+            border: '1px solid rgba(56, 189, 248, 0.25)',
             fontSize: '11px',
             fontFamily: 'var(--font-mono)',
-            color: 'var(--status-live)',
+            color: 'var(--accent-cyan)',
             fontWeight: 600,
             textTransform: 'uppercase'
           }}>
             <Database size={12} />
-            <span>MISSION ARCHIVE // OFFICIAL ISRO & NASA REPOSITORIES</span>
+            <span>ASTRONOMICAL ARCHIVE // SCIENTIFIC MISSIONS</span>
           </div>
-          <StatusBadge status="LAST_AVAILABLE" />
+          <StatusBadge status="LAST_AVAILABLE" compact />
         </div>
 
         <h1 style={{ fontSize: '26px', fontWeight: 700, letterSpacing: '-0.02em', color: '#ffffff' }}>
-          Missions & Scientific Planetary Archives
+          Missions & Planetary Science Archives
         </h1>
-        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', maxWidth: '850px', lineHeight: 1.5, marginTop: '4px' }}>
-          Verified mission archives, payload specifications, and open planetary science datasets from ISRO (ISSDC / PRADAN & MOSDAC), NASA Planetary Data System (PDS), and international space science centers.
+        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', maxWidth: '800px', lineHeight: 1.5, marginTop: '4px' }}>
+          Verified mission dossiers, payload instrumentation records, and planetary science repositories from ISRO (PRADAN / MOSDAC), NASA PDS, and international space agencies.
         </p>
       </div>
 
-      {/* Mode Switcher Tabs & Search */}
+      {/* Toolbar: Search, Filters & Sub-view Switcher */}
       <div style={{
         display: 'flex',
         flexWrap: 'wrap',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: '12px'
+        gap: '12px',
+        padding: '12px 16px',
+        background: 'var(--surface-panel)',
+        borderRadius: 'var(--radius-sm)',
+        border: '1px solid var(--border-hairline)'
       }}>
-        {/* Toggle Mode */}
+        {/* Sub-view switcher */}
         <div style={{ display: 'flex', gap: '4px', background: 'var(--surface-inset)', padding: '3px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
           <button
             onClick={() => setActiveTab('missions')}
             className={`btn ${activeTab === 'missions' ? 'btn-active' : 'btn-ghost'}`}
-            style={{ fontSize: '12px', padding: '5px 14px' }}
+            style={{ fontSize: '12px', padding: '5px 12px' }}
           >
             <BookOpen size={13} />
-            <span>Mission Profiles ({MISSIONS_DATABASE.length})</span>
+            <span>Missions Directory ({MISSIONS_DATABASE.length})</span>
           </button>
 
           <button
             onClick={() => setActiveTab('archives')}
             className={`btn ${activeTab === 'archives' ? 'btn-active' : 'btn-ghost'}`}
-            style={{ fontSize: '12px', padding: '5px 14px' }}
+            style={{ fontSize: '12px', padding: '5px 12px' }}
           >
             <Layers size={13} />
-            <span>Public Datasets ({ARCHIVE_DATASETS.length})</span>
+            <span>Open Repositories ({ARCHIVE_DATASETS.length})</span>
           </button>
         </div>
 
-        {/* Search */}
+        {/* Agency Filters (for Missions) */}
+        {activeTab === 'missions' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginRight: '4px' }}>Filter:</span>
+            {(['ALL', 'ISRO', 'NASA', 'ESA', 'OTHER'] as AgencyFilter[]).map(ag => (
+              <button
+                key={ag}
+                onClick={() => setSelectedAgency(ag)}
+                style={{
+                  padding: '3px 8px',
+                  borderRadius: 'var(--radius-xs)',
+                  fontSize: '11px',
+                  fontFamily: 'var(--font-heading)',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: selectedAgency === ag ? '1px solid var(--border-focus)' : '1px solid transparent',
+                  background: selectedAgency === ag ? 'rgba(56, 189, 248, 0.14)' : 'transparent',
+                  color: selectedAgency === ag ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                {ag === 'ALL' ? 'All Agencies' : ag}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Search Input */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -104,14 +142,14 @@ export const MissionsExplorer: React.FC = () => {
           background: 'var(--surface-inset)',
           border: '1px solid var(--border-hairline)',
           borderRadius: 'var(--radius-xs)',
-          padding: '7px 12px',
+          padding: '6px 10px',
           width: '100%',
-          maxWidth: '320px'
+          maxWidth: '280px'
         }}>
-          <Search size={14} style={{ color: 'var(--text-muted)' }} />
+          <Search size={13} style={{ color: 'var(--text-muted)' }} />
           <input
             type="text"
-            placeholder="Search missions, payloads, or archives..."
+            placeholder="Search missions or archives..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
@@ -119,7 +157,7 @@ export const MissionsExplorer: React.FC = () => {
               border: 'none',
               outline: 'none',
               color: 'var(--text-primary)',
-              fontSize: '13px',
+              fontSize: '12px',
               width: '100%',
               fontFamily: 'var(--font-sans)'
             }}
@@ -129,298 +167,297 @@ export const MissionsExplorer: React.FC = () => {
 
       {/* Main Tab Content */}
       {activeTab === 'missions' ? (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(280px, 340px) 1fr',
-          gap: '20px'
-        }}>
-          {/* Mission List Sidebar */}
-          <div className="glass-panel" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '6px', height: 'fit-content' }}>
-            <div style={{ display: 'flex', gap: '4px', marginBottom: '6px' }}>
-              {(['ALL', 'ISRO', 'NASA'] as const).map(ag => (
-                <button
-                  key={ag}
-                  onClick={() => setSelectedAgency(ag)}
-                  style={{
-                    padding: '3px 8px',
-                    borderRadius: 'var(--radius-xs)',
-                    fontSize: '11px',
-                    fontFamily: 'var(--font-heading)',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    border: selectedAgency === ag ? '1px solid var(--border-focus)' : '1px solid transparent',
-                    background: selectedAgency === ag ? 'rgba(56, 189, 248, 0.14)' : 'transparent',
-                    color: selectedAgency === ag ? 'var(--accent-cyan)' : 'var(--text-muted)'
-                  }}
-                >
-                  {ag}
-                </button>
-              ))}
-            </div>
-
-            {filteredMissions.map((m) => {
-              const isSelected = selectedMission?.id === m.id;
-              return (
-                <div
-                  key={m.id}
-                  onClick={() => setSelectedMission(m)}
-                  style={{
-                    padding: '10px 12px',
-                    borderRadius: 'var(--radius-xs)',
-                    background: isSelected ? 'rgba(56, 189, 248, 0.12)' : 'var(--surface-inset)',
-                    border: isSelected ? '1px solid var(--border-focus)' : '1px solid var(--border-hairline)',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontWeight: 600, fontSize: '13px', color: isSelected ? 'var(--accent-cyan)' : 'var(--text-primary)' }}>
-                      {m.name}
-                    </span>
-                    <span style={{
-                      fontSize: '9px',
-                      padding: '2px 5px',
-                      borderRadius: '3px',
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      color: 'var(--text-muted)',
-                      fontWeight: 600
-                    }}>
-                      {m.agency}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                    {m.missionType} • {m.launchDate.split('-')[0]}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Mission Detail View */}
-          {selectedMission && (
-            <div className="glass-panel tech-corner" style={{ padding: '22px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
-              {/* Mission Hero Header */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                justifyContent: 'space-between',
-                borderBottom: '1px solid var(--border-hairline)',
-                paddingBottom: '14px'
-              }}>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#ffffff' }}>{selectedMission.name}</h2>
-                    <span style={{
-                      fontSize: '11px',
-                      padding: '2px 7px',
-                      borderRadius: 'var(--radius-xs)',
-                      background: 'rgba(56, 189, 248, 0.12)',
-                      color: 'var(--accent-cyan)',
-                      fontWeight: 600
-                    }}>
-                      {selectedMission.agency}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                    {selectedMission.missionType} • Launched {selectedMission.launchDate} via {selectedMission.launchVehicle}
-                  </div>
-                </div>
-
-                <a
-                  href={selectedMission.officialSourceUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="btn btn-secondary"
-                  style={{ fontSize: '11px', padding: '5px 10px' }}
-                >
-                  <span>Official Mission Portal</span>
-                  <ExternalLink size={12} />
-                </a>
-              </div>
-
-              {/* Overview */}
-              <div>
-                <h3 style={{ fontSize: '13px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
-                  Mission Overview
-                </h3>
-                <p style={{ fontSize: '13px', lineHeight: 1.6, color: 'var(--text-secondary)' }}>
-                  {selectedMission.overview}
-                </p>
-              </div>
-
-              {/* Key Achievements */}
-              <div>
-                <h3 style={{ fontSize: '13px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Award size={13} style={{ color: 'var(--solar-amber)' }} />
-                  <span>Key Verified Scientific Achievements</span>
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {selectedMission.keyAchievements.map((ach, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        padding: '9px 12px',
-                        background: 'var(--surface-inset)',
-                        border: '1px solid var(--border-hairline)',
-                        borderRadius: 'var(--radius-xs)',
-                        fontSize: '12px',
-                        color: 'var(--text-primary)',
-                        display: 'flex',
-                        alignItems: 'baseline',
-                        gap: '8px'
-                      }}
-                    >
-                      <span style={{ color: 'var(--accent-cyan)', fontWeight: 700 }}>•</span>
-                      <span>{ach}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Scientific Payload Specifications */}
-              <div>
-                <h3 style={{ fontSize: '13px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Layers size={13} style={{ color: 'var(--accent-cyan)' }} />
-                  <span>Verified Payload Instrumentation ({selectedMission.payloads.length})</span>
-                </h3>
-
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-                  gap: '10px'
+        <div className="glass-panel" style={{ overflow: 'hidden' }}>
+          {/* Compact Mission Rows Table */}
+          <div style={{ overflowX: 'auto' }}>
+            <table className="data-table-container">
+              <thead>
+                <tr style={{
+                  borderBottom: '1px solid var(--border-hairline)',
+                  background: 'rgba(3, 5, 10, 0.5)',
+                  textAlign: 'left',
+                  fontSize: '11px',
+                  color: 'var(--text-muted)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em'
                 }}>
-                  {selectedMission.payloads.map((payload) => (
-                    <div
-                      key={payload.acronym}
-                      className="glass-card"
-                      style={{ padding: '14px' }}
+                  <th style={{ padding: '12px 16px' }}>Mission Name</th>
+                  <th style={{ padding: '12px 16px' }}>Agency</th>
+                  <th style={{ padding: '12px 16px' }}>Target / Scope</th>
+                  <th style={{ padding: '12px 16px' }}>Launch Date</th>
+                  <th style={{ padding: '12px 16px' }}>Payloads</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'right' }}>Details</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredMissions.map((mission) => {
+                  const isSelected = previewMission?.id === mission.id;
+                  return (
+                    <tr
+                      key={mission.id}
+                      onClick={() => setPreviewMission(isSelected ? null : mission)}
+                      className={`data-table-row ${isSelected ? 'selected' : ''}`}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                        <span style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-primary)' }}>
-                          {payload.acronym}
-                        </span>
-                        <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-                          {payload.leadInstitution}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: '12px', fontWeight: 500, color: 'var(--accent-cyan)', marginBottom: '4px' }}>
-                        {payload.name}
-                      </div>
-                      <p style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '6px' }}>
-                        {payload.description}
-                      </p>
-                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', borderTop: '1px solid var(--border-hairline)', paddingTop: '4px' }}>
-                        <span style={{ color: 'var(--text-secondary)' }}>Format: </span>
-                        {payload.dataType}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+                      <td style={{ padding: '12px 16px', fontWeight: 600, color: '#ffffff' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span>{mission.name}</span>
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', fontWeight: 400 }}>
+                          {mission.missionType}
+                        </div>
+                      </td>
 
-              {/* Catalog Reference Footer */}
-              <div style={{
-                padding: '10px 14px',
-                background: 'rgba(3, 5, 10, 0.4)',
-                borderRadius: 'var(--radius-xs)',
-                fontSize: '11px',
-                color: 'var(--text-muted)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <span>Official Catalog ID: {selectedMission.officialCatalogId}</span>
-                <span>Verified Source: Official {selectedMission.agency} Documentation</span>
-              </div>
-            </div>
-          )}
+                      <td style={{ padding: '12px 16px' }}>
+                        <span className="agency-badge">{mission.agency}</span>
+                      </td>
+
+                      <td style={{ padding: '12px 16px', color: 'var(--accent-cyan)', fontSize: '11px' }}>
+                        {mission.target}
+                      </td>
+
+                      <td style={{ padding: '12px 16px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '11px' }}>
+                        {mission.launchDate}
+                      </td>
+
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{
+                          fontSize: '11px',
+                          color: 'var(--text-secondary)',
+                          padding: '2px 6px',
+                          borderRadius: 'var(--radius-xs)',
+                          background: 'var(--surface-inset)'
+                        }}>
+                          {mission.payloads.length} Instruments
+                        </span>
+                      </td>
+
+                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          style={{ fontSize: '11px', padding: '4px 8px', gap: '4px' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPreviewMission(isSelected ? null : mission);
+                          }}
+                        >
+                          <span>{isSelected ? 'Collapse' : 'Preview'}</span>
+                          <ChevronRight size={13} style={{ transform: isSelected ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s ease' }} />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
-        /* Planetary Science Datasets Directory */
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
-          gap: '16px'
-        }}>
-          {filteredArchives.map((archive) => (
-            <div
-              key={archive.id}
-              className="glass-card"
-              style={{
-                padding: '18px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                gap: '12px'
-              }}
-            >
-              <div>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  justifyContent: 'space-between',
-                  marginBottom: '8px'
+        /* Planetary Science Datasets Directory (Compact Rows) */
+        <div className="glass-panel" style={{ overflow: 'hidden' }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="data-table-container">
+              <thead>
+                <tr style={{
+                  borderBottom: '1px solid var(--border-hairline)',
+                  background: 'rgba(3, 5, 10, 0.5)',
+                  textAlign: 'left',
+                  fontSize: '11px',
+                  color: 'var(--text-muted)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em'
                 }}>
-                  <div>
-                    <span style={{
-                      fontSize: '10px',
-                      padding: '2px 6px',
-                      borderRadius: 'var(--radius-xs)',
-                      background: 'rgba(56, 189, 248, 0.1)',
-                      color: 'var(--accent-cyan)',
-                      fontWeight: 600
-                    }}>
-                      {archive.archiveHost}
-                    </span>
-                    <h3 style={{ fontSize: '15px', fontWeight: 700, marginTop: '6px', color: '#ffffff' }}>
-                      {archive.title}
-                    </h3>
-                  </div>
-                </div>
+                  <th style={{ padding: '12px 16px' }}>Archive Title</th>
+                  <th style={{ padding: '12px 16px' }}>Repository Host</th>
+                  <th style={{ padding: '12px 16px' }}>Mission</th>
+                  <th style={{ padding: '12px 16px' }}>Formats</th>
+                  <th style={{ padding: '12px 16px' }}>Access</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'right' }}>Link</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredArchives.map((archive) => (
+                  <tr key={archive.id} className="data-table-row">
+                    <td style={{ padding: '12px 16px' }}>
+                      <div style={{ fontWeight: 600, color: '#ffffff' }}>{archive.title}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px', maxWidth: '420px' }}>
+                        {archive.description}
+                      </div>
+                    </td>
 
-                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '10px' }}>
-                  {archive.description}
-                </p>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span className="agency-badge">{archive.archiveHost}</span>
+                    </td>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '11px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Mission</span>
-                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{archive.mission}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Data Processing Level</span>
-                    <span style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>{archive.dataLevel}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Data Formats</span>
-                    <span className="mono" style={{ color: 'var(--accent-cyan)' }}>{archive.formats.join(', ')}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>Access Policy</span>
-                    <span style={{ color: 'var(--status-live)', fontWeight: 500 }}>{archive.accessType}</span>
-                  </div>
-                </div>
+                    <td style={{ padding: '12px 16px', color: 'var(--accent-cyan)', fontSize: '11px' }}>
+                      {archive.mission}
+                    </td>
+
+                    <td style={{ padding: '12px 16px' }}>
+                      <span className="mono" style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                        {archive.formats.join(', ')}
+                      </span>
+                    </td>
+
+                    <td style={{ padding: '12px 16px' }}>
+                      <span style={{ fontSize: '11px', color: 'var(--status-live)' }}>
+                        {archive.accessType}
+                      </span>
+                    </td>
+
+                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                      <a
+                        href={archive.officialUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn btn-secondary"
+                        style={{ fontSize: '11px', padding: '4px 10px' }}
+                      >
+                        <span>Access</span>
+                        <ExternalLink size={12} />
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Selected Mission Detailed Dossier Preview */}
+      {previewMission && (
+        <div
+          className="glass-panel tech-corner"
+          style={{
+            padding: '20px 24px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+            animation: 'fadeIn 0.2s ease'
+          }}
+        >
+          <div style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'space-between',
+            borderBottom: '1px solid var(--border-hairline)',
+            paddingBottom: '12px',
+            flexWrap: 'wrap',
+            gap: '10px'
+          }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#ffffff' }}>{previewMission.name}</h2>
+                <span className="agency-badge">{previewMission.agency}</span>
               </div>
-
-              <div style={{
-                paddingTop: '10px',
-                borderTop: '1px solid var(--border-hairline)',
-                display: 'flex',
-                justifyContent: 'flex-end'
-              }}>
-                <a
-                  href={archive.officialUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="btn btn-secondary"
-                  style={{ fontSize: '11px', padding: '5px 10px' }}
-                >
-                  <span>Access Official Repository</span>
-                  <ExternalLink size={12} />
-                </a>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                {previewMission.missionType} • Launched {previewMission.launchDate} via {previewMission.launchVehicle}
               </div>
             </div>
-          ))}
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <a
+                href={previewMission.officialSourceUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="btn btn-secondary"
+                style={{ fontSize: '11px', padding: '5px 12px' }}
+              >
+                <span>Official Mission Portal</span>
+                <ExternalLink size={12} />
+              </a>
+
+              <button
+                type="button"
+                onClick={() => setPreviewMission(null)}
+                className="btn btn-ghost"
+                style={{ padding: '4px' }}
+                aria-label="Close Preview"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+
+          {/* Overview Text */}
+          <div>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>
+              Mission Summary
+            </div>
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
+              {previewMission.overview}
+            </p>
+          </div>
+
+          {/* Key Achievements */}
+          <div>
+            <div style={{ fontSize: '11px', color: 'var(--solar-amber)', textTransform: 'uppercase', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
+              <Award size={13} />
+              <span>Verified Scientific Achievements</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {previewMission.keyAchievements.map((ach, i) => (
+                <div
+                  key={i}
+                  style={{
+                    padding: '8px 12px',
+                    background: 'var(--surface-inset)',
+                    border: '1px solid var(--border-hairline)',
+                    borderRadius: 'var(--radius-xs)',
+                    fontSize: '12px',
+                    color: 'var(--text-primary)',
+                    display: 'flex',
+                    alignItems: 'baseline',
+                    gap: '8px'
+                  }}
+                >
+                  <span style={{ color: 'var(--accent-cyan)', fontWeight: 700 }}>•</span>
+                  <span>{ach}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Payloads Grid */}
+          <div>
+            <div style={{ fontSize: '11px', color: 'var(--accent-cyan)', textTransform: 'uppercase', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
+              <Layers size={13} />
+              <span>Scientific Payload Instrumentation ({previewMission.payloads.length})</span>
+            </div>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+              gap: '8px'
+            }}>
+              {previewMission.payloads.map((payload) => (
+                <div
+                  key={payload.acronym}
+                  style={{
+                    padding: '10px 12px',
+                    background: 'var(--surface-inset)',
+                    border: '1px solid var(--border-hairline)',
+                    borderRadius: 'var(--radius-xs)'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
+                    <span style={{ fontWeight: 700, fontSize: '12px', color: 'var(--text-primary)' }}>
+                      {payload.acronym}
+                    </span>
+                    <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                      {payload.leadInstitution}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '11px', color: 'var(--accent-cyan)', fontWeight: 500 }}>
+                    {payload.name}
+                  </div>
+                  <p style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.45, margin: '4px 0 0' }}>
+                    {payload.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>

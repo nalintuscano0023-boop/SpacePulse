@@ -51,7 +51,10 @@ export function App() {
     }
   };
 
+  const [analyzedObjectId, setAnalyzedObjectId] = useState<string | undefined>(undefined);
+
   const handleAnalyzeObject = (objectId: string) => {
+    setAnalyzedObjectId(objectId);
     setActiveTab('analysis');
   };
 
@@ -104,7 +107,7 @@ export function App() {
           )}
 
           {activeTab === 'analysis' && (
-            <ScientificAnalysis />
+            <ScientificAnalysis initialObjectId={analyzedObjectId} />
           )}
 
           {activeTab === 'missions' && (
