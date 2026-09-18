@@ -13,7 +13,8 @@ import {
   ExternalLink,
   ChevronDown,
   ChevronUp,
-  Activity
+  Activity,
+  Sparkles
 } from 'lucide-react';
 import { SpaceWeatherWidget } from '../../components/weather/SpaceWeatherWidget';
 import { SPACECRAFT_REGISTRY, resolveSpacecraftState } from '../../services/data/spacecraftCatalog';
@@ -29,6 +30,7 @@ interface MissionControlProps {
   onNavigateTab: (tab: TabType) => void;
   onFocusOnMap?: (objectId: string) => void;
   onAnalyzeObject?: (objectId: string, mode?: AnalysisType) => void;
+  onExploreSpace?: () => void;
 }
 
 interface FleetSummary {
@@ -127,7 +129,8 @@ export const MissionControl: React.FC<MissionControlProps> = ({
   onSelectObject,
   onNavigateTab,
   onFocusOnMap,
-  onAnalyzeObject
+  onAnalyzeObject,
+  onExploreSpace
 }) => {
   const [featuredFleet, setFeaturedFleet] = useState<SpacecraftObject[]>([]);
   const [fleetSummary, setFleetSummary] = useState<FleetSummary>({
@@ -1000,7 +1003,146 @@ export const MissionControl: React.FC<MissionControlProps> = ({
         </div>
       </div>
 
+      {/* 6. "EXPLORE THE SPACE" MYSTERIOUS COSMIC INVITATION CTA */}
+      {onExploreSpace && (
+        <div
+          onClick={onExploreSpace}
+          className="glass-panel explore-space-cta"
+          style={{
+            position: 'relative',
+            padding: '24px 28px',
+            overflow: 'hidden',
+            cursor: 'pointer',
+            borderRadius: 'var(--radius-sm)',
+            border: '1px solid rgba(56, 189, 248, 0.25)',
+            background: 'linear-gradient(135deg, rgba(3, 7, 18, 0.95) 0%, rgba(15, 23, 42, 0.9) 100%)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6)',
+            transition: 'all 0.35s ease',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '20px',
+            flexWrap: 'wrap'
+          }}
+        >
+          {/* Subtle Ambient Cosmic Background Glow */}
+          <div style={{
+            position: 'absolute',
+            top: '-50%',
+            right: '-10%',
+            width: '280px',
+            height: '280px',
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(56, 189, 248, 0.15) 0%, rgba(139, 92, 246, 0.08) 50%, transparent 70%)',
+            pointerEvents: 'none',
+            filter: 'blur(30px)'
+          }} />
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', zIndex: 2 }}>
+            <div style={{
+              width: '44px',
+              height: '44px',
+              borderRadius: '50%',
+              background: 'rgba(56, 189, 248, 0.1)',
+              border: '1px solid rgba(56, 189, 248, 0.35)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--accent-cyan)',
+              boxShadow: '0 0 16px rgba(56, 189, 248, 0.3)'
+            }} className="breathing-icon">
+              <Sparkles size={22} />
+            </div>
+
+            <div>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '10px',
+                fontFamily: 'var(--font-mono)',
+                color: 'var(--accent-cyan)',
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                fontWeight: 600
+              }}>
+                <span>PURE VISUAL IMMERSION</span>
+                <span>•</span>
+                <span>SILENT COSMOS</span>
+              </div>
+
+              <div style={{
+                fontSize: '18px',
+                fontWeight: 700,
+                color: '#ffffff',
+                letterSpacing: '-0.01em',
+                marginTop: '2px'
+              }}>
+                Explore the Space
+              </div>
+
+              <div style={{
+                fontSize: '12px',
+                color: 'var(--text-secondary)',
+                marginTop: '3px'
+              }}>
+                Step beyond scientific data into the silent depths of galaxies, nebulas, and the cosmic web.
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', zIndex: 2 }}>
+            <span style={{
+              fontSize: '11px',
+              fontFamily: 'var(--font-mono)',
+              color: 'var(--accent-cyan)',
+              fontWeight: 600,
+              letterSpacing: '0.04em'
+            }}>
+              ENTER THE UNIVERSE
+            </span>
+            <div style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: '50%',
+              background: 'rgba(56, 189, 248, 0.15)',
+              border: '1px solid rgba(56, 189, 248, 0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#ffffff',
+              transition: 'transform 0.2s ease'
+            }} className="cta-arrow">
+              <ChevronRight size={18} />
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
+        .explore-space-cta:hover {
+          border-color: rgba(56, 189, 248, 0.6) !important;
+          box-shadow: 0 12px 40px rgba(56, 189, 248, 0.2) !important;
+          transform: translateY(-2px);
+        }
+        .explore-space-cta:hover .cta-arrow {
+          transform: translateX(4px);
+          background: var(--accent-cyan);
+          color: #000000;
+        }
+        .breathing-icon {
+          animation: breathingGlow 3s infinite ease-in-out;
+        }
+        @keyframes breathingGlow {
+          0%, 100% {
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+            border-color: rgba(56, 189, 248, 0.35);
+          }
+          50% {
+            box-shadow: 0 0 24px rgba(56, 189, 248, 0.55);
+            border-color: rgba(56, 189, 248, 0.7);
+          }
+        }
         @media (max-width: 900px) {
           .hero-vista {
             display: none !important;

@@ -8,6 +8,7 @@ import { SpaceMap } from './features/space-map/SpaceMap';
 import { ScientificAnalysis, type AnalysisType } from './features/analysis/ScientificAnalysis';
 import { MissionsExplorer } from './features/missions/MissionsExplorer';
 import { ObjectInspector } from './components/inspector/ObjectInspector';
+import { ExploreTheSpace } from './features/explore-space/ExploreTheSpace';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import type { InspectableObject, SpacecraftObject } from './types/space';
 import { resolveInspectableObject, normalizeSpacecraftObject } from './services/data/objectResolver';
@@ -18,6 +19,7 @@ export function App() {
   const [selectedObject, setSelectedObject] = useState<InspectableObject | null>(null);
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
   const [focusedObjectId, setFocusedObjectId] = useState<string | undefined>(undefined);
+  const [isExploringSpace, setIsExploringSpace] = useState(false);
   
   // Opening Experience State: check sessionStorage so it plays once on initial session entry
   const [showOpening, setShowOpening] = useState(() => {
@@ -91,6 +93,7 @@ export function App() {
               }}
               onFocusOnMap={handleFocusOnMap}
               onAnalyzeObject={handleAnalyzeObject}
+              onExploreSpace={() => setIsExploringSpace(true)}
             />
           )}
 
@@ -198,6 +201,11 @@ export function App() {
           <span>Zero Synthetic Or Mock Numbers</span>
         </div>
       </footer>
+
+      {/* 7. Full-Screen Immersive "Explore the Space" Pure Visual Experience */}
+      {isExploringSpace && (
+        <ExploreTheSpace onExit={() => setIsExploringSpace(false)} />
+      )}
     </div>
   );
 }
