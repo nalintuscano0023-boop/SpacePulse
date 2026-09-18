@@ -5,7 +5,7 @@ import { OpeningExperience } from './components/common/OpeningExperience';
 import { MissionControl } from './features/mission-control/MissionControl';
 import { SpacecraftExplorer } from './features/spacecraft/SpacecraftExplorer';
 import { SpaceMap } from './features/space-map/SpaceMap';
-import { ScientificAnalysis } from './features/analysis/ScientificAnalysis';
+import { ScientificAnalysis, type AnalysisType } from './features/analysis/ScientificAnalysis';
 import { MissionsExplorer } from './features/missions/MissionsExplorer';
 import { ObjectInspector } from './components/inspector/ObjectInspector';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
@@ -52,9 +52,11 @@ export function App() {
   };
 
   const [analyzedObjectId, setAnalyzedObjectId] = useState<string | undefined>(undefined);
+  const [analysisMode, setAnalysisMode] = useState<AnalysisType | undefined>(undefined);
 
-  const handleAnalyzeObject = (objectId: string) => {
+  const handleAnalyzeObject = (objectId: string, mode?: AnalysisType) => {
     setAnalyzedObjectId(objectId);
+    setAnalysisMode(mode);
     setActiveTab('analysis');
   };
 
@@ -87,6 +89,8 @@ export function App() {
                 setActiveTab(tab);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
+              onFocusOnMap={handleFocusOnMap}
+              onAnalyzeObject={handleAnalyzeObject}
             />
           )}
 
@@ -107,7 +111,10 @@ export function App() {
           )}
 
           {activeTab === 'analysis' && (
-            <ScientificAnalysis initialObjectId={analyzedObjectId} />
+            <ScientificAnalysis
+              initialObjectId={analyzedObjectId}
+              initialMode={analysisMode}
+            />
           )}
 
           {activeTab === 'missions' && (

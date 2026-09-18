@@ -35,18 +35,31 @@ interface AnalyzableObject {
   altitudeKm?: number;
 }
 
-type AnalysisType = 'distance' | 'motion' | 'orbit' | 'comparison';
+export type AnalysisType = 'distance' | 'motion' | 'orbit' | 'comparison';
 
 interface ScientificAnalysisProps {
   initialObjectId?: string;
+  initialMode?: AnalysisType;
 }
 
-export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialObjectId }) => {
+export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialObjectId, initialMode }) => {
   const [availableObjects, setAvailableObjects] = useState<AnalyzableObject[]>([]);
   const [selectedObjectId, setSelectedObjectId] = useState<string>(initialObjectId || 'aditya-l1');
-  const [analysisType, setAnalysisType] = useState<AnalysisType>('distance');
+  const [analysisType, setAnalysisType] = useState<AnalysisType>(initialMode || 'distance');
   const [comparisonObjectId, setComparisonObjectId] = useState<string>('earth');
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (initialObjectId) {
+      setSelectedObjectId(initialObjectId);
+    }
+  }, [initialObjectId]);
+
+  useEffect(() => {
+    if (initialMode) {
+      setAnalysisType(initialMode);
+    }
+  }, [initialMode]);
 
   useEffect(() => {
     async function computeAllPositions() {
