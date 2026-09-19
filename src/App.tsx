@@ -12,8 +12,6 @@ import { ExploreTheSpace } from './features/explore-space/ExploreTheSpace';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import type { InspectableObject, SpacecraftObject } from './types/space';
 import { resolveInspectableObject, normalizeSpacecraftObject } from './services/data/objectResolver';
-import { WalkthroughProvider, useWalkthrough } from './components/walkthrough/WalkthroughContext';
-import { WalkthroughOverlay } from './components/walkthrough/WalkthroughOverlay';
 import { Radio } from 'lucide-react';
 
 function AppContent({
@@ -47,8 +45,6 @@ function AppContent({
   analysisMode: AnalysisType | undefined;
   setAnalysisMode: (mode: AnalysisType | undefined) => void;
 }) {
-  const { startWalkthrough } = useWalkthrough();
-
   // Opening Experience State: check sessionStorage so it plays once on initial session entry
   const [showOpening, setShowOpening] = useState(() => {
     return !sessionStorage.getItem('spacepulse_intro_shown');
@@ -104,7 +100,6 @@ function AppContent({
           setActiveTab(tab);
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
-        onStartWalkthrough={startWalkthrough}
       />
 
       {/* 4. Main Scientific Operations Console */}
@@ -162,40 +157,34 @@ function AppContent({
         />
       )}
 
-      {/* 6. Precision Aerospace Footer */}
+      {/* 6. Authoritative Footer & Celestial Baseline */}
       <footer style={{
-        position: 'relative',
-        zIndex: 10,
-        background: 'rgba(3, 5, 10, 0.88)',
+        marginTop: 'auto',
+        borderTop: '1px solid var(--border-subtle)',
+        background: 'rgba(3, 7, 18, 0.85)',
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
-        borderTop: '1px solid var(--border-hairline)',
-        padding: '20px 24px',
+        padding: '16px 24px',
+        fontSize: '11px',
         color: 'var(--text-muted)',
-        fontSize: '11px'
+        zIndex: 10
       }}>
         <div style={{
           maxWidth: '1540px',
           margin: '0 auto',
           display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'center',
           justifyContent: 'space-between',
-          gap: '16px'
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Radio size={14} style={{ color: 'var(--accent-cyan)' }} />
-            <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
-              SpacePulse Space Intelligence Platform
-            </span>
-            <span>•</span>
-            <span style={{ color: 'var(--status-live)' }}>
-              100% Authentic Data Policy
-            </span>
+            <Radio size={13} style={{ color: 'var(--accent-cyan)' }} />
+            <span style={{ fontFamily: 'var(--font-heading)', letterSpacing: '0.05em' }}>SPACEPULSE</span>
+            <span>• Verified Multi-Agency Space Exploration Console</span>
           </div>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', alignItems: 'center' }}>
-            <span>Authoritative Telemetry:</span>
+          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
             <a href="https://www.swpc.noaa.gov/" target="_blank" rel="noreferrer" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>
               NOAA SWPC
             </a>
@@ -228,13 +217,18 @@ function AppContent({
         </div>
       </footer>
 
-      {/* 7. Full-Screen Immersive "Explore the Space" Pure Visual Experience */}
+      {/* 7. Full-Screen Immersive "Explore the Space" Experience with Spatial Walkthrough */}
       {isExploringSpace && (
-        <ExploreTheSpace onExit={() => setIsExploringSpace(false)} />
+        <ExploreTheSpace
+          onExit={(targetTab) => {
+            setIsExploringSpace(false);
+            if (targetTab) {
+              setActiveTab(targetTab);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+          }}
+        />
       )}
-
-      {/* 8. Interactive Walkthrough Guided Overlay */}
-      <WalkthroughOverlay />
     </div>
   );
 }
@@ -248,42 +242,23 @@ export function App() {
   const [analyzedObjectId, setAnalyzedObjectId] = useState<string | undefined>(undefined);
   const [analysisMode, setAnalysisMode] = useState<AnalysisType | undefined>(undefined);
 
-  const handleNavigateTab = (tab: TabType) => {
-    setActiveTab(tab);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleInspectSampleObject = async () => {
-    const sample = await resolveInspectableObject('aditya-l1');
-    if (sample) {
-      setSelectedObject(sample);
-      setIsInspectorOpen(true);
-    }
-  };
-
   return (
-    <WalkthroughProvider
-      onNavigateTab={handleNavigateTab}
-      onInspectSampleObject={handleInspectSampleObject}
-      onExploreSpace={() => setIsExploringSpace(true)}
-    >
-      <AppContent
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        selectedObject={selectedObject}
-        setSelectedObject={setSelectedObject}
-        isInspectorOpen={isInspectorOpen}
-        setIsInspectorOpen={setIsInspectorOpen}
-        focusedObjectId={focusedObjectId}
-        setFocusedObjectId={setFocusedObjectId}
-        isExploringSpace={isExploringSpace}
-        setIsExploringSpace={setIsExploringSpace}
-        analyzedObjectId={analyzedObjectId}
-        setAnalyzedObjectId={setAnalyzedObjectId}
-        analysisMode={analysisMode}
-        setAnalysisMode={setAnalysisMode}
-      />
-    </WalkthroughProvider>
+    <AppContent
+      activeTab={activeTab}
+      setActiveTab={setActiveTab}
+      selectedObject={selectedObject}
+      setSelectedObject={setSelectedObject}
+      isInspectorOpen={isInspectorOpen}
+      setIsInspectorOpen={setIsInspectorOpen}
+      focusedObjectId={focusedObjectId}
+      setFocusedObjectId={setFocusedObjectId}
+      isExploringSpace={isExploringSpace}
+      setIsExploringSpace={setIsExploringSpace}
+      analyzedObjectId={analyzedObjectId}
+      setAnalyzedObjectId={setAnalyzedObjectId}
+      analysisMode={analysisMode}
+      setAnalysisMode={setAnalysisMode}
+    />
   );
 }
 
