@@ -86,63 +86,68 @@ function AppContent({
         }}
       />
 
-      {/* 4. Main Scientific Operations Console */}
-      <main style={{ flex: 1, position: 'relative', zIndex: 10, paddingBottom: '32px' }}>
-        <ErrorBoundary fallbackTitle="Scientific Component Notice">
-          {activeTab === 'mission-control' && (
-            <MissionControl
-              onSelectObject={handleInspectObject}
-              onNavigateTab={(tab) => {
-                setActiveTab(tab);
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-              onFocusOnMap={handleFocusOnMap}
-              onAnalyzeObject={handleAnalyzeObject}
-              onExploreSpace={() => setIsExploringSpace(true)}
-            />
-          )}
+      {/* 4. Main Scientific Operations Console & Shared Workspace Architecture */}
+      <main 
+        id="app-workspace"
+        className={`app-workspace-layout ${isInspectorOpen && selectedObject && activeTab !== 'space-map' ? 'with-inspector' : ''}`}
+      >
+        <div className="app-content-viewport">
+          <ErrorBoundary fallbackTitle="Scientific Component Notice">
+            {activeTab === 'mission-control' && (
+              <MissionControl
+                onSelectObject={handleInspectObject}
+                onNavigateTab={(tab) => {
+                  setActiveTab(tab);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                onFocusOnMap={handleFocusOnMap}
+                onAnalyzeObject={handleAnalyzeObject}
+                onExploreSpace={() => setIsExploringSpace(true)}
+              />
+            )}
 
-          {activeTab === 'spacecraft' && (
-            <SpacecraftExplorer
-              onSelectObject={handleInspectObject}
-              onFocusOnMap={handleFocusOnMap}
-              onAnalyzeObject={handleAnalyzeObject}
-              selectedObject={selectedObject}
-              isInspectorOpen={isInspectorOpen}
-              onCloseInspector={() => setIsInspectorOpen(false)}
-            />
-          )}
+            {activeTab === 'spacecraft' && (
+              <SpacecraftExplorer
+                onSelectObject={handleInspectObject}
+                onFocusOnMap={handleFocusOnMap}
+                onAnalyzeObject={handleAnalyzeObject}
+              />
+            )}
 
-          {activeTab === 'space-map' && (
-            <SpaceMap
-              onSelectObject={handleSelectObject}
-              onInspectObject={handleInspectObject}
-              selectedObjectId={focusedObjectId}
-            />
-          )}
+            {activeTab === 'space-map' && (
+              <SpaceMap
+                onSelectObject={handleSelectObject}
+                onInspectObject={handleInspectObject}
+                selectedObjectId={focusedObjectId}
+              />
+            )}
 
-          {activeTab === 'analysis' && (
-            <ScientificAnalysis
-              initialObjectId={analyzedObjectId}
-              initialMode={analysisMode}
-            />
-          )}
+            {activeTab === 'analysis' && (
+              <ScientificAnalysis
+                initialObjectId={analyzedObjectId}
+                initialMode={analysisMode}
+              />
+            )}
 
-          {activeTab === 'missions' && (
-            <MissionsExplorer />
-          )}
-        </ErrorBoundary>
+            {activeTab === 'missions' && (
+              <MissionsExplorer />
+            )}
+          </ErrorBoundary>
+        </div>
+
+        {/* 5. Centralized Object Inspector (Docked on desktop content tabs, bottom sheet on mobile, floating HUD on Space Map) */}
+        {selectedObject && isInspectorOpen && (
+          <aside className={`app-inspector-dock ${activeTab === 'space-map' ? 'hud-mode' : 'docked-mode'}`}>
+            <ObjectInspector
+              object={selectedObject}
+              onClose={() => setIsInspectorOpen(false)}
+              onFocusOnMap={activeTab !== 'space-map' ? handleFocusOnMap : undefined}
+              onOpenInAnalysis={activeTab !== 'analysis' ? handleAnalyzeObject : undefined}
+              embedded={activeTab !== 'space-map'}
+            />
+          </aside>
+        )}
       </main>
-
-      {/* 5. Floating Object Inspector (for Space Map, Mission Control, Analysis) */}
-      {activeTab !== 'spacecraft' && selectedObject && isInspectorOpen && (
-        <ObjectInspector
-          object={selectedObject}
-          onClose={() => setIsInspectorOpen(false)}
-          onFocusOnMap={activeTab !== 'space-map' ? handleFocusOnMap : undefined}
-          onOpenInAnalysis={activeTab !== 'analysis' ? handleAnalyzeObject : undefined}
-        />
-      )}
 
       {/* 6. Authoritative Footer & Celestial Baseline */}
       <footer style={{
