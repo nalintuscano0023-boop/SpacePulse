@@ -55,78 +55,58 @@ export const SPATIAL_WALKTHROUGH_STEPS: SpatialWalkthroughStep[] = [
   {
     id: 'welcome',
     stepNumber: 1,
-    totalSteps: 6,
-    phaseLabel: '01 // THE COSMOS',
-    title: 'Welcome to SpacePulse.',
-    description: 'You have left the control center and entered the open universe. Surrounding you is a multi-tier starfield of thousands of stars rendered with authentic stellar spectral classes and realistic depth.',
+    totalSteps: 5,
+    phaseLabel: '01 // IMMERSIVE SPACE',
+    title: 'Welcome to Explore the Space.',
+    description: 'You have left Mission Control and entered open deep space. Surrounding you is an authentic, multi-tier cosmic environment rendered with physically grounded scale, depth, and lighting.',
     env: 'SOLAR_SYSTEM',
-    cameraPos: [0, 85, 290],
+    cameraPos: [0, 80, 270],
     cameraTarget: [0, 0, 0],
-    tip: 'Feel the scale • Deep space surrounds you'
+    tip: 'Vast cosmos • Realistic stellar canopy • Zero interface clutter'
   },
   {
     id: 'look-around',
     stepNumber: 2,
-    totalSteps: 6,
-    phaseLabel: '02 // PERSPECTIVE',
-    title: 'Look around.',
-    description: 'Space has no fixed up or down. Drag to rotate your celestial perspective in full 360°, scroll or pinch to zoom across light-minutes, and right-click or two-finger drag to pan.',
+    totalSteps: 5,
+    phaseLabel: '02 // PERSPECTIVE & CONTROLS',
+    title: 'Look around freely.',
+    description: 'Space has no fixed horizon. Left-click and drag to orbit your celestial vantage point in full 360°, scroll or pinch to zoom across astronomical distances, and right-click to pan.',
     env: 'SOLAR_SYSTEM',
-    cameraPos: [45, 60, 240],
+    cameraPos: [45, 55, 230],
     cameraTarget: [0, 0, 0],
-    tip: 'Drag to Orbit 360° • Scroll to Zoom • Right-click to Pan'
+    tip: 'Left Drag: Orbit 360° • Scroll: Zoom • Right Drag: Pan'
   },
   {
     id: 'solar-system',
     stepNumber: 3,
-    totalSteps: 6,
-    phaseLabel: '03 // THE SOLAR SYSTEM',
+    totalSteps: 5,
+    phaseLabel: '03 // SOLAR SYSTEM',
     title: 'Explore the Solar System.',
-    description: 'Heliocentric dynamic simulation. Notice the Sun’s physical inverse-square illumination, Earth with its atmospheric limb and cloud layer, and the vast distances between planetary orbits.',
+    description: 'A physically grounded heliocentric simulation. Notice the Sun’s inverse-square illumination, Earth with its atmospheric limb and cloud layer, planetary orbital geometries, and deep-space probes.',
     env: 'SOLAR_SYSTEM',
-    cameraPos: [65, 38, 140],
-    cameraTarget: [30, 0, 0],
-    tip: 'Sun illumination • Planetary scale • Keplerian planes'
+    cameraPos: [65, 36, 140],
+    cameraTarget: [25, 0, 0],
+    tip: 'Physically believable illumination • Scaled planetary surfaces'
   },
   {
-    id: 'spacecraft',
+    id: 'domains',
     stepNumber: 4,
-    totalSteps: 6,
-    phaseLabel: '04 // HUMAN REACH',
-    title: 'Track authentic spacecraft.',
-    description: 'Humanity’s exploratory fleet. Observe authentic 3D models modeled from verified aerospace blueprints, tracked according to real-world flight configurations.',
-    env: 'SOLAR_SYSTEM',
-    cameraPos: [-36, 16, 75],
-    cameraTarget: [-35, 12, 55],
-    keyAction: {
-      label: 'View Fleet in Spacecraft Explorer',
-      tab: 'spacecraft'
-    },
-    tip: 'Authentic engineering blueprints • Zero fabricated data'
-  },
-  {
-    id: 'inspector',
-    stepNumber: 5,
-    totalSteps: 6,
-    phaseLabel: '05 // CARTOGRAPHY',
-    title: 'Inspect objects & ephemerides.',
-    description: 'In SpacePulse’s scientific sections, select any probe or satellite to inspect verified apogee/perigee, live orbital vectors, and multi-agency mission dossiers.',
+    totalSteps: 5,
+    phaseLabel: '04 // COSMIC NAVIGATION',
+    title: 'Navigate Cosmic Domains.',
+    description: 'Journey across the cosmos using the domain navigation below: switch between the Solar System, the Milky Way galactic dome, distant Galaxies, glowing Nebulas, filamentary Deep Space, and the Universe web.',
     env: 'MILKY_WAY',
-    cameraPos: [0, 95, 280],
+    cameraPos: [0, 85, 260],
     cameraTarget: [0, 0, 0],
-    keyAction: {
-      label: 'Open 3D Space Map',
-      tab: 'space-map'
-    },
-    tip: 'J2000 coordinates • Real CelesTrak & JPL orbital elements'
+    tip: 'Select Solar System, Milky Way, Galaxies, Nebulas, Deep Space, or Universe'
   },
   {
     id: 'return',
-    stepNumber: 6,
-    totalSteps: 6,
-    phaseLabel: '06 // COMMAND DECK',
+    stepNumber: 5,
+    totalSteps: 5,
+    phaseLabel: '05 // RETURN TO CONSOLE',
     title: 'Return to Mission Control.',
-    description: 'Whenever you are ready, return to the Mission Control deck to monitor real-time NOAA solar weather, orbital health, and mission timelines.',
+    description: 'Whenever you wish to resume analyzing verified satellite telemetry and space weather, click "Return to Mission Control" at the top-left or press ESC to smoothly return to the console.',
     env: 'SOLAR_SYSTEM',
     cameraPos: [0, 75, 260],
     cameraTarget: [0, 0, 0],
@@ -134,7 +114,7 @@ export const SPATIAL_WALKTHROUGH_STEPS: SpatialWalkthroughStep[] = [
       label: 'Return to Mission Control',
       tab: 'mission-control'
     },
-    tip: 'Click Return to Mission Control at top-left anytime'
+    tip: 'Click Return to Mission Control at top-left or press ESC anytime'
   }
 ];
 
@@ -322,7 +302,7 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
   }, [isAudioMuted]);
 
   // -------------------------------------------------------------------------
-  // Entrance Sequence & The First WOW Moment
+  // Entrance Sequence & Automatic Walkthrough Trigger
   // -------------------------------------------------------------------------
   useEffect(() => {
     // 1.8s: Camera enters space and settles; canvas fully revealed
@@ -330,11 +310,14 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
       setEntryPhase('settled');
     }, 1800);
 
-    // 6.5s: THE FIRST WOW MOMENT. Only after 6.5 seconds of unobstructed
-    // contemplation does the subtle spatial walkthrough HUD appear.
+    // Short settling moment after entry transition completes (~500ms after settled).
+    // The interactive spatial walkthrough automatically begins inside Explore the Space!
     const t2 = setTimeout(() => {
       setIsWalkthroughReady(true);
-    }, 6500);
+      setIsWalkthroughActive(true);
+      setIsWalkthroughMinimized(false);
+      setCurrentStepIndex(0);
+    }, 2300);
 
     return () => {
       clearTimeout(t1);
@@ -1141,7 +1124,9 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
             pointerEvents: 'auto',
             background: 'rgba(4, 10, 20, 0.8)',
             backdropFilter: 'blur(16px)',
-            border: '1px solid rgba(56, 189, 248, 0.3)',
+            border: currentStep?.id === 'return' 
+              ? '1px solid rgba(56, 189, 248, 0.8)' 
+              : '1px solid rgba(56, 189, 248, 0.3)',
             color: '#f8fafc',
             padding: '8px 16px',
             fontSize: '12px',
@@ -1150,11 +1135,13 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
             alignItems: 'center',
             gap: '8px',
             borderRadius: 'var(--radius-full)',
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.7), 0 0 15px rgba(56, 189, 248, 0.12)',
-            transition: 'all 0.2s ease',
+            boxShadow: currentStep?.id === 'return'
+              ? '0 0 25px rgba(56, 189, 248, 0.45), 0 8px 24px rgba(0, 0, 0, 0.7)'
+              : '0 8px 24px rgba(0, 0, 0, 0.7), 0 0 15px rgba(56, 189, 248, 0.12)',
+            transition: 'all 0.3s ease',
             cursor: 'pointer'
           }}
-          title="Return to SpacePulse Mission Control"
+          title="Return to SpacePulse Mission Control (ESC)"
         >
           <ArrowLeft size={14} style={{ color: 'var(--accent-cyan)' }} />
           <span>Return to Mission Control</span>
@@ -1465,30 +1452,35 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
         </div>
       )}
 
-      {/* 6. Bottom Center: Minimal Cosmic Domain Selector (Auto-Hiding) */}
+      {/* 6. Bottom Center: Minimal Cosmic Domain Selector (Highlighted on Step 4) */}
       <div style={{
         position: 'absolute',
         bottom: '24px',
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: 20,
-        transition: 'opacity 0.4s ease',
-        opacity: controlsVisible ? 1 : 0.25,
-        pointerEvents: controlsVisible ? 'auto' : 'none',
+        transition: 'all 0.4s ease',
+        opacity: (controlsVisible || isWalkthroughActive) ? 1 : 0.25,
+        pointerEvents: (controlsVisible || isWalkthroughActive) ? 'auto' : 'none',
         maxWidth: 'calc(100vw - 32px)'
       }}>
         <div style={{
           display: 'flex',
           alignItems: 'center',
           gap: '4px',
-          background: 'rgba(4, 10, 20, 0.82)',
+          background: 'rgba(4, 10, 20, 0.85)',
           backdropFilter: 'blur(16px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
+          border: currentStep?.id === 'domains' 
+            ? '1px solid rgba(56, 189, 248, 0.7)' 
+            : '1px solid rgba(255, 255, 255, 0.1)',
+          boxShadow: currentStep?.id === 'domains'
+            ? '0 0 25px rgba(56, 189, 248, 0.35), 0 8px 32px rgba(0, 0, 0, 0.75)'
+            : '0 8px 32px rgba(0, 0, 0, 0.75)',
           padding: '4px',
           borderRadius: 'var(--radius-full)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.75)',
           overflowX: 'auto',
-          whiteSpace: 'nowrap'
+          whiteSpace: 'nowrap',
+          transition: 'all 0.3s ease'
         }}>
           {[
             { id: 'SOLAR_SYSTEM', label: 'Solar System' },
