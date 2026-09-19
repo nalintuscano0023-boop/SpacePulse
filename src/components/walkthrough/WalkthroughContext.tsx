@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 
 export interface WalkthroughStepConfig {
   id: string;
@@ -122,7 +122,6 @@ export const WALKTHROUGH_STEPS: WalkthroughStepConfig[] = [
 
 interface WalkthroughContextType {
   isActive: boolean;
-  isWelcomeOpen: boolean;
   currentStepIndex: number;
   currentStep: WalkthroughStepConfig | null;
   startWalkthrough: () => void;
@@ -130,13 +129,9 @@ interface WalkthroughContextType {
   prevStep: () => void;
   skipWalkthrough: () => void;
   finishWalkthrough: (launchExploreSpace?: boolean) => void;
-  openWelcome: () => void;
-  closeWelcome: () => void;
 }
 
 const WalkthroughContext = createContext<WalkthroughContextType | undefined>(undefined);
-
-export const STORAGE_KEY = 'spacepulse_walkthrough_completed';
 
 interface WalkthroughProviderProps {
   children: React.ReactNode;
@@ -152,25 +147,11 @@ export const WalkthroughProvider: React.FC<WalkthroughProviderProps> = ({
   onExploreSpace
 }) => {
   const [isActive, setIsActive] = useState(false);
-  const [isWelcomeOpen, setIsWelcomeOpen] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
-
-  // Check initial first-time visit
-  useEffect(() => {
-    const isCompleted = localStorage.getItem(STORAGE_KEY);
-    if (!isCompleted) {
-      // Delay slightly for smooth page load
-      const timer = setTimeout(() => {
-        setIsWelcomeOpen(true);
-      }, 1400);
-      return () => clearTimeout(timer);
-    }
-  }, []);
 
   const currentStep = isActive ? WALKTHROUGH_STEPS[currentStepIndex] || null : null;
 
   const startWalkthrough = useCallback(() => {
-    setIsWelcomeOpen(false);
     setIsActive(true);
     setCurrentStepIndex(0);
     const firstStep = WALKTHROUGH_STEPS[0];
@@ -196,7 +177,6 @@ export const WalkthroughProvider: React.FC<WalkthroughProviderProps> = ({
     } else {
       // Final step finish
       setIsActive(false);
-      localStorage.setItem(STORAGE_KEY, 'true');
     }
   }, [currentStepIndex, onNavigateTab, onInspectSampleObject]);
 
@@ -213,41 +193,26 @@ export const WalkthroughProvider: React.FC<WalkthroughProviderProps> = ({
 
   const skipWalkthrough = useCallback(() => {
     setIsActive(false);
-    setIsWelcomeOpen(false);
-    localStorage.setItem(STORAGE_KEY, 'true');
   }, []);
 
   const finishWalkthrough = useCallback((launchExploreSpace = false) => {
     setIsActive(false);
-    setIsWelcomeOpen(false);
-    localStorage.setItem(STORAGE_KEY, 'true');
     if (launchExploreSpace && onExploreSpace) {
       onExploreSpace();
     }
   }, [onExploreSpace]);
 
-  const openWelcome = useCallback(() => {
-    setIsWelcomeOpen(true);
-  }, []);
-
-  const closeWelcome = useCallback(() => {
-    setIsWelcomeOpen(false);
-  }, []);
-
   return (
     <WalkthroughContext.Provider
       value={{
         isActive,
-        isWelcomeOpen,
         currentStepIndex,
         currentStep,
         startWalkthrough,
         nextStep,
         prevStep,
         skipWalkthrough,
-        finishWalkthrough,
-        openWelcome,
-        closeWelcome
+        finishWalkthrough
       }}
     >
       {children}

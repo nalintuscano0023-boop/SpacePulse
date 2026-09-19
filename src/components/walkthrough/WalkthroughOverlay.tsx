@@ -3,28 +3,19 @@ import {
   X, 
   ChevronRight, 
   ChevronLeft, 
-  Sparkles, 
-  Compass, 
-  ArrowRight,
-  Radio,
-  Eye,
-  Orbit,
-  ExternalLink
+  Sparkles 
 } from 'lucide-react';
 import { useWalkthrough, WALKTHROUGH_STEPS } from './WalkthroughContext';
 
 export const WalkthroughOverlay: React.FC = () => {
   const {
     isActive,
-    isWelcomeOpen,
     currentStepIndex,
     currentStep,
-    startWalkthrough,
     nextStep,
     prevStep,
     skipWalkthrough,
-    finishWalkthrough,
-    closeWelcome
+    finishWalkthrough
   } = useWalkthrough();
 
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
@@ -114,166 +105,23 @@ export const WalkthroughOverlay: React.FC = () => {
 
   // Keyboard navigation
   useEffect(() => {
-    if (!isActive && !isWelcomeOpen) return;
+    if (!isActive) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (isWelcomeOpen) closeWelcome();
-        else skipWalkthrough();
+        skipWalkthrough();
       } else if (e.key === 'ArrowRight' || e.key === 'Enter') {
-        if (isWelcomeOpen) startWalkthrough();
-        else nextStep();
+        nextStep();
       } else if (e.key === 'ArrowLeft') {
-        if (isActive) prevStep();
+        prevStep();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isActive, isWelcomeOpen, closeWelcome, skipWalkthrough, startWalkthrough, nextStep, prevStep]);
+  }, [isActive, skipWalkthrough, nextStep, prevStep]);
 
-  // 1. WELCOME MODAL (FIRST VISIT OR MANUAL TRIGGER)
-  if (isWelcomeOpen) {
-    return (
-      <div style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 10000,
-        background: 'rgba(3, 5, 10, 0.65)',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '24px',
-        animation: 'walkthroughFadeIn 0.3s ease'
-      }}>
-        <div 
-          className="glass-panel tech-corner"
-          style={{
-            maxWidth: '520px',
-            width: '100%',
-            background: 'rgba(7, 17, 31, 0.96)',
-            border: '1px solid rgba(56, 189, 248, 0.35)',
-            boxShadow: '0 24px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(56, 189, 248, 0.15)',
-            borderRadius: 'var(--radius-md)',
-            padding: '28px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '16px',
-            position: 'relative'
-          }}
-        >
-          {/* Dismiss button */}
-          <button
-            onClick={closeWelcome}
-            style={{
-              position: 'absolute',
-              top: '16px',
-              right: '16px',
-              background: 'none',
-              border: 'none',
-              color: 'var(--text-muted)',
-              cursor: 'pointer',
-              padding: '4px'
-            }}
-            title="Dismiss"
-          >
-            <X size={16} />
-          </button>
-
-          {/* Header Badge */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: 'var(--radius-xs)',
-              background: 'rgba(56, 189, 248, 0.12)',
-              border: '1px solid rgba(56, 189, 248, 0.3)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--accent-cyan)'
-            }}>
-              <Radio size={20} />
-            </div>
-            <div>
-              <div style={{
-                fontFamily: 'var(--font-heading)',
-                fontSize: '18px',
-                fontWeight: 700,
-                letterSpacing: '0.08em',
-                color: '#ffffff'
-              }}>
-                SPACE<span style={{ color: 'var(--accent-cyan)' }}>PULSE</span>
-              </div>
-              <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                Space Intelligence Console
-              </div>
-            </div>
-          </div>
-
-          <div style={{ borderTop: '1px solid var(--border-hairline)', paddingTop: '14px' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 600, color: '#ffffff', margin: '0 0 8px' }}>
-              Welcome to your space intelligence console.
-            </h2>
-            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.55, margin: 0 }}>
-              Let's take a quick mission walkthrough to discover active spacecraft telemetry, interactive 3D solar system orbits, scientific vector analysis, and deep space exploration.
-            </p>
-          </div>
-
-          {/* Feature Highlights Minimal Pills */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', margin: '4px 0' }}>
-            <span style={{ fontSize: '11px', padding: '3px 9px', borderRadius: '4px', background: 'var(--surface-inset)', border: '1px solid var(--border-hairline)', color: 'var(--text-secondary)' }}>
-              ✦ Real NOAA & CelesTrak Data
-            </span>
-            <span style={{ fontSize: '11px', padding: '3px 9px', borderRadius: '4px', background: 'var(--surface-inset)', border: '1px solid var(--border-hairline)', color: 'var(--text-secondary)' }}>
-              ✦ Authentic 3D Spacecraft
-            </span>
-            <span style={{ fontSize: '11px', padding: '3px 9px', borderRadius: '4px', background: 'var(--surface-inset)', border: '1px solid var(--border-hairline)', color: 'var(--text-secondary)' }}>
-              ✦ Interactive Space Map
-            </span>
-          </div>
-
-          {/* Action Buttons */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-end',
-            gap: '10px',
-            marginTop: '8px',
-            paddingTop: '12px',
-            borderTop: '1px solid var(--border-hairline)'
-          }}>
-            <button
-              onClick={skipWalkthrough}
-              className="btn btn-secondary"
-              style={{ fontSize: '12px', padding: '7px 14px' }}
-            >
-              Skip
-            </button>
-            <button
-              onClick={startWalkthrough}
-              className="btn btn-primary"
-              style={{
-                fontSize: '12px',
-                padding: '7px 18px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                boxShadow: '0 0 15px rgba(56, 189, 248, 0.3)'
-              }}
-            >
-              <span>Start Walkthrough</span>
-              <ArrowRight size={14} />
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // 2. ACTIVE INTERACTIVE GUIDED TOUR
+  // ACTIVE INTERACTIVE GUIDED TOUR
   if (!isActive || !currentStep) return null;
 
   const stepFormatted = String(currentStep.stepNumber).padStart(2, '0');
