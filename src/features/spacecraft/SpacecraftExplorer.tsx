@@ -201,7 +201,11 @@ export const SpacecraftExplorer: React.FC<SpacecraftExplorerProps> = ({
           <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Propagating real-time orbital elements and resolving J2000 state vectors...</div>
         </div>
       ) : (
-        <div className="spacecraft-cards-grid">
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
+          gap: '16px'
+        }}>
           {filteredList.map((craft) => (
             <SpacecraftCard
               key={craft.id}

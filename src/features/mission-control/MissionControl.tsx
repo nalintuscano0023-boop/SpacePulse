@@ -791,14 +791,12 @@ export const MissionControl: React.FC<MissionControlProps> = ({
           {featuredFleet.map((craft) => (
             <div
               key={craft.id}
-              onClick={() => onSelectObject(craft)}
               className="glass-card"
               style={{
                 padding: '14px',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
-                cursor: 'pointer',
                 gap: '8px'
               }}
             >
@@ -837,19 +835,6 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                 }}>
                   {craft.description}
                 </p>
-              </div>
-
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                paddingTop: '8px',
-                borderTop: '1px solid var(--border-hairline)',
-                fontSize: '11px',
-                color: 'var(--accent-cyan)'
-              }}>
-                <span>Inspect Object Dossier</span>
-                <ChevronRight size={13} />
               </div>
             </div>
           ))}
@@ -1223,6 +1208,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                               const resolved = await resolveSpacecraftState(matchedCraft);
                               onSelectObject(resolved);
                             }
+                            onNavigateTab('spacecraft');
                           }}
                           className="btn btn-primary"
                           style={{ fontSize: '10px', padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
