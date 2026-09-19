@@ -10,7 +10,6 @@ import {
   BookOpen,
   ArrowRightLeft,
   Sun,
-  ExternalLink,
   ChevronDown,
   ChevronUp,
   Activity,
@@ -1031,7 +1030,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 290px), 1fr))',
               gap: '14px',
-              alignItems: 'stretch'
+              alignItems: 'start'
             }}
           >
             {MISSION_SNAPSHOTS.map((snapshot) => {
@@ -1080,11 +1079,11 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
                       <div style={{ background: 'var(--surface-inset)', padding: '6px 8px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
                         <div style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Launch Vehicle</div>
-                        <div style={{ fontWeight: 600, fontSize: '11px', color: 'var(--text-primary)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={snapshot.launchVehicle}>{snapshot.launchVehicle}</div>
+                        <div style={{ fontWeight: 600, fontSize: '11px', color: 'var(--text-primary)', marginTop: '2px', wordBreak: 'break-word', lineHeight: 1.35 }} title={snapshot.launchVehicle}>{snapshot.launchVehicle}</div>
                       </div>
                       <div style={{ background: 'var(--surface-inset)', padding: '6px 8px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
                         <div style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Launch Date</div>
-                        <div style={{ fontWeight: 600, fontSize: '11px', color: 'var(--text-primary)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={snapshot.launchDate}>{snapshot.launchDate}</div>
+                        <div style={{ fontWeight: 600, fontSize: '11px', color: 'var(--text-primary)', marginTop: '2px', wordBreak: 'break-word', lineHeight: 1.35 }} title={snapshot.launchDate}>{snapshot.launchDate}</div>
                       </div>
                     </div>
 
@@ -1212,18 +1211,6 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                           <span>{isExpanded ? 'Collapse' : 'Milestones'}</span>
                           {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                         </button>
-
-                        <a
-                          href={snapshot.officialSourceUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn btn-secondary"
-                          style={{ fontSize: '10px', padding: '4px 8px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
-                          title="Open official agency mission portal in new tab"
-                        >
-                          <ExternalLink size={11} />
-                          <span>Archive</span>
-                        </a>
                       </div>
 
                       {snapshot.actionType === 'inspect' && matchedCraft && (

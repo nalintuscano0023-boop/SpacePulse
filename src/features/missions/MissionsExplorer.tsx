@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { 
   Database, 
-  ExternalLink, 
   Search, 
   Layers, 
   BookOpen,
   Award,
   ChevronRight,
   X,
-  Radio
+  Radio,
+  ExternalLink
 } from 'lucide-react';
 import { MISSIONS_DATABASE, ARCHIVE_DATASETS } from '../../services/data/missionsCatalog';
 import type { MissionRecord, ArchiveDataset } from '../../types/missions';
@@ -281,7 +281,7 @@ export const MissionsExplorer: React.FC = () => {
         /* Planetary Science Datasets Directory (Compact Rows) */
         <div className="glass-panel" style={{ overflow: 'hidden' }}>
           <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-            <table className="data-table-container" style={{ minWidth: '660px' }}>
+            <table className="data-table-container" style={{ width: '100%', minWidth: '540px' }}>
               <thead>
                 <tr style={{
                   borderBottom: '1px solid var(--border-hairline)',
@@ -292,11 +292,10 @@ export const MissionsExplorer: React.FC = () => {
                   textTransform: 'uppercase',
                   letterSpacing: '0.04em'
                 }}>
-                  <th style={{ padding: '12px 16px', width: '38%' }}>Archive Title</th>
-                  <th style={{ padding: '12px 16px', width: '20%' }}>Repository Host</th>
-                  <th style={{ padding: '12px 16px', width: '16%' }}>Mission</th>
-                  <th style={{ padding: '12px 16px', width: '14%' }}>Formats</th>
-                  <th style={{ padding: '12px 16px', width: '12%' }}>Access Status</th>
+                  <th style={{ padding: '12px 16px', width: '42%' }}>Archive Title</th>
+                  <th style={{ padding: '12px 16px', width: '22%' }}>Repository Host</th>
+                  <th style={{ padding: '12px 16px', width: '20%' }}>Mission</th>
+                  <th style={{ padding: '12px 16px', width: '16%' }}>Formats</th>
                 </tr>
               </thead>
               <tbody>
@@ -304,7 +303,7 @@ export const MissionsExplorer: React.FC = () => {
                   <tr key={archive.id} className="data-table-row">
                     <td style={{ padding: '12px 16px' }}>
                       <div style={{ fontWeight: 600, color: '#ffffff' }}>{archive.title}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px', maxWidth: '420px' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px', maxWidth: '480px', lineHeight: 1.4 }}>
                         {archive.description}
                       </div>
                     </td>
@@ -321,49 +320,6 @@ export const MissionsExplorer: React.FC = () => {
                       <span className="mono" style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
                         {archive.formats.join(', ')}
                       </span>
-                    </td>
-
-                    <td style={{ padding: '12px 16px' }}>
-                      {archive.officialUrl ? (
-                        <a
-                          href={archive.officialUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          aria-label={`Open ${archive.title} official repository`}
-                          title={`Visit official ${archive.archiveHost} archive`}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '5px',
-                            color: 'var(--status-live)',
-                            fontSize: '11px',
-                            fontWeight: 600,
-                            textDecoration: 'none',
-                            padding: '4px 8px',
-                            borderRadius: 'var(--radius-xs)',
-                            background: 'rgba(34, 197, 94, 0.08)',
-                            border: '1px solid rgba(34, 197, 94, 0.25)',
-                            transition: 'all 0.15s ease'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(34, 197, 94, 0.16)';
-                            e.currentTarget.style.borderColor = 'var(--status-live)';
-                            e.currentTarget.style.color = '#ffffff';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(34, 197, 94, 0.08)';
-                            e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.25)';
-                            e.currentTarget.style.color = 'var(--status-live)';
-                          }}
-                        >
-                          <span>{archive.accessType}</span>
-                          <ExternalLink size={11} style={{ flexShrink: 0 }} />
-                        </a>
-                      ) : (
-                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                          {archive.accessType}
-                        </span>
-                      )}
                     </td>
                   </tr>
                 ))}

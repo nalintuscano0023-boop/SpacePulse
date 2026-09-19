@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Satellite, 
@@ -39,14 +39,23 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
 }) => {
   const [show3DViewer, setShow3DViewer] = useState(false);
   
-  // Progressive disclosure: Overview is open by default; technical sections collapsed
+  // All sections are expanded by default so critical metrics are immediately readable
   const [sections, setSections] = useState<Record<string, boolean>>({
     overview: true,
-    position: false,
-    orbit: false,
-    mission: false,
-    data: false
+    position: true,
+    orbit: true,
+    mission: true,
+    data: true
   });
+
+  // Lock body scroll while inspector is open
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, []);
 
   if (!rawObject) return null;
 
@@ -78,34 +87,18 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
       />
 
       <div
-        style={{
-          position: 'fixed',
-          top: '72px',
-          right: '20px',
-          bottom: '20px',
-          width: '430px',
-          maxWidth: 'calc(100vw - 40px)',
-          zIndex: 1000,
-          display: 'flex',
-          flexDirection: 'column',
-          animation: 'slideInRight 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
-          background: 'rgba(7, 15, 28, 0.94)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          border: '1px solid rgba(56, 189, 248, 0.24)',
-          boxShadow: '0 24px 64px rgba(0, 0, 0, 0.85), 0 0 20px rgba(56, 189, 248, 0.08)'
-        }}
         id="object-inspector-panel"
         className="glass-panel tech-corner object-inspector-panel"
       >
         {/* Panel Header */}
         <div style={{
-          padding: '16px 20px',
+          padding: '14px 18px',
           borderBottom: '1px solid var(--border-hairline)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          background: 'rgba(255, 255, 255, 0.015)'
+          background: 'rgba(255, 255, 255, 0.02)',
+          flexShrink: 0
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
             <div style={{
@@ -171,8 +164,10 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
 
         {/* Panel Scrollable Body */}
         <div style={{
-          flex: 1,
+          flex: '1 1 0%',
+          minHeight: 0,
           overflowY: 'auto',
+          WebkitOverflowScrolling: 'touch',
           padding: '16px 20px',
           display: 'flex',
           flexDirection: 'column',
@@ -515,18 +510,20 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
         {/* Action Footer */}
         <div style={{
           padding: '12px 20px',
-          paddingBottom: 'calc(12px + var(--sab))',
+          paddingBottom: 'calc(12px + var(--sab, 0px))',
           borderTop: '1px solid var(--border-hairline)',
           display: 'flex',
+          flexWrap: 'wrap',
           gap: '8px',
-          background: 'rgba(3, 5, 10, 0.95)'
+          background: 'rgba(3, 5, 10, 0.95)',
+          flexShrink: 0
         }}>
           {/* 3D Model Architecture Viewer Button (for Spacecraft / Satellites) */}
           {!isCelestial ? (
             <button
               onClick={() => setShow3DViewer(true)}
               className="btn btn-secondary"
-              style={{ flex: 1, fontSize: '12px' }}
+              style={{ flex: '1 1 110px', minHeight: '38px', fontSize: '12px' }}
               title="Inspect 3D Spacecraft Architecture"
             >
               <Eye size={14} style={{ color: 'var(--accent-cyan)' }} />
@@ -539,7 +536,7 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
               <button
                 onClick={() => onFocusOnMap(object.id)}
                 className="btn btn-primary"
-                style={{ flex: 1, fontSize: '12px' }}
+                style={{ flex: '1 1 130px', minHeight: '38px', fontSize: '12px' }}
                 title={`Focus ${object.name} on 3D Space Map`}
               >
                 <Crosshair size={14} />
@@ -555,7 +552,7 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
                   disabled
                   aria-disabled="true"
                   className="btn btn-secondary"
-                  style={{ flex: 1, fontSize: '12px', opacity: 0.4, cursor: 'not-allowed' }}
+                  style={{ flex: '1 1 130px', minHeight: '38px', fontSize: '12px', opacity: 0.4, cursor: 'not-allowed' }}
                 >
                   <Crosshair size={14} />
                   <span>Focus on Map</span>
@@ -569,7 +566,7 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
               <button
                 onClick={() => onOpenInAnalysis(object.id)}
                 className="btn btn-secondary"
-                style={{ fontSize: '12px', padding: '8px 10px' }}
+                style={{ minHeight: '38px', fontSize: '12px', padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 title="Vector Analysis"
                 aria-label="Open in Vector Analysis"
               >
@@ -585,7 +582,7 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
                   disabled
                   aria-disabled="true"
                   className="btn btn-secondary"
-                  style={{ fontSize: '12px', padding: '8px 10px', opacity: 0.4, cursor: 'not-allowed' }}
+                  style={{ minHeight: '38px', fontSize: '12px', padding: '8px 12px', opacity: 0.4, cursor: 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   aria-label="Vector tracking unavailable"
                 >
                   <Compass size={14} />

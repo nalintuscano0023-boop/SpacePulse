@@ -76,10 +76,11 @@ export const SpacecraftCard: React.FC<SpacecraftCardProps> = ({
             fontSize: '12px',
             color: 'var(--text-secondary)',
             lineHeight: 1.45,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            marginBottom: '4px'
+            marginBottom: '4px',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden'
           }}
           title={craft.description}
         >

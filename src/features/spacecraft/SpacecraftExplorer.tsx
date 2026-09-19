@@ -203,7 +203,7 @@ export const SpacecraftExplorer: React.FC<SpacecraftExplorerProps> = ({
       ) : (
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
           gap: '16px'
         }}>
           {filteredList.map((craft) => (
