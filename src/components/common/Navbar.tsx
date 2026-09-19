@@ -142,24 +142,29 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
                   onClick={() => onSelectTab(item.id)}
                   title={item.tooltip}
                   aria-label={item.tooltip}
+                  className="nav-item-btn"
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: '7px',
                     padding: '6px 14px',
                     borderRadius: 'var(--radius-xs)',
-                    fontSize: '13px',
-                    fontWeight: 500,
+                    fontSize: '12.5px',
+                    fontWeight: isActive ? 600 : 500,
                     fontFamily: 'var(--font-heading)',
+                    letterSpacing: '0.01em',
                     cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                    border: isActive ? '1px solid var(--border-focus)' : '1px solid transparent',
-                    background: isActive ? 'rgba(56, 189, 248, 0.12)' : 'transparent',
-                    color: isActive ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                    transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
+                    border: isActive ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid transparent',
+                    background: isActive ? 'rgba(56, 189, 248, 0.14)' : 'transparent',
+                    color: isActive ? '#ffffff' : 'var(--text-secondary)',
+                    boxShadow: isActive ? '0 0 14px rgba(56, 189, 248, 0.16)' : 'none',
                     touchAction: 'manipulation'
                   }}
                 >
-                  {item.icon}
+                  <span style={{ color: isActive ? 'var(--accent-cyan)' : 'inherit', display: 'flex', alignItems: 'center' }}>
+                    {item.icon}
+                  </span>
                   <span>{item.label}</span>
                 </button>
               );

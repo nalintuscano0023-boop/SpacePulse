@@ -409,7 +409,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                   const el = document.getElementById('space-weather-section');
                   if (el) {
                     el.scrollIntoView({ behavior: 'smooth' });
-                    el.style.boxShadow = '0 0 24px rgba(56, 189, 248, 0.4)';
+                    el.style.boxShadow = '0 0 16px rgba(56, 189, 248, 0.25)';
                     setTimeout(() => { if (el) el.style.boxShadow = ''; }, 2000);
                   }
                 }}

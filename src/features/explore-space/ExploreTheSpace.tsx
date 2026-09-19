@@ -1208,7 +1208,7 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
                 minHeight: '36px',
                 touchAction: 'manipulation',
                 cursor: 'pointer',
-                boxShadow: '0 0 16px rgba(56, 189, 248, 0.2)',
+                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.5), 0 0 10px rgba(56, 189, 248, 0.12)',
                 backdropFilter: 'blur(12px)'
               }}
               title="Open Spatial Mission Walkthrough"
@@ -1260,9 +1260,9 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
           background: 'rgba(4, 10, 20, 0.92)',
           backdropFilter: 'blur(18px)',
           WebkitBackdropFilter: 'blur(18px)',
-          border: '1px solid rgba(56, 189, 248, 0.35)',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
           borderRadius: 'var(--radius-md)',
-          boxShadow: '0 24px 60px rgba(0, 0, 0, 0.85), 0 0 30px rgba(56, 189, 248, 0.18)',
+          boxShadow: '0 24px 60px rgba(0, 0, 0, 0.85), 0 0 1px rgba(255, 255, 255, 0.15)',
           padding: '16px 18px',
           display: 'flex',
           flexDirection: 'column',
@@ -1455,7 +1455,7 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '4px',
-                    boxShadow: '0 0 12px rgba(56, 189, 248, 0.3)'
+                    boxShadow: '0 2px 10px rgba(0, 0, 0, 0.4)'
                   }}
                 >
                   <span>Next</span>
@@ -1473,7 +1473,7 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
-                    boxShadow: '0 0 15px rgba(56, 189, 248, 0.35)'
+                    boxShadow: '0 2px 12px rgba(0, 0, 0, 0.5), 0 0 10px rgba(56, 189, 248, 0.15)'
                   }}
                 >
                   <span>Return to Mission Control</span>
@@ -1506,10 +1506,10 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
           border: currentStep?.id === 'domains' 
-            ? '1px solid rgba(56, 189, 248, 0.7)' 
+            ? '1px solid rgba(56, 189, 248, 0.45)' 
             : '1px solid rgba(255, 255, 255, 0.1)',
           boxShadow: currentStep?.id === 'domains'
-            ? '0 0 25px rgba(56, 189, 248, 0.35), 0 8px 32px rgba(0, 0, 0, 0.75)'
+            ? '0 0 16px rgba(56, 189, 248, 0.2), 0 8px 32px rgba(0, 0, 0, 0.75)'
             : '0 8px 32px rgba(0, 0, 0, 0.75)',
           padding: '4px',
           borderRadius: 'var(--radius-full)',

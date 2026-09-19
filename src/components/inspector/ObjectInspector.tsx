@@ -89,7 +89,11 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
           display: 'flex',
           flexDirection: 'column',
           animation: 'slideInRight 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
-          background: 'rgba(7, 17, 31, 0.92)'
+          background: 'rgba(7, 15, 28, 0.94)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          border: '1px solid rgba(56, 189, 248, 0.24)',
+          boxShadow: '0 24px 64px rgba(0, 0, 0, 0.85), 0 0 20px rgba(56, 189, 248, 0.08)'
         }}
         id="object-inspector-panel"
         className="glass-panel tech-corner object-inspector-panel"

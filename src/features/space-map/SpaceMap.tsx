@@ -1667,29 +1667,58 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
               <span>OBJECT ACQUIRED</span>
             </div>
 
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (selectedBodyId) {
-                  handleObjectSelection(selectedBodyId, true);
-                }
-              }}
-              type="button"
-              className="btn btn-primary"
-              style={{
-                padding: '3px 10px',
-                fontSize: '11px',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                borderRadius: 'var(--radius-full)'
-              }}
-              aria-label={`Inspect ${hudData.name}`}
-              title={`Open comprehensive telemetry inspector for ${hudData.name}`}
-            >
-              <span>Inspect Object</span>
-              <ChevronRight size={12} />
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (selectedBodyId) {
+                    handleObjectSelection(selectedBodyId, true);
+                  }
+                }}
+                type="button"
+                className="btn btn-primary"
+                style={{
+                  padding: '3px 10px',
+                  fontSize: '11px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  borderRadius: 'var(--radius-full)'
+                }}
+                aria-label={`Inspect ${hudData.name}`}
+                title={`Open comprehensive telemetry inspector for ${hudData.name}`}
+              >
+                <span>Inspect</span>
+                <ChevronRight size={12} />
+              </button>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedBodyId(null);
+                  setHudData(null);
+                  if (reticleRef.current) reticleRef.current.visible = false;
+                  if (distLineRef.current) distLineRef.current.visible = false;
+                }}
+                type="button"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '3px',
+                  touchAction: 'manipulation'
+                }}
+                aria-label="Dismiss object HUD"
+                title="Dismiss object selection"
+              >
+                <X size={14} />
+              </button>
+            </div>
           </div>
 
           {/* Object Name & Category */}
