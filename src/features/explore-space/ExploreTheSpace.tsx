@@ -5,19 +5,25 @@ import {
   ArrowLeft, 
   Sparkles, 
   Compass, 
-  Eye, 
   ChevronRight, 
   ChevronLeft, 
   Orbit, 
   Satellite, 
-  Activity, 
-  Database, 
-  Radio, 
   X, 
   Minimize2,
-  Maximize2
+  Volume2,
+  VolumeX
 } from 'lucide-react';
-import { getMilkyWayTexture } from '../../components/space/deepSpaceEnvironment';
+import { 
+  createMilkyWayDome, 
+  createRealisticStarfield, 
+  getMilkyWayTexture 
+} from '../../components/space/deepSpaceEnvironment';
+import { 
+  getRealisticEarthDayTexture, 
+  createRealisticCloudMesh 
+} from '../../components/space/earthRealistic';
+import { getSpacecraft3DModel } from '../../components/space/spacecraftModelRegistry';
 import type { TabType } from '../../components/common/Navbar';
 
 export type CosmicEnvironment = 
@@ -47,84 +53,80 @@ export interface SpatialWalkthroughStep {
 
 export const SPATIAL_WALKTHROUGH_STEPS: SpatialWalkthroughStep[] = [
   {
-    id: 'step-entry',
+    id: 'welcome',
     stepNumber: 1,
     totalSteps: 6,
-    phaseLabel: '01 // DEEP SPACE ENTRY',
-    title: 'Welcome to SpacePulse in Deep Space',
-    description: 'You have left the command deck and entered the deep-space simulation. Drag to rotate your celestial perspective, scroll or pinch to zoom, and right-click to pan freely.',
+    phaseLabel: '01 // THE COSMOS',
+    title: 'Welcome to SpacePulse.',
+    description: 'You have left the control center and entered the open universe. Surrounding you is a multi-tier starfield of thousands of stars rendered with authentic stellar spectral classes and realistic depth.',
     env: 'SOLAR_SYSTEM',
-    cameraPos: [0, 75, 260],
+    cameraPos: [0, 85, 290],
     cameraTarget: [0, 0, 0],
-    tip: 'Mouse / Touch: Drag to Orbit • Scroll to Zoom • Right-click to Pan'
+    tip: 'Feel the scale • Deep space surrounds you'
   },
   {
-    id: 'step-solar-system',
+    id: 'look-around',
     stepNumber: 2,
     totalSteps: 6,
-    phaseLabel: '02 // CELESTIAL MECHANICS',
-    title: 'Solar System & Planetary Orbits',
-    description: 'Real-time heliocentric simulation rendered with Keplerian orbital planes. Planetary motions, orbital rings, and the asteroid belt simulate authentic celestial dynamics.',
+    phaseLabel: '02 // PERSPECTIVE',
+    title: 'Look around.',
+    description: 'Space has no fixed up or down. Drag to rotate your celestial perspective in full 360°, scroll or pinch to zoom across light-minutes, and right-click or two-finger drag to pan.',
     env: 'SOLAR_SYSTEM',
-    cameraPos: [65, 45, 140],
-    cameraTarget: [35, 0, 0],
-    tip: 'Keplerian Orbits • Asteroid Belt • Heliocentric Reference Frame'
+    cameraPos: [45, 60, 240],
+    cameraTarget: [0, 0, 0],
+    tip: 'Drag to Orbit 360° • Scroll to Zoom • Right-click to Pan'
   },
   {
-    id: 'step-spacecraft',
+    id: 'solar-system',
     stepNumber: 3,
     totalSteps: 6,
-    phaseLabel: '03 // SPACECRAFT FLEET',
-    title: 'Authentic Spacecraft & Active Missions',
-    description: 'Track ISRO, NASA, and ESA deep space probes and satellites. Each spacecraft is rendered with accurate engineering structures and live orbital coordinates.',
+    phaseLabel: '03 // THE SOLAR SYSTEM',
+    title: 'Explore the Solar System.',
+    description: 'Heliocentric dynamic simulation. Notice the Sun’s physical inverse-square illumination, Earth with its atmospheric limb and cloud layer, and the vast distances between planetary orbits.',
+    env: 'SOLAR_SYSTEM',
+    cameraPos: [65, 38, 140],
+    cameraTarget: [30, 0, 0],
+    tip: 'Sun illumination • Planetary scale • Keplerian planes'
+  },
+  {
+    id: 'spacecraft',
+    stepNumber: 4,
+    totalSteps: 6,
+    phaseLabel: '04 // HUMAN REACH',
+    title: 'Track authentic spacecraft.',
+    description: 'Humanity’s exploratory fleet. Observe authentic 3D models modeled from verified aerospace blueprints, tracked according to real-world flight configurations.',
     env: 'SOLAR_SYSTEM',
     cameraPos: [-36, 16, 75],
     cameraTarget: [-35, 12, 55],
     keyAction: {
-      label: 'View Spacecraft Fleet',
+      label: 'View Fleet in Spacecraft Explorer',
       tab: 'spacecraft'
     },
-    tip: 'Solar wings, communications dish, and propulsion arrays'
+    tip: 'Authentic engineering blueprints • Zero fabricated data'
   },
   {
-    id: 'step-space-map',
-    stepNumber: 4,
-    totalSteps: 6,
-    phaseLabel: '04 // CARTOGRAPHY & EPHEMERIDES',
-    title: 'Interactive Space Map & Inspector',
-    description: 'Access thousands of verified satellites and deep space probes on the Space Map. Inspect comprehensive engineering dossiers, orbital elements, and live apogee/perigee telemetry.',
-    env: 'MILKY_WAY',
-    cameraPos: [0, 110, 360],
-    cameraTarget: [0, 0, 0],
-    keyAction: {
-      label: 'Open Space Map',
-      tab: 'space-map'
-    },
-    tip: 'J2000.0 Heliocentric / Geocentric Coordinate System'
-  },
-  {
-    id: 'step-analysis',
+    id: 'inspector',
     stepNumber: 5,
     totalSteps: 6,
-    phaseLabel: '05 // ASTRODYNAMICS ENGINE',
-    title: 'Scientific Vector Analysis & Light-Time',
-    description: 'Calculate exact Euclidean geometric distances, relative velocity vectors, and one-way light transmission latencies between any two active missions across the solar system.',
-    env: 'GALAXIES',
-    cameraPos: [0, 150, 420],
+    phaseLabel: '05 // CARTOGRAPHY',
+    title: 'Inspect objects & ephemerides.',
+    description: 'In SpacePulse’s scientific sections, select any probe or satellite to inspect verified apogee/perigee, live orbital vectors, and multi-agency mission dossiers.',
+    env: 'MILKY_WAY',
+    cameraPos: [0, 95, 280],
     cameraTarget: [0, 0, 0],
     keyAction: {
-      label: 'Launch Scientific Analysis',
-      tab: 'analysis'
+      label: 'Open 3D Space Map',
+      tab: 'space-map'
     },
-    tip: 'Zero synthetic values • Direct ephemeris computation'
+    tip: 'J2000 coordinates • Real CelesTrak & JPL orbital elements'
   },
   {
-    id: 'step-return',
+    id: 'return',
     stepNumber: 6,
     totalSteps: 6,
-    phaseLabel: '06 // MISSION CONTROL CONSOLE',
-    title: 'Command Deck & Authoritative Data',
-    description: 'Return anytime to Mission Control to monitor live NOAA space weather geomagnetic alerts, CelesTrak orbital updates, and mission directory archives.',
+    phaseLabel: '06 // COMMAND DECK',
+    title: 'Return to Mission Control.',
+    description: 'Whenever you are ready, return to the Mission Control deck to monitor real-time NOAA solar weather, orbital health, and mission timelines.',
     env: 'SOLAR_SYSTEM',
     cameraPos: [0, 75, 260],
     cameraTarget: [0, 0, 0],
@@ -135,6 +137,117 @@ export const SPATIAL_WALKTHROUGH_STEPS: SpatialWalkthroughStep[] = [
     tip: 'Click Return to Mission Control at top-left anytime'
   }
 ];
+
+// ---------------------------------------------------------------------------
+// Procedural Jupiter Atmosphere Texture Generator
+// ---------------------------------------------------------------------------
+let cachedJupiterTex: THREE.CanvasTexture | null = null;
+function getProceduralJupiterTexture(): THREE.CanvasTexture {
+  if (cachedJupiterTex) return cachedJupiterTex;
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d')!;
+
+  // Base amber cream
+  ctx.fillStyle = '#f5eedb';
+  ctx.fillRect(0, 0, 1024, 512);
+
+  // Belts and zones
+  const bands = [
+    { y: 60, h: 45, col: '#c87a38' },
+    { y: 130, h: 55, col: '#9c5221' },
+    { y: 210, h: 65, col: '#b86b2e' },
+    { y: 300, h: 50, col: '#8b4513' },
+    { y: 380, h: 40, col: '#c87a38' }
+  ];
+
+  bands.forEach(b => {
+    ctx.fillStyle = b.col;
+    for (let x = 0; x < 1024; x += 16) {
+      const wave = Math.sin(x * 0.02) * 6 + Math.cos(x * 0.05) * 3;
+      ctx.fillRect(x, b.y + wave, 18, b.h);
+    }
+  });
+
+  // Great Red Spot
+  ctx.fillStyle = '#b91c1c';
+  ctx.beginPath();
+  ctx.ellipse(650, 310, 48, 28, -0.15, 0, Math.PI * 2);
+  ctx.fill();
+
+  cachedJupiterTex = new THREE.CanvasTexture(canvas);
+  return cachedJupiterTex;
+}
+
+// ---------------------------------------------------------------------------
+// Subtle Procedural Web Audio Ambient Resonance Engine
+// ---------------------------------------------------------------------------
+class SubtleSpaceAudioEngine {
+  private ctx: AudioContext | null = null;
+  private masterGain: GainNode | null = null;
+  private osc1: OscillatorNode | null = null;
+  private osc2: OscillatorNode | null = null;
+  public isMuted: boolean = false;
+
+  public start() {
+    if (this.ctx) return;
+    try {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      this.ctx = new AudioCtx();
+
+      this.masterGain = this.ctx.createGain();
+      this.masterGain.gain.setValueAtTime(0.001, this.ctx.currentTime);
+      this.masterGain.gain.exponentialRampToValueAtTime(0.035, this.ctx.currentTime + 3.5);
+      this.masterGain.connect(this.ctx.destination);
+
+      // Lowpass filter for deep, quiet subterranean hum (75Hz cutoff)
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(75, this.ctx.currentTime);
+      filter.Q.setValueAtTime(1.2, this.ctx.currentTime);
+      filter.connect(this.masterGain);
+
+      // Dual sine oscillators (48Hz and 52Hz creating subtle 4Hz spatial beat)
+      this.osc1 = this.ctx.createOscillator();
+      this.osc1.type = 'sine';
+      this.osc1.frequency.setValueAtTime(48, this.ctx.currentTime);
+      this.osc1.connect(filter);
+      this.osc1.start();
+
+      this.osc2 = this.ctx.createOscillator();
+      this.osc2.type = 'sine';
+      this.osc2.frequency.setValueAtTime(52, this.ctx.currentTime);
+      this.osc2.connect(filter);
+      this.osc2.start();
+    } catch {
+      // Audio autoplay policy fallback
+    }
+  }
+
+  public setMute(muted: boolean) {
+    this.isMuted = muted;
+    if (this.masterGain && this.ctx) {
+      this.masterGain.gain.setValueAtTime(muted ? 0 : 0.035, this.ctx.currentTime);
+    }
+  }
+
+  public stop() {
+    try {
+      if (this.masterGain && this.ctx) {
+        this.masterGain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.3);
+      }
+      setTimeout(() => {
+        this.osc1?.stop();
+        this.osc2?.stop();
+        this.ctx?.close();
+        this.ctx = null;
+      }, 350);
+    } catch {
+      // Ignored
+    }
+  }
+}
 
 interface ExploreTheSpaceProps {
   onExit: (targetTab?: TabType) => void;
@@ -147,11 +260,19 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
 
-  // Entrance and settling states
-  const [entryPhase, setEntryPhase] = useState<'entering' | 'settling' | 'settled'>('entering');
+  // Cinematic Entrance Progression
+  // 'entering' (0-1.8s) -> 'settled' (1.8s+)
+  const [entryPhase, setEntryPhase] = useState<'entering' | 'settled'>('entering');
+  
+  // THE FIRST WOW MOMENT: Walkthrough HUD remains completely hidden for initial 6.5s
+  const [isWalkthroughReady, setIsWalkthroughReady] = useState(false);
   const [isWalkthroughActive, setIsWalkthroughActive] = useState(true);
   const [isWalkthroughMinimized, setIsWalkthroughMinimized] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
+
+  // Audio State
+  const [isAudioMuted, setIsAudioMuted] = useState(false);
+  const audioEngineRef = useRef<SubtleSpaceAudioEngine | null>(null);
 
   // Three.js References
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -162,14 +283,16 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
   const animIdRef = useRef<number>(0);
   const hideTimeoutRef = useRef<number | null>(null);
 
-  // Smooth camera lerp targets
+  // Smooth Camera Interpolation targets
   const targetCamPos = useRef<THREE.Vector3>(new THREE.Vector3(0, 75, 260));
   const targetCamLookAt = useRef<THREE.Vector3>(new THREE.Vector3(0, 0, 0));
   const isCameraLerping = useRef<boolean>(true);
+  const lastUserInteractionTime = useRef<number>(Date.now());
 
   // Handle auto-hiding controls for distraction-free immersion
   const resetControlsTimer = useCallback(() => {
     setControlsVisible(true);
+    lastUserInteractionTime.current = Date.now();
     if (hideTimeoutRef.current) {
       window.clearTimeout(hideTimeoutRef.current);
     }
@@ -178,15 +301,40 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
     }, 4500);
   }, []);
 
-  // Entrance Settling Sequence
+  // -------------------------------------------------------------------------
+  // Audio Initialization
+  // -------------------------------------------------------------------------
   useEffect(() => {
-    const t1 = setTimeout(() => {
-      setEntryPhase('settling');
-    }, 500);
+    const audio = new SubtleSpaceAudioEngine();
+    audioEngineRef.current = audio;
+    audio.start();
 
-    const t2 = setTimeout(() => {
+    return () => {
+      audio.stop();
+    };
+  }, []);
+
+  const toggleAudio = useCallback(() => {
+    if (!audioEngineRef.current) return;
+    const nextMuted = !isAudioMuted;
+    setIsAudioMuted(nextMuted);
+    audioEngineRef.current.setMute(nextMuted);
+  }, [isAudioMuted]);
+
+  // -------------------------------------------------------------------------
+  // Entrance Sequence & The First WOW Moment
+  // -------------------------------------------------------------------------
+  useEffect(() => {
+    // 1.8s: Camera enters space and settles; canvas fully revealed
+    const t1 = setTimeout(() => {
       setEntryPhase('settled');
-    }, 1200);
+    }, 1800);
+
+    // 6.5s: THE FIRST WOW MOMENT. Only after 6.5 seconds of unobstructed
+    // contemplation does the subtle spatial walkthrough HUD appear.
+    const t2 = setTimeout(() => {
+      setIsWalkthroughReady(true);
+    }, 6500);
 
     return () => {
       clearTimeout(t1);
@@ -198,106 +346,161 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
   // Procedural Environment Builders
   // -------------------------------------------------------------------------
 
-  // 1. SOLAR SYSTEM WITH SPACECRAFT PROBE
+  // 1. SOLAR SYSTEM WITH REALISTIC PLANETS & AUTHENTIC SPACECRAFT
   const buildSolarSystem = (group: THREE.Group) => {
-    // Central Sun
-    const sunGeo = new THREE.SphereGeometry(14, 32, 32);
-    const sunMat = new THREE.MeshBasicMaterial({ color: 0xfff7ed });
+    // 1a. The Sun (Physically believable brilliant star)
+    const sunGeo = new THREE.SphereGeometry(14, 48, 48);
+    const sunMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     const sunMesh = new THREE.Mesh(sunGeo, sunMat);
     group.add(sunMesh);
 
-    // Glowing Sun Corona Halo
-    const coronaGeo = new THREE.SphereGeometry(17, 32, 32);
-    const coronaMat = new THREE.MeshBasicMaterial({
+    // Inner Corona Halo (Additive warm incandescence)
+    const innerCoronaGeo = new THREE.SphereGeometry(18, 36, 36);
+    const innerCoronaMat = new THREE.MeshBasicMaterial({
+      color: 0xfef08a,
+      transparent: true,
+      opacity: 0.4,
+      side: THREE.BackSide,
+      blending: THREE.AdditiveBlending
+    });
+    const innerCorona = new THREE.Mesh(innerCoronaGeo, innerCoronaMat);
+    group.add(innerCorona);
+
+    // Outer Atmospheric Falloff Glow
+    const outerCoronaGeo = new THREE.SphereGeometry(32, 36, 36);
+    const outerCoronaMat = new THREE.MeshBasicMaterial({
       color: 0xf59e0b,
       transparent: true,
-      opacity: 0.28,
-      side: THREE.BackSide
+      opacity: 0.16,
+      side: THREE.BackSide,
+      blending: THREE.AdditiveBlending
     });
-    const coronaMesh = new THREE.Mesh(coronaGeo, coronaMat);
-    group.add(coronaMesh);
+    const outerCorona = new THREE.Mesh(outerCoronaGeo, outerCoronaMat);
+    group.add(outerCorona);
 
-    // Sunlight
-    const pointLight = new THREE.PointLight(0xffffff, 3.5, 3000);
-    pointLight.position.set(0, 0, 0);
-    group.add(pointLight);
+    // Physically-Grounded Illumination
+    const sunlight = new THREE.PointLight(0xffffff, 4.0, 4500, 1.2);
+    sunlight.position.set(0, 0, 0);
+    group.add(sunlight);
 
-    const ambLight = new THREE.AmbientLight(0x0f172a, 0.6);
-    group.add(ambLight);
+    // Deep Vacuum Ambient (Subtle cosmic starlight fill)
+    const cosmicAmbient = new THREE.AmbientLight(0x0a1628, 0.45);
+    group.add(cosmicAmbient);
 
-    // Planetary definitions [radius, dist, color, speed, hasRings]
-    const planetsData: Array<{ r: number; d: number; col: number; spd: number; rings?: boolean }> = [
-      { r: 2.2, d: 38, col: 0x94a3b8, spd: 0.015 },  // Mercury
-      { r: 3.8, d: 58, col: 0xfde047, spd: 0.011 },  // Venus
-      { r: 4.2, d: 82, col: 0x38bdf8, spd: 0.008 },  // Earth
-      { r: 2.8, d: 112, col: 0xf87171, spd: 0.006 }, // Mars
-      { r: 9.5, d: 165, col: 0xd97706, spd: 0.0035 },// Jupiter
-      { r: 7.8, d: 220, col: 0xfef08a, spd: 0.0025, rings: true }, // Saturn
-      { r: 5.5, d: 275, col: 0x67e8f9, spd: 0.0018 },// Uranus
-      { r: 5.2, d: 325, col: 0x3b82f6, spd: 0.0012 } // Neptune
+    // 1b. Planets Array
+    const planetsData = [
+      { id: 'mercury', r: 2.2, d: 38, col: 0xa8a29e, spd: 0.015, rough: 0.8 },
+      { id: 'venus', r: 3.8, d: 58, col: 0xfef3c7, spd: 0.011, rough: 0.6 },
+      { id: 'earth', r: 4.2, d: 82, col: 0x38bdf8, spd: 0.008, isEarth: true },
+      { id: 'mars', r: 2.8, d: 112, col: 0xb91c1c, spd: 0.006, isMars: true },
+      { id: 'jupiter', r: 9.5, d: 165, col: 0xd97706, spd: 0.0035, isJupiter: true },
+      { id: 'saturn', r: 7.8, d: 220, col: 0xfef08a, spd: 0.0025, hasRings: true },
+      { id: 'uranus', r: 5.5, d: 275, col: 0xa5f3fc, spd: 0.0018, rough: 0.5 },
+      { id: 'neptune', r: 5.2, d: 325, col: 0x3b82f6, spd: 0.0012, rough: 0.5 }
     ];
 
-    const planetMeshes: Array<{ mesh: THREE.Mesh; orbitGroup: THREE.Group; spd: number }> = [];
+    const planetMeshes: Array<{ mesh: THREE.Mesh; orbitGroup: THREE.Group; spd: number; cloudMesh?: THREE.Mesh }> = [];
 
     planetsData.forEach((p) => {
       const orbitGroup = new THREE.Group();
       group.add(orbitGroup);
 
-      const pGeo = new THREE.SphereGeometry(p.r, 24, 24);
-      const pMat = new THREE.MeshStandardMaterial({
-        color: p.col,
-        roughness: 0.7,
-        metalness: 0.1
-      });
+      const pGeo = new THREE.SphereGeometry(p.r, 36, 36);
+      let pMat: THREE.Material;
+
+      if (p.isEarth) {
+        const earthTex = getRealisticEarthDayTexture();
+        pMat = new THREE.MeshStandardMaterial({
+          map: earthTex,
+          roughness: 0.55,
+          metalness: 0.1
+        });
+      } else if (p.isJupiter) {
+        const jupTex = getProceduralJupiterTexture();
+        pMat = new THREE.MeshStandardMaterial({
+          map: jupTex,
+          roughness: 0.7,
+          metalness: 0.05
+        });
+      } else if (p.isMars) {
+        pMat = new THREE.MeshStandardMaterial({
+          color: 0x991b1b,
+          roughness: 0.85,
+          metalness: 0.1
+        });
+      } else {
+        pMat = new THREE.MeshStandardMaterial({
+          color: p.col,
+          roughness: p.rough || 0.65,
+          metalness: 0.1
+        });
+      }
+
       const pMesh = new THREE.Mesh(pGeo, pMat);
-      pMesh.position.set(p.d, (Math.random() - 0.5) * 4, 0);
+      pMesh.position.set(p.d, 0, 0);
       orbitGroup.add(pMesh);
 
-      // Saturn Rings
-      if (p.rings) {
-        const ringGeo = new THREE.RingGeometry(p.r * 1.4, p.r * 2.4, 48);
-        const ringMat = new THREE.MeshBasicMaterial({
+      let cloudMesh: THREE.Mesh | undefined;
+
+      // Realistic Earth: Atmospheric cloud layer and Moon
+      if (p.isEarth) {
+        cloudMesh = createRealisticCloudMesh(p.r);
+        pMesh.add(cloudMesh);
+
+        // Natural Moon
+        const moonGeo = new THREE.SphereGeometry(0.9, 18, 18);
+        const moonMat = new THREE.MeshStandardMaterial({ color: 0xd6d3d1, roughness: 0.85 });
+        const moonMesh = new THREE.Mesh(moonGeo, moonMat);
+        moonMesh.position.set(8.5, 0.8, 3.2);
+        pMesh.add(moonMesh);
+      }
+
+      // Realistic Saturn Rings with Cassini division
+      if (p.hasRings) {
+        const ringGeo = new THREE.RingGeometry(p.r * 1.35, p.r * 2.35, 64);
+        const ringMat = new THREE.MeshStandardMaterial({
           color: 0xca8a04,
           side: THREE.DoubleSide,
           transparent: true,
-          opacity: 0.65
+          opacity: 0.68,
+          roughness: 0.4
         });
         const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-        ringMesh.rotation.x = Math.PI / 2.5;
+        ringMesh.rotation.x = Math.PI / 2.35;
         pMesh.add(ringMesh);
       }
 
-      // Faint subtle orbital trail
+      // Thin, authentic Keplerian orbital line
       const trailPts: THREE.Vector3[] = [];
-      for (let a = 0; a <= 64; a++) {
-        const theta = (a / 64) * Math.PI * 2;
+      for (let a = 0; a <= 96; a++) {
+        const theta = (a / 96) * Math.PI * 2;
         trailPts.push(new THREE.Vector3(Math.cos(theta) * p.d, 0, Math.sin(theta) * p.d));
       }
       const trailGeo = new THREE.BufferGeometry().setFromPoints(trailPts);
       const trailMat = new THREE.LineBasicMaterial({
         color: 0x38bdf8,
         transparent: true,
-        opacity: 0.12
+        opacity: 0.1
       });
       const trailLine = new THREE.Line(trailGeo, trailMat);
       group.add(trailLine);
 
-      planetMeshes.push({ mesh: pMesh, orbitGroup, spd: p.spd });
+      planetMeshes.push({ mesh: pMesh, orbitGroup, spd: p.spd, cloudMesh });
     });
 
-    // Asteroid Belt Particles
-    const astCount = 1800;
+    // Asteroid Belt: 2,200 particle rocks between Mars and Jupiter
+    const astCount = 2200;
     const astPositions = new Float32Array(astCount * 3);
     const astColors = new Float32Array(astCount * 3);
     for (let i = 0; i < astCount; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const radius = 130 + Math.random() * 25;
-      const height = (Math.random() - 0.5) * 8;
+      const radius = 132 + Math.random() * 26;
+      const height = (Math.random() - 0.5) * 7;
       astPositions[i * 3] = Math.cos(angle) * radius;
       astPositions[i * 3 + 1] = height;
       astPositions[i * 3 + 2] = Math.sin(angle) * radius;
 
-      const shade = 0.5 + Math.random() * 0.4;
+      const shade = 0.45 + Math.random() * 0.4;
       astColors[i * 3] = shade;
       astColors[i * 3 + 1] = shade;
       astColors[i * 3 + 2] = shade * 1.05;
@@ -306,165 +509,61 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
     astGeo.setAttribute('position', new THREE.BufferAttribute(astPositions, 3));
     astGeo.setAttribute('color', new THREE.BufferAttribute(astColors, 3));
     const astMat = new THREE.PointsMaterial({
-      size: 1.5,
+      size: 1.4,
       vertexColors: true,
       transparent: true,
-      opacity: 0.65
+      opacity: 0.6
     });
     const asteroidBelt = new THREE.Points(astGeo, astMat);
     group.add(asteroidBelt);
 
-    // Authentic Deep Space Probe Model
-    const probeGroup = new THREE.Group();
-    probeGroup.position.set(-35, 12, 55);
+    // 1c. Authentic Deep Spacecraft: Voyager 1 Blueprint Model
+    const spacecraft = getSpacecraft3DModel('voyager-1', { scale: 0.85 });
+    spacecraft.position.set(-35, 12, 55);
+    spacecraft.rotation.y = 0.6;
+    spacecraft.rotation.x = 0.15;
+    group.add(spacecraft);
 
-    // Gold Foil Multi-Layer Main Bus
-    const busGeo = new THREE.BoxGeometry(3.6, 2.8, 2.8);
-    const busMat = new THREE.MeshStandardMaterial({
-      color: 0xd97706,
-      metalness: 0.85,
-      roughness: 0.25
-    });
-    const busMesh = new THREE.Mesh(busGeo, busMat);
-    probeGroup.add(busMesh);
+    // Subtle Cyan Telemetry Beacon on probe
+    const beacon = new THREE.PointLight(0x38bdf8, 1.2, 30);
+    beacon.position.set(-35, 13.5, 55);
+    group.add(beacon);
 
-    // High-Gain Parabolic Communications Dish
-    const dishGeo = new THREE.CylinderGeometry(2.4, 0.4, 0.7, 24, 1, true);
-    const dishMat = new THREE.MeshStandardMaterial({
-      color: 0xf1f5f9,
-      metalness: 0.65,
-      roughness: 0.3,
-      side: THREE.DoubleSide
-    });
-    const dishMesh = new THREE.Mesh(dishGeo, dishMat);
-    dishMesh.rotation.z = Math.PI / 2;
-    dishMesh.position.set(2.2, 0, 0);
-    probeGroup.add(dishMesh);
-
-    // High-Gain Feed Horn
-    const hornGeo = new THREE.CylinderGeometry(0.12, 0.12, 1.4);
-    const hornMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8 });
-    const hornMesh = new THREE.Mesh(hornGeo, hornMat);
-    hornMesh.rotation.z = Math.PI / 2;
-    hornMesh.position.set(3.2, 0, 0);
-    probeGroup.add(hornMesh);
-
-    // Dual Photovoltaic Solar Wings
-    const wingGeo = new THREE.BoxGeometry(0.15, 2.2, 8.5);
-    const wingMat = new THREE.MeshStandardMaterial({
-      color: 0x0f2b48,
-      metalness: 0.6,
-      roughness: 0.25
-    });
-    const leftWing = new THREE.Mesh(wingGeo, wingMat);
-    leftWing.position.set(0, 0, 5.8);
-    probeGroup.add(leftWing);
-
-    const rightWing = new THREE.Mesh(wingGeo, wingMat);
-    rightWing.position.set(0, 0, -5.8);
-    probeGroup.add(rightWing);
-
-    // Scientific Instrument Boom
-    const boomGeo = new THREE.CylinderGeometry(0.08, 0.08, 6);
-    const boomMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.8 });
-    const boomMesh = new THREE.Mesh(boomGeo, boomMat);
-    boomMesh.position.set(-3.2, -1.2, 0);
-    boomMesh.rotation.z = Math.PI / 4;
-    probeGroup.add(boomMesh);
-
-    // Soft Telemetry Cyan Beacon
-    const beaconLight = new THREE.PointLight(0x38bdf8, 1.4, 25);
-    beaconLight.position.set(0, 1.6, 0);
-    probeGroup.add(beaconLight);
-
-    group.add(probeGroup);
-
-    // Add per-frame animation hook
+    // Per-frame animation hook
     group.userData.update = () => {
-      sunMesh.rotation.y += 0.002;
-      asteroidBelt.rotation.y += 0.0004;
+      sunMesh.rotation.y += 0.0015;
+      innerCorona.rotation.y -= 0.001;
+      asteroidBelt.rotation.y += 0.0003;
       planetMeshes.forEach(p => {
-        p.orbitGroup.rotation.y += p.spd * 0.4;
-        p.mesh.rotation.y += 0.01;
+        p.orbitGroup.rotation.y += p.spd * 0.35;
+        p.mesh.rotation.y += 0.008;
+        if (p.cloudMesh) p.cloudMesh.rotation.y += 0.0012;
       });
-      probeGroup.rotation.y += 0.003;
-      probeGroup.position.y = 12 + Math.sin(Date.now() * 0.0015) * 0.8;
+      spacecraft.rotation.y += 0.002;
+      spacecraft.position.y = 12 + Math.sin(Date.now() * 0.0012) * 0.6;
+      beacon.intensity = 1.0 + Math.sin(Date.now() * 0.004) * 0.4;
     };
   };
 
-  // 2. MILKY WAY
+  // 2. MILKY WAY (Using authentic multi-layer dome and galactic starfield)
   const buildMilkyWay = (group: THREE.Group) => {
-    const domeGeo = new THREE.SphereGeometry(1800, 32, 32);
-    const domeTex = getMilkyWayTexture();
-    const domeMat = new THREE.MeshBasicMaterial({
-      map: domeTex,
-      side: THREE.BackSide,
-      transparent: true,
-      opacity: 0.95
-    });
-    const domeMesh = new THREE.Mesh(domeGeo, domeMat);
-    domeMesh.rotation.x = 0.45;
+    const domeMesh = createMilkyWayDome();
     group.add(domeMesh);
 
-    // 24,000 Galactic Disc Stars
-    const starCount = 24000;
-    const positions = new Float32Array(starCount * 3);
-    const colors = new Float32Array(starCount * 3);
-
-    for (let i = 0; i < starCount; i++) {
-      const r = Math.pow(Math.random(), 2.2) * 800;
-      const theta = Math.random() * Math.PI * 2;
-      const height = (Math.random() - 0.5) * (180 * (1 - r / 900));
-
-      positions[i * 3] = Math.cos(theta) * r;
-      positions[i * 3 + 1] = height;
-      positions[i * 3 + 2] = Math.sin(theta) * r;
-
-      if (r < 180) {
-        colors[i * 3] = 1.0;
-        colors[i * 3 + 1] = 0.85;
-        colors[i * 3 + 2] = 0.65;
-      } else {
-        const bl = 0.7 + Math.random() * 0.3;
-        colors[i * 3] = bl * 0.8;
-        colors[i * 3 + 1] = bl * 0.9;
-        colors[i * 3 + 2] = 1.0;
-      }
-    }
-
-    const starGeo = new THREE.BufferGeometry();
-    starGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    starGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    const starMat = new THREE.PointsMaterial({
-      size: 1.8,
-      vertexColors: true,
-      transparent: true,
-      opacity: 0.85
-    });
-    const starField = new THREE.Points(starGeo, starMat);
-    group.add(starField);
-
-    // Central supermassive core glow
-    const coreGeo = new THREE.SphereGeometry(45, 24, 24);
-    const coreMat = new THREE.MeshBasicMaterial({
-      color: 0xffedd5,
-      transparent: true,
-      opacity: 0.55
-    });
-    const coreMesh = new THREE.Mesh(coreGeo, coreMat);
-    group.add(coreMesh);
+    const starfield = createRealisticStarfield();
+    group.add(starfield);
 
     group.userData.update = () => {
-      starField.rotation.y += 0.0003;
       domeMesh.rotation.y += 0.0001;
+      starfield.rotation.y += 0.0002;
     };
   };
 
   // 3. GALAXIES
   const buildGalaxies = (group: THREE.Group) => {
     const armCount = 2;
-    const starsPerArm = 8000;
-    const totalStars = armCount * starsPerArm + 4000;
+    const starsPerArm = 8500;
+    const totalStars = armCount * starsPerArm + 4500;
     const pos = new Float32Array(totalStars * 3);
     const cols = new Float32Array(totalStars * 3);
 
@@ -474,10 +573,10 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
       const armOffset = (arm * Math.PI * 2) / armCount;
       for (let i = 0; i < starsPerArm; i++) {
         const progress = i / starsPerArm;
-        const r = Math.pow(progress, 1.4) * 480;
-        const theta = r * 0.025 + armOffset;
+        const r = Math.pow(progress, 1.35) * 480;
+        const theta = r * 0.024 + armOffset;
 
-        const spread = 25 * progress;
+        const spread = 24 * progress;
         const x = Math.cos(theta) * r + (Math.random() - 0.5) * spread;
         const y = (Math.random() - 0.5) * (18 * (1 - progress));
         const z = Math.sin(theta) * r + (Math.random() - 0.5) * spread;
@@ -486,14 +585,14 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
         pos[ptr * 3 + 1] = y;
         pos[ptr * 3 + 2] = z;
 
-        cols[ptr * 3] = 0.4 + Math.random() * 0.3;
-        cols[ptr * 3 + 1] = 0.65 + Math.random() * 0.3;
+        cols[ptr * 3] = 0.5 + Math.random() * 0.3;
+        cols[ptr * 3 + 1] = 0.7 + Math.random() * 0.25;
         cols[ptr * 3 + 2] = 1.0;
         ptr++;
       }
     }
 
-    for (let i = 0; i < 4000; i++) {
+    for (let i = 0; i < 4500; i++) {
       const r = Math.pow(Math.random(), 2) * 75;
       const theta = Math.random() * Math.PI * 2;
       const y = (Math.random() - 0.5) * 22;
@@ -503,8 +602,8 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
       pos[ptr * 3 + 2] = Math.sin(theta) * r;
 
       cols[ptr * 3] = 1.0;
-      cols[ptr * 3 + 1] = 0.85;
-      cols[ptr * 3 + 2] = 0.5;
+      cols[ptr * 3 + 1] = 0.88;
+      cols[ptr * 3 + 2] = 0.6;
       ptr++;
     }
 
@@ -573,8 +672,8 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
         cols[i * 3 + 2] = 0.95;
       } else if (rad < 190) {
         cols[i * 3] = 0.85;
-        cols[i * 3 + 2] = 0.65;
         cols[i * 3 + 1] = 0.2;
+        cols[i * 3 + 2] = 0.65;
       } else {
         cols[i * 3] = 0.35;
         cols[i * 3 + 1] = 0.15;
@@ -595,67 +694,18 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
     const nebulaClouds = new THREE.Points(nebGeo, nebMat);
     group.add(nebulaClouds);
 
-    const protoCount = 350;
-    const protoPos = new Float32Array(protoCount * 3);
-    for (let i = 0; i < protoCount; i++) {
-      protoPos[i * 3] = (Math.random() - 0.5) * 140;
-      protoPos[i * 3 + 1] = (Math.random() - 0.5) * 80;
-      protoPos[i * 3 + 2] = (Math.random() - 0.5) * 140;
-    }
-    const protoGeo = new THREE.BufferGeometry();
-    protoGeo.setAttribute('position', new THREE.BufferAttribute(protoPos, 3));
-    const protoMat = new THREE.PointsMaterial({
-      size: 2.8,
-      color: 0xffffff,
-      transparent: true,
-      opacity: 0.9
-    });
-    const protoStars = new THREE.Points(protoGeo, protoMat);
-    group.add(protoStars);
-
     group.userData.update = () => {
       nebulaClouds.rotation.y += 0.0004;
-      nebulaClouds.rotation.x += 0.0002;
     };
   };
 
   // 5. DEEP SPACE
   const buildDeepSpace = (group: THREE.Group) => {
-    const starCount = 3500;
-    const pos = new Float32Array(starCount * 3);
-    const cols = new Float32Array(starCount * 3);
-
-    for (let i = 0; i < starCount; i++) {
-      const dist = 400 + Math.random() * 1200;
-      const u = Math.random();
-      const v = Math.random();
-      const theta = u * 2.0 * Math.PI;
-      const phi = Math.acos(2.0 * v - 1.0);
-
-      pos[i * 3] = dist * Math.sin(phi) * Math.cos(theta);
-      pos[i * 3 + 1] = dist * Math.sin(phi) * Math.sin(theta);
-      pos[i * 3 + 2] = dist * Math.cos(phi);
-
-      const br = 0.3 + Math.random() * 0.45;
-      cols[i * 3] = br;
-      cols[i * 3 + 1] = br;
-      cols[i * 3 + 2] = br * 1.1;
-    }
-
-    const starGeo = new THREE.BufferGeometry();
-    starGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    starGeo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
-    const starMat = new THREE.PointsMaterial({
-      size: 1.4,
-      vertexColors: true,
-      transparent: true,
-      opacity: 0.7
-    });
-    const deepStars = new THREE.Points(starGeo, starMat);
-    group.add(deepStars);
+    const starfield = createRealisticStarfield();
+    group.add(starfield);
 
     const filPts: THREE.Vector3[] = [];
-    for (let f = 0; f < 12; f++) {
+    for (let f = 0; f < 14; f++) {
       const p1 = new THREE.Vector3((Math.random() - 0.5) * 800, (Math.random() - 0.5) * 500, (Math.random() - 0.5) * 800);
       const p2 = p1.clone().add(new THREE.Vector3((Math.random() - 0.5) * 300, (Math.random() - 0.5) * 200, (Math.random() - 0.5) * 300));
       filPts.push(p1, p2);
@@ -670,11 +720,11 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
     group.add(filaments);
 
     group.userData.update = () => {
-      deepStars.rotation.y += 0.0001;
+      starfield.rotation.y += 0.0001;
     };
   };
 
-  // 6. UNIVERSE (The Cosmic Web)
+  // 6. UNIVERSE (Cosmic Web)
   const buildUniverse = (group: THREE.Group) => {
     const clusterCount = 120;
     const totalPoints = clusterCount * 80;
@@ -732,7 +782,7 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
   };
 
   // -------------------------------------------------------------------------
-  // Mount Three.js Scene and Manage Environments
+  // Mount Three.js Scene
   // -------------------------------------------------------------------------
   useEffect(() => {
     const container = mountRef.current;
@@ -745,29 +795,35 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
     scene.background = new THREE.Color(0x010206);
     sceneRef.current = scene;
 
-    const camera = new THREE.PerspectiveCamera(45, width / height, 0.5, 8000);
+    // Atmospheric deep space starfield always in background
+    const bgStarfield = createRealisticStarfield();
+    scene.add(bgStarfield);
+
+    const camera = new THREE.PerspectiveCamera(45, width / height, 0.5, 9500);
     // Initial entrance camera position
-    camera.position.set(0, 140, 480);
+    camera.position.set(0, 180, 520);
     cameraRef.current = camera;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.rotateSpeed = 0.65;
+    controls.dampingFactor = 0.04;
+    controls.rotateSpeed = 0.6;
     controls.zoomSpeed = 0.85;
     controls.minDistance = 15;
-    controls.maxDistance = 1200;
+    controls.maxDistance = 1400;
     controlsRef.current = controls;
 
-    // Yield lerping control to user as soon as they interact
     const onControlsStart = () => {
       isCameraLerping.current = false;
+      lastUserInteractionTime.current = Date.now();
     };
     controls.addEventListener('start', onControlsStart);
 
@@ -779,12 +835,12 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
     // Build Initial Environment
     buildSolarSystem(envGroup);
 
-    // Initial target settling position
+    // Initial camera target: smoothly glides from 520 into 260
     targetCamPos.current = new THREE.Vector3(0, 75, 260);
     targetCamLookAt.current = new THREE.Vector3(0, 0, 0);
     isCameraLerping.current = true;
 
-    // Animation Loop with smooth camera interpolation
+    // Animation Loop
     const animate = () => {
       animIdRef.current = requestAnimationFrame(animate);
 
@@ -792,13 +848,20 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
         envGroup.userData.update();
       }
 
-      // Smooth cinematic camera flight interpolation
+      bgStarfield.rotation.y += 0.00008;
+
+      // Smooth cinematic camera lerp
       if (isCameraLerping.current && camera && controls) {
-        camera.position.lerp(targetCamPos.current, 0.045);
-        controls.target.lerp(targetCamLookAt.current, 0.045);
-        if (camera.position.distanceTo(targetCamPos.current) < 0.4) {
+        camera.position.lerp(targetCamPos.current, 0.038);
+        controls.target.lerp(targetCamLookAt.current, 0.038);
+        if (camera.position.distanceTo(targetCamPos.current) < 0.35) {
           isCameraLerping.current = false;
         }
+      } else if (Date.now() - lastUserInteractionTime.current > 4000) {
+        // Slow majestic ambient drift when idle
+        const time = Date.now() * 0.0003;
+        camera.position.x += Math.sin(time) * 0.03;
+        camera.position.y += Math.cos(time * 0.8) * 0.02;
       }
 
       controls.update();
@@ -806,7 +869,6 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
     };
     animate();
 
-    // Window Resize Handler
     const onResize = () => {
       const w = window.innerWidth;
       const h = window.innerHeight;
@@ -846,7 +908,6 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
     if (!envGroup || !camera || !controls) return;
 
     setTimeout(() => {
-      // 1. Dispose previous environment assets
       while (envGroup.children.length > 0) {
         const obj = envGroup.children[0];
         envGroup.remove(obj);
@@ -858,7 +919,6 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
         }
       }
 
-      // 2. Build newly selected environment
       switch (newEnv) {
         case 'SOLAR_SYSTEM':
           buildSolarSystem(envGroup);
@@ -916,19 +976,17 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
   }, [activeEnv, resetControlsTimer]);
 
   // -------------------------------------------------------------------------
-  // Walkthrough Step Navigation & Camera Choreography
+  // Walkthrough Navigation
   // -------------------------------------------------------------------------
   const goToStep = useCallback((idx: number) => {
     if (idx < 0 || idx >= SPATIAL_WALKTHROUGH_STEPS.length) return;
     setCurrentStepIndex(idx);
     const step = SPATIAL_WALKTHROUGH_STEPS[idx];
 
-    // Smoothly fly camera to scenic vantage point
     targetCamPos.current = new THREE.Vector3(...step.cameraPos);
     targetCamLookAt.current = new THREE.Vector3(...step.cameraTarget);
     isCameraLerping.current = true;
 
-    // Switch environment if this step highlights another cosmic domain
     if (step.env !== activeEnv) {
       switchEnvironment(step.env, false);
     }
@@ -938,7 +996,6 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
     if (currentStepIndex < SPATIAL_WALKTHROUGH_STEPS.length - 1) {
       goToStep(currentStepIndex + 1);
     } else {
-      // Completed last step: minimize to let user enjoy space freely
       setIsWalkthroughMinimized(true);
     }
   }, [currentStepIndex, goToStep]);
@@ -954,12 +1011,13 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
   // -------------------------------------------------------------------------
   const handleExit = useCallback((targetTab?: TabType) => {
     setIsExiting(true);
+    audioEngineRef.current?.stop();
     setTimeout(() => {
       onExit(targetTab);
-    }, 320);
+    }, 350);
   }, [onExit]);
 
-  // Keyboard navigation inside Explore The Space
+  // Keyboard controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -972,12 +1030,14 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
         handleNextStep();
       } else if (e.key === 'ArrowLeft' && isWalkthroughActive && !isWalkthroughMinimized) {
         handlePrevStep();
+      } else if (e.key.toLowerCase() === 'm') {
+        toggleAudio();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isWalkthroughActive, isWalkthroughMinimized, handleNextStep, handlePrevStep, handleExit]);
+  }, [isWalkthroughActive, isWalkthroughMinimized, handleNextStep, handlePrevStep, handleExit, toggleAudio]);
 
   const currentStep = SPATIAL_WALKTHROUGH_STEPS[currentStepIndex];
 
@@ -999,16 +1059,15 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
       {/* Three.js Canvas Container */}
       <div ref={mountRef} style={{ width: '100%', height: '100%' }} />
 
-      {/* 1. Cinematic Hyper-Space Entry Veil */}
-      {entryPhase !== 'settled' && (
+      {/* 1. Cinematic Hyper-Space Entry Veil: Leaving Mission Control */}
+      {entryPhase === 'entering' && (
         <div style={{
           position: 'absolute',
           inset: 0,
           background: '#010206',
           zIndex: 50,
           pointerEvents: 'none',
-          transition: 'opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1)',
-          opacity: entryPhase === 'entering' ? 1 : 0,
+          animation: 'spaceEntryTransition 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -1016,21 +1075,21 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
           gap: '14px'
         }}>
           <div style={{
-            width: '42px',
-            height: '42px',
+            width: '40px',
+            height: '40px',
             borderRadius: '50%',
-            border: '2px solid rgba(56, 189, 248, 0.3)',
+            border: '2px solid rgba(56, 189, 248, 0.25)',
             borderTopColor: 'var(--accent-cyan)',
             animation: 'spacePulseSpin 1s linear infinite'
           }} />
           <div style={{
             fontFamily: 'var(--font-mono)',
             fontSize: '11px',
-            letterSpacing: '0.2em',
+            letterSpacing: '0.22em',
             color: 'var(--accent-cyan)',
             textTransform: 'uppercase'
           }}>
-            ENTERING DEEP SPACE // CALIBRATING SENSORS
+            CROSSING INTERFACE // ENTERING DEEP SPACE
           </div>
         </div>
       )}
@@ -1052,7 +1111,7 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
         <div style={{
           position: 'absolute',
           inset: 0,
-          background: 'rgba(1, 2, 6, 0.82)',
+          background: 'rgba(1, 2, 6, 0.85)',
           backdropFilter: 'blur(10px)',
           transition: 'all 0.25s ease',
           pointerEvents: 'none',
@@ -1060,7 +1119,7 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
         }} />
       )}
 
-      {/* 4. Top Header Bar: Discoverable "Return to Mission Control" + Telemetry Stats */}
+      {/* 4. Top Header Bar: Discoverable "Return to Mission Control" + Ambient Controls */}
       <div style={{
         position: 'absolute',
         top: '20px',
@@ -1070,7 +1129,9 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        pointerEvents: 'none'
+        pointerEvents: 'none',
+        transition: 'opacity 0.4s ease',
+        opacity: controlsVisible ? 1 : 0.25
       }}>
         {/* Subtle, discoverable Return to Mission Control control */}
         <button
@@ -1078,7 +1139,7 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
           className="btn"
           style={{
             pointerEvents: 'auto',
-            background: 'rgba(5, 12, 24, 0.85)',
+            background: 'rgba(4, 10, 20, 0.8)',
             backdropFilter: 'blur(16px)',
             border: '1px solid rgba(56, 189, 248, 0.3)',
             color: '#f8fafc',
@@ -1089,7 +1150,7 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
             alignItems: 'center',
             gap: '8px',
             borderRadius: 'var(--radius-full)',
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.7), 0 0 15px rgba(56, 189, 248, 0.15)',
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.7), 0 0 15px rgba(56, 189, 248, 0.12)',
             transition: 'all 0.2s ease',
             cursor: 'pointer'
           }}
@@ -1099,14 +1160,39 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
           <span>Return to Mission Control</span>
         </button>
 
-        {/* Right Status Indicators & Walkthrough Reopen Pill */}
+        {/* Right Status Indicators & Ambient Sound Toggle */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
           gap: '10px',
           pointerEvents: 'auto'
         }}>
-          {(!isWalkthroughActive || isWalkthroughMinimized) && (
+          {/* Subtle Ambient Cosmic Sound Toggle */}
+          <button
+            onClick={toggleAudio}
+            style={{
+              background: 'rgba(4, 10, 20, 0.75)',
+              backdropFilter: 'blur(14px)',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              color: isAudioMuted ? 'var(--text-muted)' : 'var(--accent-cyan)',
+              padding: '6px 12px',
+              borderRadius: 'var(--radius-full)',
+              fontSize: '11px',
+              fontFamily: 'var(--font-mono)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+            title={isAudioMuted ? 'Unmute Deep Space Ambience (M)' : 'Mute Deep Space Ambience (M)'}
+          >
+            {isAudioMuted ? <VolumeX size={13} /> : <Volume2 size={13} />}
+            <span>{isAudioMuted ? 'AUDIO: OFF' : 'AUDIO: SUBTLE'}</span>
+          </button>
+
+          {/* Reopen Walkthrough HUD Pill if Minimized */}
+          {isWalkthroughReady && (!isWalkthroughActive || isWalkthroughMinimized) && (
             <button
               onClick={() => {
                 setIsWalkthroughActive(true);
@@ -1135,7 +1221,7 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
           )}
 
           <div style={{
-            background: 'rgba(5, 12, 24, 0.75)',
+            background: 'rgba(4, 10, 20, 0.75)',
             backdropFilter: 'blur(14px)',
             border: '1px solid rgba(255, 255, 255, 0.08)',
             padding: '6px 12px',
@@ -1154,13 +1240,13 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
               background: 'var(--status-live)',
               boxShadow: '0 0 8px var(--status-live)'
             }} />
-            <span>IMMERSIVE // 3D CANVAS</span>
+            <span>REALISTIC SIMULATION // 1:1 CANOPY</span>
           </div>
         </div>
       </div>
 
-      {/* 5. Spatial Walkthrough Floating Aerospace HUD */}
-      {isWalkthroughActive && !isWalkthroughMinimized && entryPhase === 'settled' && (
+      {/* 5. Spatial Walkthrough Floating Aerospace HUD (Appears only after initial wow moment) */}
+      {isWalkthroughReady && isWalkthroughActive && !isWalkthroughMinimized && (
         <div style={{
           position: 'absolute',
           bottom: '88px',
@@ -1178,26 +1264,24 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
           display: 'flex',
           flexDirection: 'column',
           gap: '12px',
-          animation: 'walkthroughHudFadeIn 0.35s ease',
+          animation: 'walkthroughHudFadeIn 0.4s ease',
           pointerEvents: 'auto'
         }}>
-          {/* Top Aerospace Phase Header */}
+          {/* Top Phase Header */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: '10px',
-                letterSpacing: '0.12em',
-                color: 'var(--accent-cyan)',
-                background: 'rgba(56, 189, 248, 0.12)',
-                border: '1px solid rgba(56, 189, 248, 0.25)',
-                padding: '2px 8px',
-                borderRadius: '3px',
-                fontWeight: 600
-              }}>
-                {currentStep.phaseLabel}
-              </span>
-            </div>
+            <span style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '10px',
+              letterSpacing: '0.12em',
+              color: 'var(--accent-cyan)',
+              background: 'rgba(56, 189, 248, 0.12)',
+              border: '1px solid rgba(56, 189, 248, 0.25)',
+              padding: '2px 8px',
+              borderRadius: '3px',
+              fontWeight: 600
+            }}>
+              {currentStep.phaseLabel}
+            </span>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <button
@@ -1211,7 +1295,7 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
                   display: 'flex',
                   alignItems: 'center'
                 }}
-                title="Minimize Guide (Free Exploration)"
+                title="Minimize Guide (Free Contemplation)"
               >
                 <Minimize2 size={13} />
               </button>
@@ -1233,7 +1317,7 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
             </div>
           </div>
 
-          {/* Title and Concise Description */}
+          {/* Title and Short Story Description */}
           <div>
             <h2 style={{
               margin: '0 0 6px 0',
@@ -1326,7 +1410,7 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
             </button>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {currentStep.keyAction && (
+              {currentStep.keyAction && currentStep.keyAction.tab !== 'mission-control' && (
                 <button
                   onClick={() => handleExit(currentStep.keyAction?.tab)}
                   className="btn btn-secondary"
@@ -1389,7 +1473,7 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
         transform: 'translateX(-50%)',
         zIndex: 20,
         transition: 'opacity 0.4s ease',
-        opacity: controlsVisible ? 1 : 0.2,
+        opacity: controlsVisible ? 1 : 0.25,
         pointerEvents: controlsVisible ? 'auto' : 'none',
         maxWidth: 'calc(100vw - 32px)'
       }}>
@@ -1397,7 +1481,7 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
           display: 'flex',
           alignItems: 'center',
           gap: '4px',
-          background: 'rgba(5, 12, 24, 0.85)',
+          background: 'rgba(4, 10, 20, 0.82)',
           backdropFilter: 'blur(16px)',
           border: '1px solid rgba(255, 255, 255, 0.1)',
           padding: '4px',
@@ -1441,7 +1525,7 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
 
       <style>{`
         @keyframes walkthroughHudFadeIn {
-          from { opacity: 0; transform: translateY(12px) scale(0.98); }
+          from { opacity: 0; transform: translateY(14px) scale(0.98); }
           to { opacity: 1; transform: translateY(0) scale(1); }
         }
         @keyframes spacePulseSpin {
@@ -1451,6 +1535,11 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
         @keyframes spacePulseFadeIn {
           from { opacity: 0; }
           to { opacity: 1; }
+        }
+        @keyframes spaceEntryTransition {
+          0% { opacity: 1; transform: scale(1.04); }
+          50% { opacity: 0.95; }
+          100% { opacity: 0; transform: scale(1); }
         }
       `}</style>
     </div>
