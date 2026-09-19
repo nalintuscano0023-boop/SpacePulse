@@ -321,9 +321,46 @@ export const MissionsExplorer: React.FC = () => {
                     </td>
 
                     <td style={{ padding: '12px 16px' }}>
-                      <span style={{ fontSize: '11px', color: 'var(--status-live)' }}>
-                        {archive.accessType}
-                      </span>
+                      {archive.officialUrl ? (
+                        <a
+                          href={archive.officialUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={`Open ${archive.title} official repository`}
+                          title={`Visit official ${archive.archiveHost} archive`}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            color: 'var(--status-live)',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            textDecoration: 'none',
+                            padding: '4px 8px',
+                            borderRadius: 'var(--radius-xs)',
+                            background: 'rgba(34, 197, 94, 0.08)',
+                            border: '1px solid rgba(34, 197, 94, 0.25)',
+                            transition: 'all 0.15s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(34, 197, 94, 0.16)';
+                            e.currentTarget.style.borderColor = 'var(--status-live)';
+                            e.currentTarget.style.color = '#ffffff';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(34, 197, 94, 0.08)';
+                            e.currentTarget.style.borderColor = 'rgba(34, 197, 94, 0.25)';
+                            e.currentTarget.style.color = 'var(--status-live)';
+                          }}
+                        >
+                          <span>{archive.accessType}</span>
+                          <ExternalLink size={11} style={{ flexShrink: 0 }} />
+                        </a>
+                      ) : (
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                          {archive.accessType}
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}
