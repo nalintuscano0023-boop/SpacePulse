@@ -289,12 +289,11 @@ export const MissionsExplorer: React.FC = () => {
                   textTransform: 'uppercase',
                   letterSpacing: '0.04em'
                 }}>
-                  <th style={{ padding: '12px 16px' }}>Archive Title</th>
-                  <th style={{ padding: '12px 16px' }}>Repository Host</th>
-                  <th style={{ padding: '12px 16px' }}>Mission</th>
-                  <th style={{ padding: '12px 16px' }}>Formats</th>
-                  <th style={{ padding: '12px 16px' }}>Access</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'right' }}>Link</th>
+                  <th style={{ padding: '12px 16px', width: '38%' }}>Archive Title</th>
+                  <th style={{ padding: '12px 16px', width: '20%' }}>Repository Host</th>
+                  <th style={{ padding: '12px 16px', width: '16%' }}>Mission</th>
+                  <th style={{ padding: '12px 16px', width: '14%' }}>Formats</th>
+                  <th style={{ padding: '12px 16px', width: '12%' }}>Access Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -325,19 +324,6 @@ export const MissionsExplorer: React.FC = () => {
                       <span style={{ fontSize: '11px', color: 'var(--status-live)' }}>
                         {archive.accessType}
                       </span>
-                    </td>
-
-                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                      <a
-                        href={archive.officialUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="btn btn-secondary"
-                        style={{ fontSize: '11px', padding: '4px 10px' }}
-                      >
-                        <span>Access</span>
-                        <ExternalLink size={12} />
-                      </a>
                     </td>
                   </tr>
                 ))}
