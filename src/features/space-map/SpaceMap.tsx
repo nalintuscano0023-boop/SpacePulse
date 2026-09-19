@@ -326,7 +326,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
       }
     } else {
       targetLookAt.current = new THREE.Vector3(0, 0, 0);
-      targetCamPos.current = new THREE.Vector3(0, 75, 125);
+      targetCamPos.current = new THREE.Vector3(16, 32, 75);
     }
   }, [viewMode]);
 
@@ -361,8 +361,11 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     sceneRef.current = scene;
 
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 20000);
-    camera.position.set(0, 75, 125);
+    // Smooth cinematic entry: begins further in deep space and sweeps into optimal 3D perspective
+    camera.position.set(24, 78, 148);
     cameraRef.current = camera;
+    targetLookAt.current = new THREE.Vector3(0, 0, 0);
+    targetCamPos.current = new THREE.Vector3(16, 32, 75);
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -614,16 +617,29 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
       const sunMesh = new THREE.Mesh(sunGeo, sunMat);
       sunMesh.userData = { bodyId: 'sun' };
 
-      // Sun Corona Halo
-      const haloGeo = new THREE.SphereGeometry(5.8, 32, 32);
-      const haloMat = new THREE.MeshBasicMaterial({
+      // Multi-layer Coronal Photosphere & Atmospheric Glow
+      const innerHaloGeo = new THREE.SphereGeometry(5.4, 32, 32);
+      const innerHaloMat = new THREE.MeshBasicMaterial({
+        color: 0xfef08a,
+        transparent: true,
+        opacity: 0.32,
+        side: THREE.BackSide,
+        blending: THREE.AdditiveBlending
+      });
+      const innerHalo = new THREE.Mesh(innerHaloGeo, innerHaloMat);
+      sunMesh.add(innerHalo);
+
+      const outerHaloGeo = new THREE.SphereGeometry(7.2, 32, 32);
+      const outerHaloMat = new THREE.MeshBasicMaterial({
         color: 0xf59e0b,
         transparent: true,
-        opacity: 0.3,
-        side: THREE.BackSide
+        opacity: 0.16,
+        side: THREE.BackSide,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
       });
-      const halo = new THREE.Mesh(haloGeo, haloMat);
-      sunMesh.add(halo);
+      const outerHalo = new THREE.Mesh(outerHaloGeo, outerHaloMat);
+      sunMesh.add(outerHalo);
       scene.add(sunMesh);
 
       bodiesRef.current.set('sun', {
@@ -1016,6 +1032,20 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     const reticle = reticleRef.current;
     const distLine = distLineRef.current;
 
+    // Dynamic Orbit Line Emphasis: Selected orbit prominent, other orbits quieter
+    bodiesRef.current.forEach((body) => {
+      if (body.orbitLine && body.orbitLine.material) {
+        const mat = body.orbitLine.material as THREE.LineBasicMaterial;
+        if (!selectedBodyId) {
+          mat.opacity = 0.28;
+        } else if (body.id === selectedBodyId) {
+          mat.opacity = 0.88;
+        } else {
+          mat.opacity = 0.10;
+        }
+      }
+    });
+
     if (selectedBodyId === 'voyager-1' || selectedBodyId === 'voyager-2') {
       setVoyagerNotice(true);
       if (reticle) reticle.visible = false;
@@ -1284,7 +1314,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
           {/* Left: View Mode Toggle, Quick Selectors, Search */}
           <div id="space-map-controls-panel" style={{ display: 'flex', alignItems: 'center', gap: '8px', pointerEvents: 'auto', flexWrap: 'wrap' }}>
             {/* Mode Switcher */}
-            <div className="glass-panel" style={{ display: 'flex', padding: '3px', borderRadius: 'var(--radius-xs)', gap: '3px' }}>
+            <div className="glass-panel" style={{ display: 'flex', padding: '3px', borderRadius: 'var(--radius-xs)', gap: '3px', background: 'rgba(5, 12, 24, 0.88)' }}>
               <button
                 onClick={() => {
                   setViewMode('SOLAR_SYSTEM');
@@ -1296,17 +1326,18 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
                   fontSize: '11px',
                   fontFamily: 'var(--font-heading)',
                   fontWeight: 600,
-                  border: 'none',
                   cursor: 'pointer',
-                  background: viewMode === 'SOLAR_SYSTEM' ? 'var(--accent-cyan)' : 'transparent',
-                  color: viewMode === 'SOLAR_SYSTEM' ? '#000000' : 'var(--text-secondary)',
+                  background: viewMode === 'SOLAR_SYSTEM' ? 'rgba(56, 189, 248, 0.18)' : 'transparent',
+                  color: viewMode === 'SOLAR_SYSTEM' ? '#ffffff' : 'var(--text-secondary)',
+                  border: viewMode === 'SOLAR_SYSTEM' ? '1px solid rgba(56, 189, 248, 0.45)' : '1px solid transparent',
+                  boxShadow: viewMode === 'SOLAR_SYSTEM' ? '0 0 12px rgba(56, 189, 248, 0.16)' : 'none',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
                   transition: 'all 0.15s ease'
                 }}
               >
-                <Orbit size={13} />
+                <Orbit size={13} style={{ color: viewMode === 'SOLAR_SYSTEM' ? 'var(--accent-cyan)' : 'inherit' }} />
                 <span>Solar System</span>
               </button>
 
@@ -1321,17 +1352,18 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
                   fontSize: '11px',
                   fontFamily: 'var(--font-heading)',
                   fontWeight: 600,
-                  border: 'none',
                   cursor: 'pointer',
-                  background: viewMode === 'EARTH_ORBIT' ? 'var(--accent-cyan)' : 'transparent',
-                  color: viewMode === 'EARTH_ORBIT' ? '#000000' : 'var(--text-secondary)',
+                  background: viewMode === 'EARTH_ORBIT' ? 'rgba(56, 189, 248, 0.18)' : 'transparent',
+                  color: viewMode === 'EARTH_ORBIT' ? '#ffffff' : 'var(--text-secondary)',
+                  border: viewMode === 'EARTH_ORBIT' ? '1px solid rgba(56, 189, 248, 0.45)' : '1px solid transparent',
+                  boxShadow: viewMode === 'EARTH_ORBIT' ? '0 0 12px rgba(56, 189, 248, 0.16)' : 'none',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
                   transition: 'all 0.15s ease'
                 }}
               >
-                <Globe size={13} />
+                <Globe size={13} style={{ color: viewMode === 'EARTH_ORBIT' ? 'var(--accent-cyan)' : 'inherit' }} />
                 <span>Earth Orbit Tracking</span>
               </button>
             </div>
