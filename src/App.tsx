@@ -107,6 +107,9 @@ function AppContent({
               onSelectObject={handleInspectObject}
               onFocusOnMap={handleFocusOnMap}
               onAnalyzeObject={handleAnalyzeObject}
+              selectedObject={selectedObject}
+              isInspectorOpen={isInspectorOpen}
+              onCloseInspector={() => setIsInspectorOpen(false)}
             />
           )}
 
@@ -131,8 +134,8 @@ function AppContent({
         </ErrorBoundary>
       </main>
 
-      {/* 5. Floating Object Inspector */}
-      {selectedObject && isInspectorOpen && (
+      {/* 5. Floating Object Inspector (for Space Map, Mission Control, Analysis) */}
+      {activeTab !== 'spacecraft' && selectedObject && isInspectorOpen && (
         <ObjectInspector
           object={selectedObject}
           onClose={() => setIsInspectorOpen(false)}

@@ -29,13 +29,15 @@ interface ObjectInspectorProps {
   onClose: () => void;
   onFocusOnMap?: (objectId: string) => void;
   onOpenInAnalysis?: (objectId: string) => void;
+  embedded?: boolean;
 }
 
 export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
   object: rawObject,
   onClose,
   onFocusOnMap,
-  onOpenInAnalysis
+  onOpenInAnalysis,
+  embedded = false
 }) => {
   const [show3DViewer, setShow3DViewer] = useState(false);
   
@@ -48,14 +50,17 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
     data: true
   });
 
-  // Lock body scroll while inspector is open
+  // Lock body scroll only when in modal/mobile sheet mode, NOT in desktop embedded side-by-side mode
   useEffect(() => {
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = originalOverflow;
-    };
-  }, []);
+    const isMobileSheet = typeof window !== 'undefined' && window.innerWidth < 1024;
+    if (!embedded || isMobileSheet) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [embedded]);
 
   if (!rawObject) return null;
 
@@ -88,7 +93,7 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
 
       <div
         id="object-inspector-panel"
-        className="glass-panel tech-corner object-inspector-panel"
+        className={`glass-panel tech-corner object-inspector-panel ${embedded ? 'object-inspector-embedded' : 'object-inspector-floating'}`}
       >
         {/* Panel Header */}
         <div style={{
