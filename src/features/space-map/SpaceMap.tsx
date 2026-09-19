@@ -1230,24 +1230,48 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '12px',
-          fontSize: '9px',
-          fontFamily: 'var(--font-mono)',
-          color: 'var(--accent-cyan)',
-          letterSpacing: '0.08em',
-          background: 'rgba(3, 7, 18, 0.75)',
-          backdropFilter: 'blur(8px)',
-          border: '1px solid rgba(56, 189, 248, 0.2)',
-          padding: '4px 12px',
-          borderRadius: 'var(--radius-full)',
-          width: 'fit-content',
-          pointerEvents: 'auto'
+          justifyContent: 'space-between',
+          gap: '10px',
+          flexWrap: 'wrap',
+          marginBottom: '2px'
         }}>
-          <span>{viewMode === 'EARTH_ORBIT' ? 'GEOCENTRIC REFERENCE (ECI TEME J2000)' : 'HELIOCENTRIC REFERENCE (ECLIPTIC J2000)'}</span>
-          <span>•</span>
-          <span>DATA: CALCULATED (CELESTRAK SGP4 & KEPLER)</span>
-          <span>•</span>
-          <span style={{ color: 'var(--text-muted)' }}>OBJECT MARKERS VISUALLY ENLARGED</span>
+          <div style={{
+            fontSize: '10px',
+            fontFamily: 'var(--font-mono)',
+            color: 'var(--accent-cyan)',
+            letterSpacing: '0.04em',
+            background: 'rgba(3, 7, 18, 0.85)',
+            border: '1px solid rgba(56, 189, 248, 0.2)',
+            padding: '4px 12px',
+            borderRadius: 'var(--radius-full)',
+            width: 'fit-content',
+            pointerEvents: 'auto',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}>
+            <span>{viewMode === 'EARTH_ORBIT' ? 'GEOCENTRIC REFERENCE (ECI TEME J2000)' : 'HELIOCENTRIC REFERENCE (ECLIPTIC J2000)'}</span>
+            <span>•</span>
+            <span>DATA: CALCULATED (CELESTRAK SGP4 & KEPLER)</span>
+            <span>•</span>
+            <span style={{ color: 'var(--text-muted)' }}>OBJECT MARKERS VISUALLY ENLARGED</span>
+          </div>
+
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontSize: '10px',
+            color: 'var(--text-secondary)',
+            background: 'rgba(3, 7, 18, 0.85)',
+            border: '1px solid var(--border-hairline)',
+            padding: '4px 10px',
+            borderRadius: 'var(--radius-full)',
+            pointerEvents: 'auto'
+          }}>
+            <Info size={11} style={{ color: 'var(--accent-cyan)' }} />
+            <span>Click any object to acquire telemetry • Drag to rotate orbit • Scroll to zoom</span>
+          </div>
         </div>
 
         <div style={{
@@ -1663,7 +1687,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
               aria-label={`Inspect ${hudData.name}`}
               title={`Open comprehensive telemetry inspector for ${hudData.name}`}
             >
-              <span>Inspect</span>
+              <span>Inspect Object</span>
               <ChevronRight size={12} />
             </button>
           </div>

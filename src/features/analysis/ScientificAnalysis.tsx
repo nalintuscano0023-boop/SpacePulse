@@ -297,6 +297,22 @@ export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialO
                 </button>
               ))}
             </div>
+
+            {/* Dynamic Calculation Mode Summary */}
+            <div style={{
+              fontSize: '11px',
+              color: 'var(--text-secondary)',
+              background: 'var(--surface-inset)',
+              padding: '6px 10px',
+              borderRadius: 'var(--radius-xs)',
+              border: '1px solid var(--border-hairline)',
+              lineHeight: 1.4
+            }}>
+              {analysisType === 'distance' && 'Calculates true Euclidean separation vector and speed-of-light radio signal delay (t = d / c) to Earth and the Sun.'}
+              {analysisType === 'motion' && 'Computes instantaneous orbital velocity vector components (vx, vy, vz) and scalar kinetic velocity.'}
+              {analysisType === 'orbit' && 'Analyzes orbital regime classification, gravitational center, and Keplerian orbital parameters.'}
+              {analysisType === 'comparison' && 'Calculates relative Euclidean separation and differential velocity vector (Δv) between two selected bodies.'}
+            </div>
           </div>
 
           {/* STEP 2B (If Comparison): SELECT SECONDARY OBJECT */}

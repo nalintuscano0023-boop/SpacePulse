@@ -14,7 +14,9 @@ import {
   ChevronDown,
   ChevronUp,
   Activity,
-  Sparkles
+  Sparkles,
+  Satellite,
+  Database
 } from 'lucide-react';
 import { SpaceWeatherWidget } from '../../components/weather/SpaceWeatherWidget';
 import { SPACECRAFT_REGISTRY, resolveSpacecraftState } from '../../services/data/spacecraftCatalog';
@@ -308,7 +310,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
               textTransform: 'uppercase'
             }}>
               <Radio size={12} />
-              <span>SPACE INTELLIGENCE PLATFORM</span>
+              <span>SPACE INTELLIGENCE & VISUALIZATION PLATFORM</span>
             </div>
 
             <StatusBadge status="LIVE" />
@@ -319,7 +321,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
               Mission Control
             </h1>
             <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.55, marginTop: '4px' }}>
-              Space intelligence at a glance. Investigate real-world space objects, track orbits in 3D, and analyze celestial vectors using verified data from ISRO, NASA, and NOAA.
+              Real-time space intelligence platform monitoring verified spacecraft, orbital mechanics, space weather, and planetary science missions from ISRO, NASA, and NOAA.
             </p>
           </div>
 
@@ -362,7 +364,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             </div>
           </div>
 
-          {/* 5. "WHAT CAN I INVESTIGATE?" Quick Action Area (4 Actions) */}
+          {/* Quick Investigations Area */}
           <div style={{ marginTop: '2px' }}>
             <div style={{
               fontSize: '11px',
@@ -372,7 +374,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
               letterSpacing: '0.04em',
               textTransform: 'uppercase'
             }}>
-              What Can I Investigate?
+              Quick Investigations
             </div>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <button
@@ -382,7 +384,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                 title="Directly track the International Space Station in live 3D Earth Orbit"
               >
                 <Orbit size={13} />
-                <span>Track an Object</span>
+                <span>Track ISS in 3D</span>
               </button>
 
               <button
@@ -392,7 +394,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                 title="Compare relative velocity, trajectory, and separation vectors between bodies"
               >
                 <ArrowRightLeft size={13} style={{ color: 'var(--accent-cyan)' }} />
-                <span>Compare Objects</span>
+                <span>Compare Earth & Moon</span>
               </button>
 
               <button
@@ -402,7 +404,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                 title="Measure distance in AU and calculate speed-of-light signal latency"
               >
                 <Compass size={13} style={{ color: 'var(--accent-cyan)' }} />
-                <span>Analyze Distance</span>
+                <span>Analyze Aditya-L1</span>
               </button>
 
               <button
@@ -450,6 +452,219 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             border: '1px solid var(--border-hairline)'
           }}>
             GEOCENTRIC SGP4 ORBIT
+          </div>
+        </div>
+      </div>
+
+      {/* 2. PLATFORM CAPABILITIES — HOW SPACEPULSE WORKS (THE 4 PILLARS) */}
+      <div id="platform-capabilities-overview" className="glass-panel" style={{ padding: '20px' }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '14px',
+          flexWrap: 'wrap',
+          gap: '8px'
+        }}>
+          <div>
+            <div style={{
+              fontSize: '10px',
+              fontFamily: 'var(--font-mono)',
+              color: 'var(--accent-cyan)',
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              fontWeight: 600
+            }}>
+              PLATFORM CAPABILITIES // DISCOVER SPACEPULSE
+            </div>
+            <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#ffffff', marginTop: '2px' }}>
+              Explore Core Intelligence Systems
+            </h2>
+          </div>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+            Direct access to all 4 scientific and visualization sections
+          </div>
+        </div>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+          gap: '12px'
+        }}>
+          {/* Card 1: Spacecraft */}
+          <div
+            onClick={() => onNavigateTab('spacecraft')}
+            className="glass-card"
+            style={{
+              padding: '16px',
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              gap: '12px',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: 'var(--radius-xs)',
+                  background: 'rgba(56, 189, 248, 0.1)',
+                  border: '1px solid rgba(56, 189, 248, 0.25)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--accent-cyan)'
+                }}>
+                  <Satellite size={16} />
+                </div>
+                <span className="mono" style={{ fontSize: '10px', color: 'var(--text-muted)' }}>01 // FLEET</span>
+              </div>
+              <div style={{ fontSize: '14px', fontWeight: 700, color: '#ffffff', marginTop: '10px' }}>
+                Spacecraft Catalog
+              </div>
+              <p style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.45, marginTop: '4px' }}>
+                Browse 12 monitored spacecraft, active satellites, orbital parameters, and inspect interactive 3D blueprints.
+              </p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--accent-cyan)', fontWeight: 600 }}>
+              <span>Explore Fleet</span>
+              <ChevronRight size={13} />
+            </div>
+          </div>
+
+          {/* Card 2: Space Map */}
+          <div
+            onClick={() => onNavigateTab('space-map')}
+            className="glass-card"
+            style={{
+              padding: '16px',
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              gap: '12px',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: 'var(--radius-xs)',
+                  background: 'rgba(56, 189, 248, 0.1)',
+                  border: '1px solid rgba(56, 189, 248, 0.25)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--accent-cyan)'
+                }}>
+                  <Orbit size={16} />
+                </div>
+                <span className="mono" style={{ fontSize: '10px', color: 'var(--text-muted)' }}>02 // 3D MAP</span>
+              </div>
+              <div style={{ fontSize: '14px', fontWeight: 700, color: '#ffffff', marginTop: '10px' }}>
+                3D Space Map
+              </div>
+              <p style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.45, marginTop: '4px' }}>
+                Inspect real-time Keplerian planetary orbits (J2000) and live Earth satellites with client-side SGP4 propagation.
+              </p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--accent-cyan)', fontWeight: 600 }}>
+              <span>Launch Space Map</span>
+              <ChevronRight size={13} />
+            </div>
+          </div>
+
+          {/* Card 3: Analysis */}
+          <div
+            onClick={() => onNavigateTab('analysis')}
+            className="glass-card"
+            style={{
+              padding: '16px',
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              gap: '12px',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: 'var(--radius-xs)',
+                  background: 'rgba(56, 189, 248, 0.1)',
+                  border: '1px solid rgba(56, 189, 248, 0.25)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--accent-cyan)'
+                }}>
+                  <Compass size={16} />
+                </div>
+                <span className="mono" style={{ fontSize: '10px', color: 'var(--text-muted)' }}>03 // KINEMATICS</span>
+              </div>
+              <div style={{ fontSize: '14px', fontWeight: 700, color: '#ffffff', marginTop: '10px' }}>
+                Scientific Analysis
+              </div>
+              <p style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.45, marginTop: '4px' }}>
+                Compute true Euclidean separation, speed-of-light radio delay ($c$), and relative vectors between celestial bodies.
+              </p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--accent-cyan)', fontWeight: 600 }}>
+              <span>Run Calculations</span>
+              <ChevronRight size={13} />
+            </div>
+          </div>
+
+          {/* Card 4: Missions & Data */}
+          <div
+            onClick={() => onNavigateTab('missions')}
+            className="glass-card"
+            style={{
+              padding: '16px',
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              gap: '12px',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: 'var(--radius-xs)',
+                  background: 'rgba(56, 189, 248, 0.1)',
+                  border: '1px solid rgba(56, 189, 248, 0.25)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--accent-cyan)'
+                }}>
+                  <Database size={16} />
+                </div>
+                <span className="mono" style={{ fontSize: '10px', color: 'var(--text-muted)' }}>04 // ARCHIVES</span>
+              </div>
+              <div style={{ fontSize: '14px', fontWeight: 700, color: '#ffffff', marginTop: '10px' }}>
+                Missions & Data
+              </div>
+              <p style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: 1.45, marginTop: '4px' }}>
+                Access verified mission records, scientific milestones, and open planetary repositories from ISRO, NASA, and NOAA.
+              </p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--accent-cyan)', fontWeight: 600 }}>
+              <span>View Archives</span>
+              <ChevronRight size={13} />
+            </div>
           </div>
         </div>
       </div>

@@ -27,12 +27,12 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
     return () => clearInterval(timer);
   }, []);
 
-  const navItems: { id: TabType; label: string; icon: React.ReactNode }[] = [
-    { id: 'mission-control', label: 'Mission Control', icon: <Activity size={15} /> },
-    { id: 'spacecraft', label: 'Spacecraft', icon: <Satellite size={15} /> },
-    { id: 'space-map', label: 'Space Map', icon: <Orbit size={15} /> },
-    { id: 'analysis', label: 'Analysis', icon: <Compass size={15} /> },
-    { id: 'missions', label: 'Missions & Data', icon: <Database size={15} /> }
+  const navItems: { id: TabType; label: string; icon: React.ReactNode; tooltip: string }[] = [
+    { id: 'mission-control', label: 'Mission Control', icon: <Activity size={15} />, tooltip: 'Mission Control: Platform overview and telemetry status' },
+    { id: 'spacecraft', label: 'Spacecraft', icon: <Satellite size={15} />, tooltip: 'Spacecraft: Monitored active fleet, satellites, and 3D models' },
+    { id: 'space-map', label: 'Space Map', icon: <Orbit size={15} />, tooltip: 'Space Map: 3D interactive orbits and real-time celestial visualization' },
+    { id: 'analysis', label: 'Analysis', icon: <Compass size={15} />, tooltip: 'Analysis: Keplerian orbital mechanics, relative velocities, and light delay' },
+    { id: 'missions', label: 'Missions & Data', icon: <Database size={15} />, tooltip: 'Missions & Data: Verified agency dossiers and planetary science archives' }
   ];
 
   return (
@@ -69,6 +69,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
               cursor: 'pointer',
               userSelect: 'none'
             }}
+            title="SpacePulse: Space Intelligence & Visualization Platform"
           >
             <div style={{
               width: '32px',
@@ -97,11 +98,11 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
                 fontSize: '9px',
                 fontFamily: 'var(--font-mono)',
                 color: 'var(--text-muted)',
-                letterSpacing: '0.12em',
+                letterSpacing: '0.08em',
                 textTransform: 'uppercase',
                 lineHeight: 1
               }}>
-                Orbital Intelligence
+                Space Intelligence & Visualization Platform
               </div>
             </div>
           </div>
@@ -123,6 +124,8 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
                   key={item.id}
                   id={`nav-tab-${item.id}`}
                   onClick={() => onSelectTab(item.id)}
+                  title={item.tooltip}
+                  aria-label={item.tooltip}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -190,6 +193,8 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
             <button
               key={item.id}
               onClick={() => onSelectTab(item.id)}
+              title={item.tooltip}
+              aria-label={item.tooltip}
               style={{
                 display: 'flex',
                 flexDirection: 'column',

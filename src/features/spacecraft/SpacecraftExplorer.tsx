@@ -88,6 +88,30 @@ export const SpacecraftExplorer: React.FC<SpacecraftExplorerProps> = ({
         <p style={{ fontSize: '13px', color: 'var(--text-secondary)', maxWidth: '800px', lineHeight: 1.5, marginTop: '4px' }}>
           Authoritative directory of active planetary orbiters, solar observatories, deep-space probes, and Earth-orbiting satellites with calculated ephemerides and real-time CelesTrak SGP4 tracking.
         </p>
+
+        {/* Quick Interaction Guide for First-Time Judges */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          marginTop: '10px',
+          fontSize: '11px',
+          color: 'var(--text-muted)',
+          flexWrap: 'wrap',
+          background: 'rgba(56, 189, 248, 0.05)',
+          border: '1px solid rgba(56, 189, 248, 0.15)',
+          padding: '6px 12px',
+          borderRadius: 'var(--radius-xs)'
+        }}>
+          <span style={{ color: 'var(--accent-cyan)', fontWeight: 600 }}>HOW TO EXPLORE:</span>
+          <span>Click <strong>Inspect</strong> for full telemetry dossier</span>
+          <span>•</span>
+          <span>Click <strong>3D eye icon</strong> for structural model</span>
+          <span>•</span>
+          <span>Click <strong>Orbit icon</strong> to focus on 3D Space Map</span>
+          <span>•</span>
+          <span>Click <strong>Compass icon</strong> to compute vectors in Analysis</span>
+        </div>
       </div>
 
       {/* Search & Filter Toolbar */}

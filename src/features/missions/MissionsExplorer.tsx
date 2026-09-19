@@ -72,6 +72,28 @@ export const MissionsExplorer: React.FC = () => {
         <p style={{ fontSize: '13px', color: 'var(--text-secondary)', maxWidth: '800px', lineHeight: 1.5, marginTop: '4px' }}>
           Verified mission dossiers, payload instrumentation records, and planetary science repositories from ISRO (PRADAN / MOSDAC), NASA PDS, and international space agencies.
         </p>
+
+        {/* Quick Interaction Guide for First-Time Judges */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          marginTop: '10px',
+          fontSize: '11px',
+          color: 'var(--text-muted)',
+          flexWrap: 'wrap',
+          background: 'rgba(56, 189, 248, 0.05)',
+          border: '1px solid rgba(56, 189, 248, 0.15)',
+          padding: '6px 12px',
+          borderRadius: 'var(--radius-xs)'
+        }}>
+          <span style={{ color: 'var(--accent-cyan)', fontWeight: 600 }}>HOW TO EXPLORE:</span>
+          <span>Click any mission card to open its detailed scientific dossier & milestones</span>
+          <span>•</span>
+          <span>Switch to <strong>Open Repositories</strong> to inspect direct agency data links</span>
+          <span>•</span>
+          <span>Filter by agency to isolate ISRO, NASA, or ESA planetary archives</span>
+        </div>
       </div>
 
       {/* Toolbar: Search, Filters & Sub-view Switcher */}

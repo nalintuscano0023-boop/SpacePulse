@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Navbar, type TabType } from './components/common/Navbar';
 import { SpaceEnvironment } from './components/environment/SpaceEnvironment';
-import { OpeningExperience } from './components/common/OpeningExperience';
 import { MissionControl } from './features/mission-control/MissionControl';
 import { SpacecraftExplorer } from './features/spacecraft/SpacecraftExplorer';
 import { SpaceMap } from './features/space-map/SpaceMap';
@@ -45,16 +44,6 @@ function AppContent({
   analysisMode: AnalysisType | undefined;
   setAnalysisMode: (mode: AnalysisType | undefined) => void;
 }) {
-  // Opening Experience State: check sessionStorage so it plays once on initial session entry
-  const [showOpening, setShowOpening] = useState(() => {
-    return !sessionStorage.getItem('spacepulse_intro_shown');
-  });
-
-  const handleCompleteOpening = () => {
-    sessionStorage.setItem('spacepulse_intro_shown', 'true');
-    setShowOpening(false);
-  };
-
   const handleSelectObject = (obj: InspectableObject | SpacecraftObject) => {
     const inspectable = 'category' in obj ? obj : normalizeSpacecraftObject(obj);
     setSelectedObject(inspectable);
@@ -88,12 +77,7 @@ function AppContent({
       {/* 1. Deep Space WebGL Environment (Stars & Milky Way) */}
       <SpaceEnvironment />
 
-      {/* 2. Opening Experience Transition */}
-      {showOpening && (
-        <OpeningExperience onComplete={handleCompleteOpening} />
-      )}
-
-      {/* 3. Floating Aerospace Navigation */}
+      {/* 2. Floating Aerospace Navigation */}
       <Navbar
         activeTab={activeTab}
         onSelectTab={(tab) => {
