@@ -953,11 +953,15 @@ export const MissionControl: React.FC<MissionControlProps> = ({
           </div>
         </div>
 
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 290px), 1fr))',
-          gap: '14px'
-        }}>
+        <div 
+          id="mission-snapshots-grid"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 290px), 1fr))',
+            gap: '14px',
+            alignItems: 'start'
+          }}
+        >
           {MISSION_SNAPSHOTS.map((snapshot) => {
             const isExpanded = selectedSnapshotId === snapshot.id;
             const matchedCraft = snapshot.craftId 
@@ -1001,6 +1005,23 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                   </div>
                 </div>
 
+                {/* Key Mission Metadata: Vehicle, Launch Date & Target */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                  <div style={{ background: 'var(--surface-inset)', padding: '6px 8px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
+                    <div style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Launch Vehicle</div>
+                    <div style={{ fontWeight: 600, fontSize: '11px', color: 'var(--text-primary)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={snapshot.launchVehicle}>{snapshot.launchVehicle}</div>
+                  </div>
+                  <div style={{ background: 'var(--surface-inset)', padding: '6px 8px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
+                    <div style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Launch Date</div>
+                    <div style={{ fontWeight: 600, fontSize: '11px', color: 'var(--text-primary)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={snapshot.launchDate}>{snapshot.launchDate}</div>
+                  </div>
+                </div>
+
+                <div style={{ background: 'var(--surface-inset)', padding: '6px 8px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
+                  <div style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Target Destination</div>
+                  <div style={{ fontWeight: 600, fontSize: '11px', color: 'var(--accent-cyan)', marginTop: '2px' }}>{snapshot.target}</div>
+                </div>
+
                 {/* One Meaningful Scientific Objective */}
                 <div style={{
                   padding: '8px 10px',
@@ -1015,7 +1036,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                   {snapshot.objective}
                 </div>
 
-                {/* Data Provenance Reference */}
+                {/* Data Provenance Reference & Dossier Expand Trigger */}
                 <div style={{
                   fontSize: '10px',
                   color: 'var(--text-muted)',
@@ -1023,12 +1044,16 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  gap: '6px'
+                  gap: '6px',
+                  paddingTop: '2px'
                 }}>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={snapshot.archiveReference}>
                     {snapshot.archiveReference}
                   </span>
-                  {isExpanded ? <ChevronUp size={13} style={{ color: 'var(--accent-cyan)', flexShrink: 0 }} /> : <ChevronDown size={13} style={{ flexShrink: 0 }} />}
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', color: isExpanded ? 'var(--accent-cyan)' : 'var(--text-secondary)', flexShrink: 0, fontWeight: 600 }}>
+                    <span>{isExpanded ? 'Collapse' : 'Dossier'}</span>
+                    {isExpanded ? <ChevronUp size={13} style={{ color: 'var(--accent-cyan)' }} /> : <ChevronDown size={13} />}
+                  </div>
                 </div>
 
                 {/* Inline Expanded Dossier Details */}
@@ -1045,21 +1070,6 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                       animation: 'fadeIn 0.2s ease'
                     }}
                   >
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                      <div style={{ background: 'rgba(255, 255, 255, 0.02)', padding: '6px 8px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
-                        <div style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Launch Vehicle</div>
-                        <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginTop: '2px' }}>{snapshot.launchVehicle}</div>
-                      </div>
-                      <div style={{ background: 'rgba(255, 255, 255, 0.02)', padding: '6px 8px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
-                        <div style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Launch Date</div>
-                        <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginTop: '2px' }}>{snapshot.launchDate}</div>
-                      </div>
-                    </div>
-
-                    <div style={{ background: 'rgba(255, 255, 255, 0.02)', padding: '6px 8px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
-                      <div style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Target Destination</div>
-                      <div style={{ fontWeight: 600, color: 'var(--accent-cyan)', marginTop: '2px' }}>{snapshot.target}</div>
-                    </div>
 
                     <div>
                       <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>Key Payloads & Instruments</div>
