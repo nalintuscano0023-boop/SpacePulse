@@ -191,8 +191,8 @@ export const MissionsExplorer: React.FC = () => {
       {activeTab === 'missions' ? (
         <div className="glass-panel" style={{ overflow: 'hidden' }}>
           {/* Compact Mission Rows Table */}
-          <div style={{ overflowX: 'auto' }}>
-            <table className="data-table-container">
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table className="data-table-container" style={{ minWidth: '660px' }}>
               <thead>
                 <tr style={{
                   borderBottom: '1px solid var(--border-hairline)',
@@ -277,8 +277,8 @@ export const MissionsExplorer: React.FC = () => {
       ) : (
         /* Planetary Science Datasets Directory (Compact Rows) */
         <div className="glass-panel" style={{ overflow: 'hidden' }}>
-          <div style={{ overflowX: 'auto' }}>
-            <table className="data-table-container">
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table className="data-table-container" style={{ minWidth: '660px' }}>
               <thead>
                 <tr style={{
                   borderBottom: '1px solid var(--border-hairline)',
@@ -449,7 +449,7 @@ export const MissionsExplorer: React.FC = () => {
             </div>
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))',
               gap: '8px'
             }}>
               {previewMission.payloads.map((payload) => (

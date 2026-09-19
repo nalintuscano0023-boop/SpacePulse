@@ -860,12 +860,14 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
       renderer.setSize(w, h);
     };
     window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
 
     resetControlsTimer();
 
     return () => {
       cancelAnimationFrame(animIdRef.current);
       window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
       controls.removeEventListener('start', onControlsStart);
       if (hideTimeoutRef.current) window.clearTimeout(hideTimeoutRef.current);
       controls.dispose();
@@ -1105,13 +1107,15 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
       {/* 4. Top Header Bar: Discoverable "Return to Mission Control" + Ambient Controls */}
       <div style={{
         position: 'absolute',
-        top: '20px',
-        left: '20px',
-        right: '20px',
+        top: 'max(16px, var(--sat))',
+        left: 'max(16px, var(--sal))',
+        right: 'max(16px, var(--sar))',
         zIndex: 20,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '8px',
         pointerEvents: 'none',
         transition: 'opacity 0.4s ease',
         opacity: controlsVisible ? 1 : 0.25
@@ -1134,6 +1138,8 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
             display: 'inline-flex',
             alignItems: 'center',
             gap: '8px',
+            minHeight: '38px',
+            touchAction: 'manipulation',
             borderRadius: 'var(--radius-full)',
             boxShadow: currentStep?.id === 'return'
               ? '0 0 25px rgba(56, 189, 248, 0.45), 0 8px 24px rgba(0, 0, 0, 0.7)'
@@ -1151,7 +1157,8 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '10px',
+          flexWrap: 'wrap',
+          gap: '8px',
           pointerEvents: 'auto'
         }}>
           {/* Subtle Ambient Cosmic Sound Toggle */}
@@ -1169,6 +1176,8 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
+              minHeight: '36px',
+              touchAction: 'manipulation',
               cursor: 'pointer',
               transition: 'all 0.2s ease'
             }}
@@ -1196,6 +1205,8 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
+                minHeight: '36px',
+                touchAction: 'manipulation',
                 cursor: 'pointer',
                 boxShadow: '0 0 16px rgba(56, 189, 248, 0.2)',
                 backdropFilter: 'blur(12px)'
@@ -1207,19 +1218,22 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
             </button>
           )}
 
-          <div style={{
-            background: 'rgba(4, 10, 20, 0.75)',
-            backdropFilter: 'blur(14px)',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            padding: '6px 12px',
-            borderRadius: 'var(--radius-full)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            fontSize: '10px',
-            fontFamily: 'var(--font-mono)',
-            color: 'var(--text-muted)'
-          }}>
+          <div 
+            className="canopy-simulation-badge"
+            style={{
+              background: 'rgba(4, 10, 20, 0.75)',
+              backdropFilter: 'blur(14px)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              padding: '6px 12px',
+              borderRadius: 'var(--radius-full)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '10px',
+              fontFamily: 'var(--font-mono)',
+              color: 'var(--text-muted)'
+            }}
+          >
             <span style={{
               width: '6px',
               height: '6px',
@@ -1236,21 +1250,23 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
       {isWalkthroughReady && isWalkthroughActive && !isWalkthroughMinimized && (
         <div style={{
           position: 'absolute',
-          bottom: '88px',
-          left: '24px',
+          bottom: 'calc(84px + var(--sab))',
+          left: 'max(16px, var(--sal))',
           zIndex: 25,
           width: '420px',
-          maxWidth: 'calc(100vw - 48px)',
-          background: 'rgba(4, 10, 20, 0.88)',
+          maxWidth: 'calc(100vw - 32px)',
+          maxHeight: 'calc(100dvh - 170px)',
+          overflowY: 'auto',
+          background: 'rgba(4, 10, 20, 0.92)',
           backdropFilter: 'blur(18px)',
           WebkitBackdropFilter: 'blur(18px)',
           border: '1px solid rgba(56, 189, 248, 0.35)',
           borderRadius: 'var(--radius-md)',
           boxShadow: '0 24px 60px rgba(0, 0, 0, 0.85), 0 0 30px rgba(56, 189, 248, 0.18)',
-          padding: '20px 22px',
+          padding: '16px 18px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '12px',
+          gap: '10px',
           animation: 'walkthroughHudFadeIn 0.4s ease',
           pointerEvents: 'auto'
         }}>
@@ -1278,9 +1294,13 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
                   border: 'none',
                   color: 'var(--text-muted)',
                   cursor: 'pointer',
-                  padding: '4px',
+                  padding: '6px',
+                  minWidth: '32px',
+                  minHeight: '32px',
                   display: 'flex',
-                  alignItems: 'center'
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  touchAction: 'manipulation'
                 }}
                 title="Minimize Guide (Free Contemplation)"
               >
@@ -1293,9 +1313,13 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
                   border: 'none',
                   color: 'var(--text-muted)',
                   cursor: 'pointer',
-                  padding: '4px',
+                  padding: '6px',
+                  minWidth: '32px',
+                  minHeight: '32px',
                   display: 'flex',
-                  alignItems: 'center'
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  touchAction: 'manipulation'
                 }}
                 title="Dismiss Guide"
               >
@@ -1307,8 +1331,8 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
           {/* Title and Short Story Description */}
           <div>
             <h2 style={{
-              margin: '0 0 6px 0',
-              fontSize: '16px',
+              margin: '0 0 4px 0',
+              fontSize: '15px',
               fontWeight: 600,
               color: '#ffffff',
               letterSpacing: '-0.01em',
@@ -1320,7 +1344,7 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
               margin: 0,
               fontSize: '12px',
               color: 'var(--text-secondary)',
-              lineHeight: 1.55
+              lineHeight: 1.5
             }}>
               {currentStep.description}
             </p>
@@ -1364,6 +1388,7 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
                     border: 'none',
                     padding: 0,
                     cursor: 'pointer',
+                    touchAction: 'manipulation',
                     transition: 'all 0.25s ease'
                   }}
                   title={`Step ${idx + 1}: ${s.title}`}
@@ -1387,7 +1412,9 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
               className="btn btn-secondary"
               style={{
                 fontSize: '11px',
-                padding: '5px 10px',
+                padding: '6px 12px',
+                minHeight: '36px',
+                touchAction: 'manipulation',
                 opacity: currentStepIndex === 0 ? 0.3 : 1,
                 cursor: currentStepIndex === 0 ? 'not-allowed' : 'pointer'
               }}
@@ -1403,7 +1430,9 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
                   className="btn btn-secondary"
                   style={{
                     fontSize: '11px',
-                    padding: '5px 12px',
+                    padding: '6px 12px',
+                    minHeight: '36px',
+                    touchAction: 'manipulation',
                     color: 'var(--accent-cyan)',
                     border: '1px solid rgba(56, 189, 248, 0.35)',
                     background: 'rgba(56, 189, 248, 0.08)'
@@ -1420,7 +1449,9 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
                   className="btn btn-primary"
                   style={{
                     fontSize: '11px',
-                    padding: '5px 14px',
+                    padding: '6px 14px',
+                    minHeight: '36px',
+                    touchAction: 'manipulation',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '4px',
@@ -1436,7 +1467,9 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
                   className="btn btn-primary"
                   style={{
                     fontSize: '11px',
-                    padding: '5px 14px',
+                    padding: '6px 14px',
+                    minHeight: '36px',
+                    touchAction: 'manipulation',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
@@ -1455,21 +1488,23 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
       {/* 6. Bottom Center: Minimal Cosmic Domain Selector (Highlighted on Step 4) */}
       <div style={{
         position: 'absolute',
-        bottom: '24px',
+        bottom: 'max(16px, var(--sab))',
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: 20,
         transition: 'all 0.4s ease',
         opacity: (controlsVisible || isWalkthroughActive) ? 1 : 0.25,
         pointerEvents: (controlsVisible || isWalkthroughActive) ? 'auto' : 'none',
-        maxWidth: 'calc(100vw - 32px)'
+        maxWidth: 'calc(100vw - 24px)',
+        width: 'max-content'
       }}>
         <div style={{
           display: 'flex',
           alignItems: 'center',
           gap: '4px',
-          background: 'rgba(4, 10, 20, 0.85)',
+          background: 'rgba(4, 10, 20, 0.88)',
           backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
           border: currentStep?.id === 'domains' 
             ? '1px solid rgba(56, 189, 248, 0.7)' 
             : '1px solid rgba(255, 255, 255, 0.1)',
@@ -1480,6 +1515,9 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
           borderRadius: 'var(--radius-full)',
           overflowX: 'auto',
           whiteSpace: 'nowrap',
+          WebkitOverflowScrolling: 'touch',
+          maxWidth: 'calc(100vw - 24px)',
+          touchAction: 'pan-x',
           transition: 'all 0.3s ease'
         }}>
           {[
@@ -1505,7 +1543,11 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
                   fontWeight: isActive ? 600 : 400,
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
-                  letterSpacing: '0.02em'
+                  letterSpacing: '0.02em',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                  minHeight: '34px',
+                  touchAction: 'manipulation'
                 }}
               >
                 {env.label}

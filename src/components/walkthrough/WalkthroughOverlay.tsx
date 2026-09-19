@@ -71,17 +71,19 @@ export const WalkthroughOverlay: React.FC = () => {
         placement = 'right';
       }
 
-      // Constrain inside viewport
+      // Constrain inside viewport (accounting for mobile bottom nav bar if present)
+      const bottomNavOffset = window.innerWidth <= 860 ? 86 : 20;
       left = Math.max(16, Math.min(window.innerWidth - tooltipW - 16, left));
-      top = Math.max(70, Math.min(window.innerHeight - tooltipH - 20, top));
+      top = Math.max(70, Math.min(window.innerHeight - tooltipH - bottomNavOffset, top));
 
       setTooltipPos({ top, left, placement });
     } else {
       // If target element is not in DOM, center tooltip gracefully
       setTargetRect(null);
+      const bottomNavOffset = window.innerWidth <= 860 ? 40 : 0;
       setTooltipPos({
-        top: window.innerHeight / 2 - 110,
-        left: window.innerWidth / 2 - 180,
+        top: Math.max(70, (window.innerHeight - bottomNavOffset) / 2 - 110),
+        left: Math.max(16, window.innerWidth / 2 - 180),
         placement: 'center'
       });
     }
@@ -213,13 +215,17 @@ export const WalkthroughOverlay: React.FC = () => {
               border: 'none',
               color: 'var(--text-muted)',
               cursor: 'pointer',
-              padding: '2px',
+              padding: '6px',
+              minWidth: '36px',
+              minHeight: '36px',
               display: 'flex',
-              alignItems: 'center'
+              alignItems: 'center',
+              justifyContent: 'center',
+              touchAction: 'manipulation'
             }}
             title="Close Tour (Esc)"
           >
-            <X size={15} />
+            <X size={16} />
           </button>
         </div>
 
@@ -270,7 +276,9 @@ export const WalkthroughOverlay: React.FC = () => {
               color: 'var(--text-muted)',
               fontSize: '11px',
               cursor: 'pointer',
-              padding: '4px 6px'
+              padding: '6px 8px',
+              minHeight: '36px',
+              touchAction: 'manipulation'
             }}
           >
             Skip
@@ -283,7 +291,9 @@ export const WalkthroughOverlay: React.FC = () => {
               className="btn btn-secondary"
               style={{
                 fontSize: '11px',
-                padding: '5px 10px',
+                padding: '6px 12px',
+                minHeight: '36px',
+                touchAction: 'manipulation',
                 opacity: currentStepIndex === 0 ? 0.35 : 1,
                 cursor: currentStepIndex === 0 ? 'not-allowed' : 'pointer'
               }}
@@ -298,7 +308,9 @@ export const WalkthroughOverlay: React.FC = () => {
                 className="btn btn-primary"
                 style={{
                   fontSize: '11px',
-                  padding: '5px 14px',
+                  padding: '6px 14px',
+                  minHeight: '36px',
+                  touchAction: 'manipulation',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '5px',
@@ -314,7 +326,9 @@ export const WalkthroughOverlay: React.FC = () => {
                 className="btn btn-primary"
                 style={{
                   fontSize: '11px',
-                  padding: '5px 14px',
+                  padding: '6px 14px',
+                  minHeight: '36px',
+                  touchAction: 'manipulation',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '5px'

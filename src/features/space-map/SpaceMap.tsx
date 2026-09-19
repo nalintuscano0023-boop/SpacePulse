@@ -434,8 +434,8 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     // Robust Resize Observer for Dynamic Viewport Sizing
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        const w = Math.max(entry.contentRect.width, 320);
-        const h = Math.max(entry.contentRect.height, 400);
+        const w = entry.contentRect.width || container.clientWidth || 300;
+        const h = entry.contentRect.height || container.clientHeight || 300;
         if (cameraRef.current && rendererRef.current) {
           cameraRef.current.aspect = w / h;
           cameraRef.current.updateProjectionMatrix();
@@ -1177,7 +1177,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
       position: 'relative',
       width: '100%',
       height: 'calc(100vh - 120px)',
-      minHeight: '650px',
+      minHeight: '400px',
       overflow: 'hidden',
       display: 'block'
     }}>
@@ -1217,9 +1217,9 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
       {/* Top Scientific Control Toolbar */}
       <div style={{
         position: 'absolute',
-        top: '16px',
-        left: '20px',
-        right: '20px',
+        top: '12px',
+        left: '12px',
+        right: '12px',
         display: 'flex',
         flexDirection: 'column',
         gap: '8px',
@@ -1637,16 +1637,16 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
       {/* Target Acquisition HUD Reticle (Bottom Left) */}
       {!voyagerNotice && hudData && (
         <div
-          className="glass-panel tech-corner"
+          className="glass-panel tech-corner space-map-hud"
           style={{
             position: 'absolute',
             bottom: '24px',
-            left: '20px',
-            padding: '12px 16px',
+            left: '16px',
+            padding: '12px 14px',
             borderRadius: 'var(--radius-sm)',
             zIndex: 15,
             width: '320px',
-            maxWidth: 'calc(100vw - 40px)',
+            maxWidth: 'calc(100vw - 32px)',
             animation: 'fadeIn 0.2s ease',
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.65)'
           }}
@@ -1754,6 +1754,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
 
       {/* Scientific Transparency Scale Disclaimer (Bottom Center) */}
       <div
+        className="space-map-scale-disclaimer"
         style={{
           position: 'absolute',
           bottom: '12px',
@@ -1761,14 +1762,14 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
           transform: 'translateX(-50%)',
           background: 'rgba(3, 5, 10, 0.85)',
           backdropFilter: 'blur(8px)',
-          padding: '5px 16px',
+          padding: '5px 14px',
           borderRadius: 'var(--radius-full)',
           border: '1px solid rgba(56, 189, 248, 0.25)',
           fontSize: '10px',
           color: 'var(--text-muted)',
           textAlign: 'center',
           pointerEvents: 'none',
-          whiteSpace: 'nowrap',
+          maxWidth: 'min(480px, calc(100vw - 32px))',
           zIndex: 15,
           boxShadow: '0 4px 16px rgba(0, 0, 0, 0.6)'
         }}
@@ -1834,6 +1835,21 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
           onClose={() => setViewing3DViewer(null)}
         />
       )}
+
+      <style>{`
+        @media (max-width: 768px) {
+          .space-map-scale-disclaimer {
+            display: none !important;
+          }
+          .space-map-hud {
+            bottom: 12px !important;
+            left: 8px !important;
+            right: 8px !important;
+            width: auto !important;
+            max-width: none !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };

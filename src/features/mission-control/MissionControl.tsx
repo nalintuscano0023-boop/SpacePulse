@@ -284,11 +284,8 @@ export const MissionControl: React.FC<MissionControlProps> = ({
   return (
     <div className="container" style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
       {/* 1. COMMAND OVERVIEW HEADER & JUDGE-FRIENDLY QUICK ACTIONS */}
-      <div id="mission-control-overview" className="glass-panel tech-corner" style={{
-        padding: '24px 28px',
+      <div id="mission-control-overview" className="glass-panel tech-corner mission-control-hero" style={{
         overflow: 'hidden',
-        display: 'grid',
-        gridTemplateColumns: 'minmax(300px, 1.6fr) minmax(240px, 1fr)',
         gap: '24px',
         alignItems: 'center'
       }}>
@@ -328,7 +325,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
           {/* Key Global Metrics Strip */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 110px), 1fr))',
             gap: '10px',
             padding: '10px 12px',
             background: 'var(--surface-inset)',
@@ -488,7 +485,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
 
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))',
           gap: '12px'
         }}>
           {/* Card 1: Spacecraft */}
@@ -733,7 +730,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
 
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))',
           gap: '12px'
         }}>
           {featuredFleet.map((craft) => (
@@ -809,7 +806,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
         id="space-weather-section"
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
           gap: '20px',
           scrollMarginTop: '80px',
           transition: 'box-shadow 0.3s ease',
@@ -958,7 +955,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
 
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 290px), 1fr))',
           gap: '14px'
         }}>
           {MISSION_SNAPSHOTS.map((snapshot) => {
@@ -1173,7 +1170,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
 
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',
           gap: '10px'
         }}>
           <div style={{ padding: '10px', background: 'var(--surface-inset)', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
@@ -1359,12 +1356,28 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             border-color: rgba(56, 189, 248, 0.7);
           }
         }
+        .mission-control-hero {
+          display: grid;
+          grid-template-columns: minmax(300px, 1.6fr) minmax(240px, 1fr);
+          padding: 24px 28px;
+        }
         @media (max-width: 900px) {
+          .mission-control-hero {
+            grid-template-columns: 1fr !important;
+            padding: 20px 18px !important;
+          }
+          .hero-vista {
+            height: 200px !important;
+            border-left: none !important;
+            border-top: 1px solid var(--border-hairline) !important;
+          }
+        }
+        @media (max-width: 540px) {
+          .mission-control-hero {
+            padding: 16px 14px !important;
+          }
           .hero-vista {
             display: none !important;
-          }
-          .glass-panel.tech-corner {
-            grid-template-columns: 1fr !important;
           }
         }
       `}</style>

@@ -236,7 +236,7 @@ export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialO
       <div className="glass-panel" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))',
           gap: '16px',
           alignItems: 'flex-start'
         }}>
@@ -380,7 +380,7 @@ export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialO
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))',
                 gap: '12px'
               }}>
                 <div style={{ padding: '14px', background: 'var(--surface-inset)', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
@@ -429,7 +429,7 @@ export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialO
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))',
                 gap: '12px'
               }}>
                 <div style={{ padding: '14px', background: 'var(--surface-inset)', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
@@ -473,7 +473,7 @@ export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialO
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))',
                 gap: '12px'
               }}>
                 <div style={{ padding: '14px', background: 'var(--surface-inset)', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
@@ -517,7 +517,7 @@ export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialO
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))',
                 gap: '12px'
               }}>
                 <div style={{ padding: '14px', background: 'var(--surface-inset)', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>

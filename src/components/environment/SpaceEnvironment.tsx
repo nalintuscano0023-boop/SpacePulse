@@ -204,6 +204,9 @@ export const SpaceEnvironment: React.FC = () => {
     };
 
     window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     // Animation Loop
     let animId = 0;
@@ -211,20 +214,22 @@ export const SpaceEnvironment: React.FC = () => {
 
     const animate = () => {
       animId = requestAnimationFrame(animate);
-      const elapsed = clock.getElapsedTime();
+      
+      if (!prefersReducedMotion) {
+        const elapsed = clock.getElapsedTime();
+        // Gentle, subtle celestial rotation (extremely slow to feel vast and tranquil)
+        distantStars.rotation.y = elapsed * 0.0012;
+        milkyWay.rotation.y = elapsed * 0.0016;
+        fgStars.rotation.y = elapsed * 0.0022;
 
-      // Gentle, subtle celestial rotation (extremely slow to feel vast and tranquil)
-      distantStars.rotation.y = elapsed * 0.0012;
-      milkyWay.rotation.y = elapsed * 0.0016;
-      fgStars.rotation.y = elapsed * 0.0022;
+        // Smooth parallax damping
+        currentMouseX += (targetMouseX - currentMouseX) * 0.03;
+        currentMouseY += (targetMouseY - currentMouseY) * 0.03;
 
-      // Smooth parallax damping
-      currentMouseX += (targetMouseX - currentMouseX) * 0.03;
-      currentMouseY += (targetMouseY - currentMouseY) * 0.03;
-
-      camera.position.x = currentMouseX;
-      camera.position.y = -currentMouseY;
-      camera.lookAt(0, 0, 0);
+        camera.position.x = currentMouseX;
+        camera.position.y = -currentMouseY;
+        camera.lookAt(0, 0, 0);
+      }
 
       renderer.render(scene, camera);
     };
@@ -234,6 +239,7 @@ export const SpaceEnvironment: React.FC = () => {
     return () => {
       cancelAnimationFrame(animId);
       window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
       if (!isMobile) {
         window.removeEventListener('mousemove', onMouseMove);
       }

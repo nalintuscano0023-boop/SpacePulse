@@ -42,12 +42,14 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
         position: 'sticky',
         top: 0,
         zIndex: 100,
-        background: 'rgba(3, 5, 10, 0.78)',
+        background: 'rgba(3, 5, 10, 0.85)',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
         borderBottom: '1px solid var(--border-hairline)',
-        padding: '0 24px',
-        height: '60px',
+        paddingTop: 'var(--sat)',
+        paddingLeft: 'max(16px, var(--sal))',
+        paddingRight: 'max(16px, var(--sar))',
+        minHeight: '56px',
         display: 'flex',
         alignItems: 'center'
       }}>
@@ -57,7 +59,9 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
           margin: '0 auto',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between'
+          justifyContent: 'space-between',
+          gap: '12px',
+          padding: '6px 0'
         }}>
           {/* Brand Identity */}
           <div 
@@ -65,9 +69,11 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '12px',
+              gap: '10px',
               cursor: 'pointer',
-              userSelect: 'none'
+              userSelect: 'none',
+              minWidth: 0,
+              flexShrink: 1
             }}
             title="SpacePulse: Space Intelligence & Visualization Platform"
           >
@@ -80,28 +86,38 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: 'var(--accent-cyan)'
+              color: 'var(--accent-cyan)',
+              flexShrink: 0
             }}>
               <Radio size={17} />
             </div>
-            <div>
+            <div style={{ minWidth: 0 }}>
               <div style={{
                 fontFamily: 'var(--font-heading)',
                 fontSize: '16px',
                 fontWeight: 700,
                 letterSpacing: '0.08em',
-                color: '#ffffff'
+                color: '#ffffff',
+                lineHeight: 1.2,
+                whiteSpace: 'nowrap'
               }}>
                 SPACE<span style={{ color: 'var(--accent-cyan)' }}>PULSE</span>
               </div>
-              <div style={{
-                fontSize: '9px',
-                fontFamily: 'var(--font-mono)',
-                color: 'var(--text-muted)',
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                lineHeight: 1
-              }}>
+              <div 
+                className="navbar-subtitle"
+                style={{
+                  fontSize: '9px',
+                  fontFamily: 'var(--font-mono)',
+                  color: 'var(--text-muted)',
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  lineHeight: 1.1,
+                  marginTop: '2px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}
+              >
                 Space Intelligence & Visualization Platform
               </div>
             </div>
@@ -139,7 +155,8 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
                     transition: 'all 0.15s ease',
                     border: isActive ? '1px solid var(--border-focus)' : '1px solid transparent',
                     background: isActive ? 'rgba(56, 189, 248, 0.12)' : 'transparent',
-                    color: isActive ? 'var(--accent-cyan)' : 'var(--text-secondary)'
+                    color: isActive ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                    touchAction: 'manipulation'
                   }}
                 >
                   {item.icon}
@@ -150,17 +167,16 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
           </nav>
 
           {/* Right Status & Clock */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             <div style={{
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
               background: 'rgba(255, 255, 255, 0.02)',
               border: '1px solid var(--border-hairline)',
-              padding: '5px 10px',
+              padding: '4px 8px',
               borderRadius: 'var(--radius-xs)',
-              fontSize: '12px',
+              fontSize: '11px',
               fontFamily: 'var(--font-mono)',
               color: 'var(--text-secondary)'
             }}>
@@ -179,13 +195,16 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
         left: 0,
         right: 0,
         zIndex: 100,
-        background: 'rgba(3, 5, 10, 0.92)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
+        background: 'rgba(3, 5, 10, 0.94)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
         borderTop: '1px solid var(--border-hairline)',
-        padding: '6px 12px 10px',
+        paddingTop: '6px',
+        paddingBottom: 'calc(6px + var(--sab))',
+        paddingLeft: 'max(4px, var(--sal))',
+        paddingRight: 'max(4px, var(--sar))',
         justifyContent: 'space-around',
-        alignItems: 'center'
+        alignItems: 'stretch'
       }}>
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
@@ -196,22 +215,41 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
               title={item.tooltip}
               aria-label={item.tooltip}
               style={{
+                flex: 1,
+                minWidth: 0,
+                minHeight: '48px',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '4px',
-                padding: '6px 8px',
+                justifyContent: 'center',
+                gap: '3px',
+                padding: '4px 2px',
                 borderRadius: 'var(--radius-xs)',
                 fontSize: '10px',
                 fontFamily: 'var(--font-heading)',
-                background: 'transparent',
+                background: isActive ? 'rgba(56, 189, 248, 0.08)' : 'transparent',
                 border: 'none',
+                borderTop: isActive ? '2px solid var(--accent-cyan)' : '2px solid transparent',
                 color: isActive ? 'var(--accent-cyan)' : 'var(--text-muted)',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                touchAction: 'manipulation'
               }}
             >
-              {item.icon}
-              <span>{item.label}</span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {item.icon}
+              </div>
+              <span style={{
+                fontSize: '9.5px',
+                lineHeight: 1.1,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                maxWidth: '100%',
+                fontWeight: isActive ? 600 : 400
+              }}>
+                {item.label}
+              </span>
             </button>
           );
         })}
@@ -228,7 +266,12 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
             display: flex !important;
           }
           main {
-            padding-bottom: 72px !important;
+            padding-bottom: calc(72px + var(--sab)) !important;
+          }
+        }
+        @media (max-width: 540px) {
+          .navbar-subtitle {
+            display: none !important;
           }
         }
       `}</style>

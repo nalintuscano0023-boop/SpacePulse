@@ -18,6 +18,7 @@ export const ActionTooltip: React.FC<ActionTooltipProps> = ({
   return (
     <div
       className="action-tooltip-anchor"
+      onClick={() => setVisible(prev => !prev)}
       onMouseEnter={() => setVisible(true)}
       onMouseLeave={() => setVisible(false)}
       onFocus={() => setVisible(true)}

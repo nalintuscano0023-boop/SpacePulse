@@ -156,7 +156,8 @@ export const SpacecraftExplorer: React.FC<SpacecraftExplorerProps> = ({
         <div style={{
           display: 'flex',
           flexWrap: 'wrap',
-          gap: '6px'
+          gap: '6px',
+          maxWidth: '100%'
         }}>
           {(['ALL', 'ISRO', 'DEEP_SPACE', 'LUNAR', 'EARTH_ORBIT'] as FilterCategory[]).map(cat => {
             const labelMap: Record<FilterCategory, string> = {
@@ -172,7 +173,7 @@ export const SpacecraftExplorer: React.FC<SpacecraftExplorerProps> = ({
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
                 style={{
-                  padding: '5px 12px',
+                  padding: '6px 12px',
                   borderRadius: 'var(--radius-xs)',
                   fontSize: '12px',
                   fontFamily: 'var(--font-heading)',
@@ -181,7 +182,9 @@ export const SpacecraftExplorer: React.FC<SpacecraftExplorerProps> = ({
                   border: isActive ? '1px solid var(--border-focus)' : '1px solid var(--border-hairline)',
                   background: isActive ? 'rgba(56, 189, 248, 0.12)' : 'var(--surface-inset)',
                   color: isActive ? 'var(--accent-cyan)' : 'var(--text-secondary)',
-                  transition: 'all 0.15s ease'
+                  transition: 'all 0.15s ease',
+                  touchAction: 'manipulation',
+                  whiteSpace: 'nowrap'
                 }}
               >
                 {labelMap[cat]}
@@ -200,7 +203,7 @@ export const SpacecraftExplorer: React.FC<SpacecraftExplorerProps> = ({
       ) : (
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))',
           gap: '16px'
         }}>
           {filteredList.map((craft) => (

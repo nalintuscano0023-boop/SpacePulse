@@ -70,6 +70,13 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
 
   return (
     <>
+      {/* Mobile Backdrop Overlay */}
+      <div 
+        className="object-inspector-backdrop" 
+        onClick={onClose} 
+        aria-hidden="true"
+      />
+
       <div
         style={{
           position: 'fixed',
@@ -78,11 +85,11 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
           bottom: '20px',
           width: '430px',
           maxWidth: 'calc(100vw - 40px)',
-          zIndex: 150,
+          zIndex: 1000,
           display: 'flex',
           flexDirection: 'column',
           animation: 'slideInRight 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
-          background: 'rgba(7, 17, 31, 0.88)'
+          background: 'rgba(7, 17, 31, 0.92)'
         }}
         id="object-inspector-panel"
         className="glass-panel tech-corner object-inspector-panel"
@@ -141,17 +148,20 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
               border: 'none',
               color: 'var(--text-muted)',
               cursor: 'pointer',
-              padding: '6px',
+              padding: '10px',
+              minWidth: '44px',
+              minHeight: '44px',
               borderRadius: '4px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              flexShrink: 0
+              flexShrink: 0,
+              touchAction: 'manipulation'
             }}
             aria-label="Close Inspector"
             title="Close Inspector"
           >
-            <X size={17} />
+            <X size={18} />
           </button>
         </div>
 
@@ -501,6 +511,7 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
         {/* Action Footer */}
         <div style={{
           padding: '12px 20px',
+          paddingBottom: 'calc(12px + var(--sab))',
           borderTop: '1px solid var(--border-hairline)',
           display: 'flex',
           gap: '8px',
