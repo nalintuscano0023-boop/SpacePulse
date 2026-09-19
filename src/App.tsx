@@ -74,8 +74,8 @@ function AppContent({
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-      {/* 1. Deep Space WebGL Environment (Stars & Milky Way) */}
-      <SpaceEnvironment />
+      {/* 1. Deep Space WebGL Environment (Stars & Milky Way) - Decoupled from Open Repositories tab */}
+      {activeTab !== 'missions' && <SpaceEnvironment />}
 
       {/* 2. Floating Aerospace Navigation */}
       <Navbar

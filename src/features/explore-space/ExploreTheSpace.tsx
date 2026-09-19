@@ -96,7 +96,7 @@ export const SPATIAL_WALKTHROUGH_STEPS: SpatialWalkthroughStep[] = [
     title: 'Navigate Cosmic Domains.',
     description: 'Journey across the cosmos using the domain navigation below: switch between the Solar System, the Milky Way galactic dome, distant Galaxies, glowing Nebulas, filamentary Deep Space, and the Universe web.',
     env: 'MILKY_WAY',
-    cameraPos: [0, 85, 260],
+    cameraPos: [0, 200, 480],
     cameraTarget: [0, 0, 0],
     tip: 'Select Solar System, Milky Way, Galaxies, Nebulas, Deep Space, or Universe'
   },
@@ -528,17 +528,302 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
     };
   };
 
-  // 2. MILKY WAY (Using authentic multi-layer dome and galactic starfield)
+  // ---------------------------------------------------------------------------
+  // Helper: Sol System Marker Billboard Sprite
+  // ---------------------------------------------------------------------------
+  const createSolMarkerSprite = (): THREE.Sprite => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d')!;
+
+    ctx.fillStyle = 'rgba(7, 17, 31, 0.88)';
+    if (typeof ctx.roundRect === 'function') {
+      ctx.roundRect(10, 10, 492, 108, 12);
+    } else {
+      ctx.rect(10, 10, 492, 108);
+    }
+    ctx.fill();
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 24px "Inter", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('☉ SOL SYSTEM (YOU ARE HERE)', 256, 50);
+
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = '500 17px "JetBrains Mono", monospace';
+    ctx.fillText('Orion Spur • 26,000 ly from Sgr A*', 256, 86);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0.95 });
+    const sprite = new THREE.Sprite(mat);
+    sprite.scale.set(48, 12, 1);
+    return sprite;
+  };
+
+  // 2. MILKY WAY (Procedural 3D Barred Spiral Galaxy)
   const buildMilkyWay = (group: THREE.Group) => {
-    const domeMesh = createMilkyWayDome();
-    group.add(domeMesh);
+    const galaxyDisk = new THREE.Group();
+    group.add(galaxyDisk);
 
-    const starfield = createRealisticStarfield();
-    group.add(starfield);
+    // 1. Sagittarius A* & Central Core Glow
+    const sgrGeo = new THREE.SphereGeometry(3.5, 32, 32);
+    const sgrMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const sgrCore = new THREE.Mesh(sgrGeo, sgrMat);
+    galaxyDisk.add(sgrCore);
 
+    const sgrHaloGeo = new THREE.SphereGeometry(8.5, 32, 32);
+    const sgrHaloMat = new THREE.MeshBasicMaterial({
+      color: 0xfef08a,
+      transparent: true,
+      opacity: 0.35,
+      side: THREE.BackSide,
+      blending: THREE.AdditiveBlending
+    });
+    galaxyDisk.add(new THREE.Mesh(sgrHaloGeo, sgrHaloMat));
+
+    const sgrLight = new THREE.PointLight(0xffeedd, 3.5, 350);
+    galaxyDisk.add(sgrLight);
+
+    // 2. Central Bulge (4,500 warm Population II stars)
+    const bulgeCount = 4500;
+    const bulgePos = new Float32Array(bulgeCount * 3);
+    const bulgeCols = new Float32Array(bulgeCount * 3);
+    for (let i = 0; i < bulgeCount; i++) {
+      const r = Math.pow(Math.random(), 2.2) * 65;
+      const theta = Math.random() * Math.PI * 2;
+      const y = (Math.random() - 0.5) * (32 * (1 - r / 65));
+
+      bulgePos[i * 3] = Math.cos(theta) * r;
+      bulgePos[i * 3 + 1] = y;
+      bulgePos[i * 3 + 2] = Math.sin(theta) * r;
+
+      bulgeCols[i * 3] = 1.0;
+      bulgeCols[i * 3 + 1] = 0.82 + Math.random() * 0.16;
+      bulgeCols[i * 3 + 2] = 0.55 + Math.random() * 0.3;
+    }
+    const bulgeGeo = new THREE.BufferGeometry();
+    bulgeGeo.setAttribute('position', new THREE.BufferAttribute(bulgePos, 3));
+    bulgeGeo.setAttribute('color', new THREE.BufferAttribute(bulgeCols, 3));
+    const bulgeMat = new THREE.PointsMaterial({
+      size: 2.2,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.9,
+      blending: THREE.AdditiveBlending
+    });
+    galaxyDisk.add(new THREE.Points(bulgeGeo, bulgeMat));
+
+    // 3. Central Galactic Bar (2,000 stars oriented at ~28° angle)
+    const barCount = 2000;
+    const barPos = new Float32Array(barCount * 3);
+    const barCols = new Float32Array(barCount * 3);
+    const barAngle = 0.48; // ~28 degrees
+    const cosB = Math.cos(barAngle);
+    const sinB = Math.sin(barAngle);
+
+    for (let i = 0; i < barCount; i++) {
+      const major = (Math.random() - 0.5) * 130;
+      const minor = (Math.random() - 0.5) * 22 * (1 - Math.abs(major) / 75);
+      const y = (Math.random() - 0.5) * 14 * (1 - Math.abs(major) / 75);
+
+      const x = major * cosB - minor * sinB;
+      const z = major * sinB + minor * cosB;
+
+      barPos[i * 3] = x;
+      barPos[i * 3 + 1] = y;
+      barPos[i * 3 + 2] = z;
+
+      barCols[i * 3] = 1.0;
+      barCols[i * 3 + 1] = 0.88 + Math.random() * 0.1;
+      barCols[i * 3 + 2] = 0.65;
+    }
+    const barGeo = new THREE.BufferGeometry();
+    barGeo.setAttribute('position', new THREE.BufferAttribute(barPos, 3));
+    barGeo.setAttribute('color', new THREE.BufferAttribute(barCols, 3));
+    const barMat = new THREE.PointsMaterial({
+      size: 2.0,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.85,
+      blending: THREE.AdditiveBlending
+    });
+    galaxyDisk.add(new THREE.Points(barGeo, barMat));
+
+    // 4. Four Logarithmic Spiral Arms (Perseus, Scutum-Centaurus, Sagittarius, Outer)
+    const armCount = 4;
+    const starsPerArm = 4200;
+    const totalArmStars = armCount * starsPerArm;
+    const armPos = new Float32Array(totalArmStars * 3);
+    const armCols = new Float32Array(totalArmStars * 3);
+
+    let armPtr = 0;
+    for (let arm = 0; arm < armCount; arm++) {
+      const armOffset = (arm * Math.PI * 2) / armCount;
+      for (let i = 0; i < starsPerArm; i++) {
+        const progress = i / starsPerArm;
+        const r = 45 + Math.pow(progress, 1.28) * 375;
+        const theta = 2.75 * Math.log(r / 45) + armOffset;
+
+        const spread = (10 + 38 * progress) * (Math.random() - 0.5);
+        const perpX = -Math.sin(theta) * spread;
+        const perpZ = Math.cos(theta) * spread;
+
+        const x = Math.cos(theta) * r + perpX;
+        const y = (Math.random() - 0.5) * (16 * (1 - progress * 0.6));
+        const z = Math.sin(theta) * r + perpZ;
+
+        armPos[armPtr * 3] = x;
+        armPos[armPtr * 3 + 1] = y;
+        armPos[armPtr * 3 + 2] = z;
+
+        // Color distribution: Blue-white OB stars, white stars, and pink H-II knots
+        const roll = Math.random();
+        if (roll < 0.55) {
+          // Luminous young blue/cyan stars
+          armCols[armPtr * 3] = 0.5 + Math.random() * 0.2;
+          armCols[armPtr * 3 + 1] = 0.75 + Math.random() * 0.2;
+          armCols[armPtr * 3 + 2] = 1.0;
+        } else if (roll < 0.85) {
+          // Main-sequence white/cream stars
+          armCols[armPtr * 3] = 0.95;
+          armCols[armPtr * 3 + 1] = 0.95;
+          armCols[armPtr * 3 + 2] = 0.9;
+        } else {
+          // H-II star-forming emission regions (magenta/rose)
+          armCols[armPtr * 3] = 1.0;
+          armCols[armPtr * 3 + 1] = 0.4 + Math.random() * 0.2;
+          armCols[armPtr * 3 + 2] = 0.75 + Math.random() * 0.2;
+        }
+
+        armPtr++;
+      }
+    }
+    const armsGeo = new THREE.BufferGeometry();
+    armsGeo.setAttribute('position', new THREE.BufferAttribute(armPos, 3));
+    armsGeo.setAttribute('color', new THREE.BufferAttribute(armCols, 3));
+    const armsMat = new THREE.PointsMaterial({
+      size: 2.1,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.88,
+      blending: THREE.AdditiveBlending
+    });
+    galaxyDisk.add(new THREE.Points(armsGeo, armsMat));
+
+    // 5. Interstellar Dust Absorption Lanes
+    const dustCount = 3200;
+    const dustPos = new Float32Array(dustCount * 3);
+    const dustCols = new Float32Array(dustCount * 3);
+    for (let i = 0; i < dustCount; i++) {
+      const arm = Math.floor(Math.random() * armCount);
+      const armOffset = (arm * Math.PI * 2) / armCount;
+      const progress = 0.15 + Math.random() * 0.75;
+      const r = 45 + Math.pow(progress, 1.28) * 360;
+      const theta = 2.75 * Math.log(r / 45) + armOffset - 0.16; // Inner edge of spiral arm
+
+      const spread = (6 + 22 * progress) * (Math.random() - 0.5);
+      dustPos[i * 3] = Math.cos(theta) * r + -Math.sin(theta) * spread;
+      dustPos[i * 3 + 1] = (Math.random() - 0.5) * 6;
+      dustPos[i * 3 + 2] = Math.sin(theta) * r + Math.cos(theta) * spread;
+
+      dustCols[i * 3] = 0.08;
+      dustCols[i * 3 + 1] = 0.05;
+      dustCols[i * 3 + 2] = 0.04;
+    }
+    const dustGeo = new THREE.BufferGeometry();
+    dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+    dustGeo.setAttribute('color', new THREE.BufferAttribute(dustCols, 3));
+    const dustMat = new THREE.PointsMaterial({
+      size: 3.2,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.45
+    });
+    galaxyDisk.add(new THREE.Points(dustGeo, dustMat));
+
+    // 6. Solar Neighborhood Marker ("SOL SYSTEM // YOU ARE HERE")
+    // Located at r ~ 135 on the Orion Spur (~26,000 ly from Sgr A*)
+    const solTheta = 1.15;
+    const solR = 135;
+    const solX = Math.cos(solTheta) * solR;
+    const solZ = Math.sin(solTheta) * solR;
+    const solY = 3.5;
+
+    const solGroup = new THREE.Group();
+    solGroup.position.set(solX, solY, solZ);
+
+    // Glowing Sun Dot
+    const solDotGeo = new THREE.SphereGeometry(1.6, 16, 16);
+    const solDotMat = new THREE.MeshBasicMaterial({ color: 0xffea00 });
+    const solDot = new THREE.Mesh(solDotGeo, solDotMat);
+    solGroup.add(solDot);
+
+    // Pulsing Reticle Ring
+    const solRingGeo = new THREE.RingGeometry(2.8, 3.4, 32);
+    const solRingMat = new THREE.MeshBasicMaterial({
+      color: 0x38bdf8,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.85
+    });
+    const solRing = new THREE.Mesh(solRingGeo, solRingMat);
+    solRing.rotation.x = Math.PI / 2;
+    solGroup.add(solRing);
+
+    // Coordinate Guide Vector connecting Sun to Sgr A*
+    const guidePts = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(solX, solY, solZ)];
+    const guideGeo = new THREE.BufferGeometry().setFromPoints(guidePts);
+    const guideMat = new THREE.LineDashedMaterial({
+      color: 0x38bdf8,
+      dashSize: 3,
+      gapSize: 2,
+      transparent: true,
+      opacity: 0.35
+    });
+    const guideLine = new THREE.Line(guideGeo, guideMat);
+    guideLine.computeLineDistances();
+    galaxyDisk.add(guideLine);
+
+    // 3D Billboard Sprite: "SOL SYSTEM (YOU ARE HERE)"
+    const solSprite = createSolMarkerSprite();
+    solSprite.position.set(0, 11, 0);
+    solGroup.add(solSprite);
+
+    galaxyDisk.add(solGroup);
+
+    // 7. Galactic Stellar Halo (2,500 outer Pop II stars)
+    const haloCount = 2500;
+    const haloPos = new Float32Array(haloCount * 3);
+    for (let i = 0; i < haloCount; i++) {
+      const u = Math.random();
+      const v = Math.random();
+      const theta = u * 2.0 * Math.PI;
+      const phi = Math.acos(2.0 * v - 1.0);
+      const r = 100 + Math.cbrt(Math.random()) * 420;
+
+      haloPos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+      haloPos[i * 3 + 1] = (r * Math.sin(phi) * Math.sin(theta)) * 0.45;
+      haloPos[i * 3 + 2] = r * Math.cos(phi);
+    }
+    const haloGeo = new THREE.BufferGeometry();
+    haloGeo.setAttribute('position', new THREE.BufferAttribute(haloPos, 3));
+    const haloMat = new THREE.PointsMaterial({
+      size: 1.5,
+      color: 0xe2e8f0,
+      transparent: true,
+      opacity: 0.45
+    });
+    galaxyDisk.add(new THREE.Points(haloGeo, haloMat));
+
+    // Per-frame differential rotation hook
     group.userData.update = () => {
-      domeMesh.rotation.y += 0.0001;
-      starfield.rotation.y += 0.0002;
+      galaxyDisk.rotation.y += 0.0003;
+      const pulse = 1.0 + Math.sin(Date.now() * 0.003) * 0.18;
+      solRing.scale.set(pulse, pulse, pulse);
     };
   };
 
@@ -916,7 +1201,7 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
         case 'MILKY_WAY':
           buildMilkyWay(envGroup);
           if (resetCamera) {
-            targetCamPos.current = new THREE.Vector3(0, 110, 360);
+            targetCamPos.current = new THREE.Vector3(0, 200, 480);
             targetCamLookAt.current = new THREE.Vector3(0, 0, 0);
             isCameraLerping.current = true;
           }

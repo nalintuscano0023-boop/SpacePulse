@@ -143,8 +143,64 @@ export const MissionControl: React.FC<MissionControlProps> = ({
     unavailable: 0
   });
   const [crewReport, setCrewReport] = useState<CrewReport | null>(null);
-  const [selectedSnapshotId, setSelectedSnapshotId] = useState<string | null>('isro-aditya-l1');
+  const [selectedSnapshotId, setSelectedSnapshotId] = useState<string | null>(null);
   const miniCanvasRef = useRef<HTMLDivElement>(null);
+  const snapshotStarsRef = useRef<HTMLCanvasElement>(null);
+
+  // Subtle Drifting Starfield for Mission Snapshot Section
+  useEffect(() => {
+    const canvas = snapshotStarsRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animId = 0;
+    const resizeCanvas = () => {
+      if (!canvas) return;
+      canvas.width = canvas.parentElement?.clientWidth || 900;
+      canvas.height = canvas.parentElement?.clientHeight || 500;
+    };
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    // 48 subtle drifting stars for depth and aerospace atmosphere
+    const stars = Array.from({ length: 48 }, () => ({
+      x: Math.random() * (canvas.width || 900),
+      y: Math.random() * (canvas.height || 500),
+      radius: Math.random() * 1.2 + 0.4,
+      alpha: Math.random() * 0.35 + 0.1,
+      speedX: (Math.random() - 0.5) * 0.12,
+      speedY: (Math.random() - 0.5) * 0.08,
+      twinkleSpeed: Math.random() * 0.02 + 0.006,
+      twinklePhase: Math.random() * Math.PI * 2
+    }));
+
+    const render = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const now = Date.now();
+      stars.forEach(s => {
+        s.x += s.speedX;
+        s.y += s.speedY;
+        if (s.x < 0) s.x = canvas.width;
+        if (s.x > canvas.width) s.x = 0;
+        if (s.y < 0) s.y = canvas.height;
+        if (s.y > canvas.height) s.y = 0;
+
+        const currentAlpha = Math.max(0.06, Math.min(0.5, s.alpha + Math.sin(now * s.twinkleSpeed + s.twinklePhase) * 0.14));
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(186, 230, 253, ${currentAlpha})`;
+        ctx.fill();
+      });
+      animId = requestAnimationFrame(render);
+    };
+    render();
+
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener('resize', resizeCanvas);
+    };
+  }, []);
 
   useEffect(() => {
     async function loadData() {
@@ -920,161 +976,147 @@ export const MissionControl: React.FC<MissionControlProps> = ({
       </div>
 
       {/* 4. MISSION SNAPSHOT (Replaces Redundant Mission Navigation) */}
-      <div className="glass-panel" style={{ padding: '20px' }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: '14px',
-          flexWrap: 'wrap',
-          gap: '8px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <BookOpen size={16} style={{ color: 'var(--accent-cyan)' }} />
-            <div>
-              <h3 style={{ fontSize: '14px', fontWeight: 600 }}>Mission Snapshot</h3>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                Core scientific objectives, operational milestones, and data provenance
+      <div className="glass-panel" style={{ padding: '20px', position: 'relative', overflow: 'hidden' }}>
+        {/* Subtle Drifting Starfield Background Canvas */}
+        <canvas
+          ref={snapshotStarsRef}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+            zIndex: 0,
+            opacity: 0.85
+          }}
+        />
+
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '14px',
+            flexWrap: 'wrap',
+            gap: '8px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <BookOpen size={16} style={{ color: 'var(--accent-cyan)' }} />
+              <div>
+                <h3 style={{ fontSize: '14px', fontWeight: 600 }}>Mission Snapshot</h3>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                  Core scientific objectives, operational milestones, and data provenance
+                </div>
               </div>
+            </div>
+
+            <div style={{
+              fontSize: '10px',
+              color: 'var(--text-muted)',
+              fontFamily: 'var(--font-mono)',
+              padding: '3px 8px',
+              borderRadius: 'var(--radius-xs)',
+              background: 'var(--surface-inset)',
+              border: '1px solid var(--border-hairline)',
+              textTransform: 'uppercase'
+            }}>
+              Interactive Mission Dossiers
             </div>
           </div>
 
-          <div style={{
-            fontSize: '10px',
-            color: 'var(--text-muted)',
-            fontFamily: 'var(--font-mono)',
-            padding: '3px 8px',
-            borderRadius: 'var(--radius-xs)',
-            background: 'var(--surface-inset)',
-            border: '1px solid var(--border-hairline)',
-            textTransform: 'uppercase'
-          }}>
-            Click Card to Expand Dossier
-          </div>
-        </div>
+          <div 
+            id="mission-snapshots-grid"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 290px), 1fr))',
+              gap: '14px',
+              alignItems: 'stretch'
+            }}
+          >
+            {MISSION_SNAPSHOTS.map((snapshot) => {
+              const isExpanded = selectedSnapshotId === snapshot.id;
+              const matchedCraft = snapshot.craftId 
+                ? featuredFleet.find(c => c.id === snapshot.craftId) || SPACECRAFT_REGISTRY.find(c => c.id === snapshot.craftId)
+                : undefined;
 
-        <div 
-          id="mission-snapshots-grid"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 290px), 1fr))',
-            gap: '14px',
-            alignItems: 'start'
-          }}
-        >
-          {MISSION_SNAPSHOTS.map((snapshot) => {
-            const isExpanded = selectedSnapshotId === snapshot.id;
-            const matchedCraft = snapshot.craftId 
-              ? featuredFleet.find(c => c.id === snapshot.craftId) || SPACECRAFT_REGISTRY.find(c => c.id === snapshot.craftId)
-              : undefined;
-
-            return (
-              <div
-                key={snapshot.id}
-                onClick={() => setSelectedSnapshotId(isExpanded ? null : snapshot.id)}
-                className="glass-card"
-                style={{
-                  padding: '16px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '10px',
-                  borderColor: isExpanded ? 'var(--accent-cyan)' : undefined,
-                  background: isExpanded ? 'rgba(7, 17, 31, 0.95)' : undefined,
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                {/* Header: Name, Agency, Type & Status */}
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontWeight: 700, fontSize: '14px', color: '#ffffff' }}>
-                          {snapshot.name}
-                        </span>
-                        <span className="agency-badge" style={{ height: '18px', fontSize: '9px', padding: '1px 5px' }}>
-                          {snapshot.agency}
-                        </span>
+              return (
+                <div
+                  key={snapshot.id}
+                  className="glass-card"
+                  style={{
+                    padding: '16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    borderColor: isExpanded ? 'var(--accent-cyan)' : undefined,
+                    background: isExpanded ? 'rgba(7, 17, 31, 0.96)' : undefined,
+                    transition: 'all 0.25s ease'
+                  }}
+                >
+                  {/* Upper Section */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {/* Header: Name, Agency, Type & Status */}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontWeight: 700, fontSize: '14px', color: '#ffffff' }}>
+                            {snapshot.name}
+                          </span>
+                          <span className="agency-badge" style={{ height: '18px', fontSize: '9px', padding: '1px 5px' }}>
+                            {snapshot.agency}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--accent-cyan)', marginTop: '2px' }}>
+                          {snapshot.missionType}
+                        </div>
                       </div>
-                      <div style={{ fontSize: '11px', color: 'var(--accent-cyan)', marginTop: '2px' }}>
-                        {snapshot.missionType}
+
+                      <StatusBadge status={snapshot.status} compact />
+                    </div>
+
+                    {/* Key Mission Metadata: Vehicle & Launch Date */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                      <div style={{ background: 'var(--surface-inset)', padding: '6px 8px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
+                        <div style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Launch Vehicle</div>
+                        <div style={{ fontWeight: 600, fontSize: '11px', color: 'var(--text-primary)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={snapshot.launchVehicle}>{snapshot.launchVehicle}</div>
+                      </div>
+                      <div style={{ background: 'var(--surface-inset)', padding: '6px 8px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
+                        <div style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Launch Date</div>
+                        <div style={{ fontWeight: 600, fontSize: '11px', color: 'var(--text-primary)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={snapshot.launchDate}>{snapshot.launchDate}</div>
                       </div>
                     </div>
 
-                    <StatusBadge status={snapshot.status} compact />
-                  </div>
-                </div>
+                    {/* Target Destination */}
+                    <div style={{ background: 'var(--surface-inset)', padding: '6px 8px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
+                      <div style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Target Destination</div>
+                      <div style={{ fontWeight: 600, fontSize: '11px', color: 'var(--accent-cyan)', marginTop: '2px' }}>{snapshot.target}</div>
+                    </div>
 
-                {/* Key Mission Metadata: Vehicle, Launch Date & Target */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                  <div style={{ background: 'var(--surface-inset)', padding: '6px 8px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
-                    <div style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Launch Vehicle</div>
-                    <div style={{ fontWeight: 600, fontSize: '11px', color: 'var(--text-primary)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={snapshot.launchVehicle}>{snapshot.launchVehicle}</div>
-                  </div>
-                  <div style={{ background: 'var(--surface-inset)', padding: '6px 8px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
-                    <div style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Launch Date</div>
-                    <div style={{ fontWeight: 600, fontSize: '11px', color: 'var(--text-primary)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={snapshot.launchDate}>{snapshot.launchDate}</div>
-                  </div>
-                </div>
-
-                <div style={{ background: 'var(--surface-inset)', padding: '6px 8px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
-                  <div style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Target Destination</div>
-                  <div style={{ fontWeight: 600, fontSize: '11px', color: 'var(--accent-cyan)', marginTop: '2px' }}>{snapshot.target}</div>
-                </div>
-
-                {/* One Meaningful Scientific Objective */}
-                <div style={{
-                  padding: '8px 10px',
-                  background: 'var(--surface-inset)',
-                  borderRadius: 'var(--radius-xs)',
-                  border: '1px solid var(--border-hairline)',
-                  fontSize: '11px',
-                  lineHeight: 1.5,
-                  color: 'var(--text-secondary)'
-                }}>
-                  <strong style={{ color: 'var(--text-primary)' }}>Scientific Objective: </strong>
-                  {snapshot.objective}
-                </div>
-
-                {/* Data Provenance Reference & Dossier Expand Trigger */}
-                <div style={{
-                  fontSize: '10px',
-                  color: 'var(--text-muted)',
-                  fontFamily: 'var(--font-mono)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '6px',
-                  paddingTop: '2px'
-                }}>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={snapshot.archiveReference}>
-                    {snapshot.archiveReference}
-                  </span>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', color: isExpanded ? 'var(--accent-cyan)' : 'var(--text-secondary)', flexShrink: 0, fontWeight: 600 }}>
-                    <span>{isExpanded ? 'Collapse' : 'Dossier'}</span>
-                    {isExpanded ? <ChevronUp size={13} style={{ color: 'var(--accent-cyan)' }} /> : <ChevronDown size={13} />}
-                  </div>
-                </div>
-
-                {/* Inline Expanded Dossier Details */}
-                {isExpanded && (
-                  <div 
-                    onClick={(e) => e.stopPropagation()}
-                    style={{
-                      paddingTop: '10px',
-                      borderTop: '1px solid var(--border-hairline)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px',
+                    {/* Scientific Objective */}
+                    <div style={{
+                      padding: '8px 10px',
+                      background: 'var(--surface-inset)',
+                      borderRadius: 'var(--radius-xs)',
+                      border: '1px solid var(--border-hairline)',
                       fontSize: '11px',
-                      animation: 'fadeIn 0.2s ease'
-                    }}
-                  >
+                      lineHeight: 1.5,
+                      color: 'var(--text-secondary)'
+                    }}>
+                      <strong style={{ color: 'var(--text-primary)' }}>Objective: </strong>
+                      {snapshot.objective}
+                    </div>
 
-                    <div>
-                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>Key Payloads & Instruments</div>
+                    {/* Key Payloads & Instruments Preview */}
+                    <div style={{ background: 'var(--surface-inset)', padding: '6px 8px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                        <span style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
+                          Instruments & Payloads ({snapshot.payloads.length})
+                        </span>
+                      </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                        {snapshot.payloads.map((p, idx) => (
+                        {(isExpanded ? snapshot.payloads : snapshot.payloads.slice(0, 3)).map((p, idx) => (
                           <span
                             key={idx}
                             style={{
@@ -1089,43 +1131,104 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                             {p}
                           </span>
                         ))}
+                        {!isExpanded && snapshot.payloads.length > 3 && (
+                          <span
+                            style={{
+                              fontSize: '10px',
+                              padding: '2px 6px',
+                              background: 'rgba(255, 255, 255, 0.04)',
+                              border: '1px solid var(--border-hairline)',
+                              borderRadius: '3px',
+                              color: 'var(--text-muted)'
+                            }}
+                          >
+                            +{snapshot.payloads.length - 3} more
+                          </span>
+                        )}
                       </div>
                     </div>
 
-                    <div>
-                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>Key Scientific Milestones</div>
-                      <ul style={{ margin: 0, paddingLeft: '16px', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
-                        {snapshot.keyAchievements.map((ach, i) => (
-                          <li key={i}>{ach}</li>
-                        ))}
-                      </ul>
+                    {/* Inline Expanded Scientific Milestones */}
+                    {isExpanded && (
+                      <div 
+                        style={{
+                          padding: '8px 10px',
+                          background: 'rgba(56, 189, 248, 0.03)',
+                          borderRadius: 'var(--radius-xs)',
+                          border: '1px solid rgba(56, 189, 248, 0.15)',
+                          fontSize: '11px',
+                          animation: 'fadeIn 0.2s ease'
+                        }}
+                      >
+                        <div style={{ fontSize: '10px', color: 'var(--accent-cyan)', marginBottom: '4px', textTransform: 'uppercase', fontWeight: 600 }}>
+                          Key Scientific Milestones
+                        </div>
+                        <ul style={{ margin: 0, paddingLeft: '16px', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+                          {snapshot.keyAchievements.map((ach, i) => (
+                            <li key={i}>{ach}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Lower Section / Unified Action Footer */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--border-hairline)', paddingTop: '10px' }}>
+                    {/* Archive Provenance Reference */}
+                    <div style={{
+                      fontSize: '9px',
+                      color: 'var(--text-muted)',
+                      fontFamily: 'var(--font-mono)',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }} title={snapshot.archiveReference}>
+                      {snapshot.archiveReference}
                     </div>
 
-                    {/* Snapshot Action Strip */}
+                    {/* Action Buttons Row */}
                     <div style={{
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      marginTop: '4px',
-                      paddingTop: '8px',
-                      borderTop: '1px solid var(--border-hairline)',
-                      gap: '8px',
+                      gap: '6px',
                       flexWrap: 'wrap'
                     }}>
-                      <a
-                        href={snapshot.officialSourceUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn btn-secondary"
-                        style={{ fontSize: '10px', padding: '4px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                        title="Open official agency mission portal in new tab"
-                      >
-                        <ExternalLink size={11} />
-                        <span>Agency Archive</span>
-                      </a>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedSnapshotId(isExpanded ? null : snapshot.id)}
+                          className="btn btn-ghost"
+                          style={{
+                            fontSize: '10px',
+                            padding: '4px 8px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px',
+                            color: isExpanded ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                            border: '1px solid var(--border-hairline)'
+                          }}
+                        >
+                          <span>{isExpanded ? 'Collapse' : 'Milestones'}</span>
+                          {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                        </button>
+
+                        <a
+                          href={snapshot.officialSourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn-secondary"
+                          style={{ fontSize: '10px', padding: '4px 8px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                          title="Open official agency mission portal in new tab"
+                        >
+                          <ExternalLink size={11} />
+                          <span>Archive</span>
+                        </a>
+                      </div>
 
                       {snapshot.actionType === 'inspect' && matchedCraft && (
                         <button
+                          type="button"
                           onClick={async () => {
                             if ('telemetrySource' in matchedCraft) {
                               onSelectObject(matchedCraft as SpacecraftObject);
@@ -1138,26 +1241,27 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                           style={{ fontSize: '10px', padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                         >
                           <Activity size={12} />
-                          <span>Inspect Telemetry</span>
+                          <span>Telemetry</span>
                         </button>
                       )}
 
                       {snapshot.actionType === 'moon-distance' && (
                         <button
+                          type="button"
                           onClick={() => onAnalyzeObject ? onAnalyzeObject('moon', 'distance') : onNavigateTab('analysis')}
                           className="btn btn-primary"
                           style={{ fontSize: '10px', padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                         >
                           <Compass size={12} />
-                          <span>Analyze Lunar Trajectory</span>
+                          <span>Trajectory</span>
                         </button>
                       )}
                     </div>
                   </div>
-                )}
-              </div>
-            );
-          })}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 

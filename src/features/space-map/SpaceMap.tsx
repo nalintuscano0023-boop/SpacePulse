@@ -305,7 +305,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
       targetCamPos.current = new THREE.Vector3(14, 11, 24);
     } else {
       targetLookAt.current = new THREE.Vector3(0, 0, 0);
-      targetCamPos.current = new THREE.Vector3(0, 75, 125);
+      targetCamPos.current = new THREE.Vector3(16, 28, 68);
     }
   }, [viewMode]);
 
@@ -326,7 +326,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
       }
     } else {
       targetLookAt.current = new THREE.Vector3(0, 0, 0);
-      targetCamPos.current = new THREE.Vector3(16, 32, 75);
+      targetCamPos.current = new THREE.Vector3(16, 28, 68);
     }
   }, [viewMode]);
 
@@ -365,7 +365,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     camera.position.set(24, 78, 148);
     cameraRef.current = camera;
     targetLookAt.current = new THREE.Vector3(0, 0, 0);
-    targetCamPos.current = new THREE.Vector3(16, 32, 75);
+    targetCamPos.current = new THREE.Vector3(16, 28, 68);
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -617,23 +617,35 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
       const sunMesh = new THREE.Mesh(sunGeo, sunMat);
       sunMesh.userData = { bodyId: 'sun' };
 
-      // Multi-layer Coronal Photosphere & Atmospheric Glow
-      const innerHaloGeo = new THREE.SphereGeometry(5.4, 32, 32);
+      // Multi-layer Coronal Photosphere & Atmospheric Glow (Photosphere + Inner Warm Corona + Outer Soft Atmospheric Halo)
+      const innerHaloGeo = new THREE.SphereGeometry(5.2, 32, 32);
       const innerHaloMat = new THREE.MeshBasicMaterial({
         color: 0xfef08a,
         transparent: true,
-        opacity: 0.32,
+        opacity: 0.28,
         side: THREE.BackSide,
         blending: THREE.AdditiveBlending
       });
       const innerHalo = new THREE.Mesh(innerHaloGeo, innerHaloMat);
       sunMesh.add(innerHalo);
 
-      const outerHaloGeo = new THREE.SphereGeometry(7.2, 32, 32);
-      const outerHaloMat = new THREE.MeshBasicMaterial({
+      const midHaloGeo = new THREE.SphereGeometry(6.8, 32, 32);
+      const midHaloMat = new THREE.MeshBasicMaterial({
         color: 0xf59e0b,
         transparent: true,
-        opacity: 0.16,
+        opacity: 0.15,
+        side: THREE.BackSide,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+      const midHalo = new THREE.Mesh(midHaloGeo, midHaloMat);
+      sunMesh.add(midHalo);
+
+      const outerHaloGeo = new THREE.SphereGeometry(9.4, 32, 32);
+      const outerHaloMat = new THREE.MeshBasicMaterial({
+        color: 0xd97706,
+        transparent: true,
+        opacity: 0.07,
         side: THREE.BackSide,
         blending: THREE.AdditiveBlending,
         depthWrite: false

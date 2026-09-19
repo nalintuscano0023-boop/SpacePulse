@@ -120,7 +120,10 @@ export const MissionsExplorer: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('archives')}
+            onClick={() => {
+              setActiveTab('archives');
+              setPreviewMission(null);
+            }}
             className={`btn ${activeTab === 'archives' ? 'btn-active' : 'btn-ghost'}`}
             style={{ fontSize: '12px', padding: '5px 12px' }}
           >
@@ -370,8 +373,8 @@ export const MissionsExplorer: React.FC = () => {
         </div>
       )}
 
-      {/* Selected Mission Detailed Dossier Preview */}
-      {previewMission && (
+      {/* Selected Mission Detailed Dossier Preview (Active Missions Tab Only) */}
+      {activeTab === 'missions' && previewMission && (
         <div
           className="glass-panel tech-corner"
           style={{
