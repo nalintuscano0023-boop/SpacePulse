@@ -44,6 +44,18 @@ function AppContent({
   analysisMode: AnalysisType | undefined;
   setAnalysisMode: (mode: AnalysisType | undefined) => void;
 }) {
+  const handleCloseInspector = () => {
+    setIsInspectorOpen(false);
+    setSelectedObject(null);
+  };
+
+  const handleNavigateTab = (tab: TabType) => {
+    setActiveTab(tab);
+    setIsInspectorOpen(false);
+    setSelectedObject(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleSelectObject = (obj: InspectableObject | SpacecraftObject) => {
     const inspectable = 'category' in obj ? obj : normalizeSpacecraftObject(obj);
     setSelectedObject(inspectable);
@@ -58,18 +70,16 @@ function AppContent({
   const handleFocusOnMap = async (objectId: string) => {
     setFocusedObjectId(objectId);
     setActiveTab('space-map');
-    if (!selectedObject || selectedObject.id !== objectId) {
-      const resolved = await resolveInspectableObject(objectId);
-      if (resolved) {
-        setSelectedObject(resolved);
-      }
-    }
+    setIsInspectorOpen(false);
+    setSelectedObject(null);
   };
 
   const handleAnalyzeObject = (objectId: string, mode?: AnalysisType) => {
     setAnalyzedObjectId(objectId);
     setAnalysisMode(mode);
     setActiveTab('analysis');
+    setIsInspectorOpen(false);
+    setSelectedObject(null);
   };
 
   return (
@@ -80,13 +90,7 @@ function AppContent({
       {/* 2. Floating Aerospace Navigation */}
       <Navbar
         activeTab={activeTab}
-        onSelectTab={(tab) => {
-          setActiveTab(tab);
-          if (tab === 'mission-control') {
-            setIsInspectorOpen(false);
-          }
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }}
+        onSelectTab={handleNavigateTab}
       />
 
       {/* 4. Main Scientific Operations Console */}
@@ -94,11 +98,7 @@ function AppContent({
         <ErrorBoundary fallbackTitle="Scientific Component Notice">
           {activeTab === 'mission-control' && (
             <MissionControl
-              onSelectObject={handleInspectObject}
-              onNavigateTab={(tab) => {
-                setActiveTab(tab);
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
+              onNavigateTab={handleNavigateTab}
               onFocusOnMap={handleFocusOnMap}
               onAnalyzeObject={handleAnalyzeObject}
               onExploreSpace={() => setIsExploringSpace(true)}
@@ -138,7 +138,7 @@ function AppContent({
       {selectedObject && isInspectorOpen && activeTab !== 'mission-control' && (
         <ObjectInspector
           object={selectedObject}
-          onClose={() => setIsInspectorOpen(false)}
+          onClose={handleCloseInspector}
           onFocusOnMap={activeTab !== 'space-map' ? handleFocusOnMap : undefined}
           onOpenInAnalysis={activeTab !== 'analysis' ? handleAnalyzeObject : undefined}
         />
@@ -210,8 +210,7 @@ function AppContent({
           onExit={(targetTab) => {
             setIsExploringSpace(false);
             if (targetTab) {
-              setActiveTab(targetTab);
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+              handleNavigateTab(targetTab);
             }
           }}
         />

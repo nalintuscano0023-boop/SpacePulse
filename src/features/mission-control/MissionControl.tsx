@@ -27,7 +27,6 @@ import type { TabType } from '../../components/common/Navbar';
 import type { AnalysisType } from '../analysis/ScientificAnalysis';
 
 interface MissionControlProps {
-  onSelectObject: (obj: SpacecraftObject) => void;
   onNavigateTab: (tab: TabType) => void;
   onFocusOnMap?: (objectId: string) => void;
   onAnalyzeObject?: (objectId: string, mode?: AnalysisType) => void;
@@ -127,7 +126,6 @@ const MISSION_SNAPSHOTS: MissionSnapshotItem[] = [
 ];
 
 export const MissionControl: React.FC<MissionControlProps> = ({
-  onSelectObject,
   onNavigateTab,
   onFocusOnMap,
   onAnalyzeObject,
@@ -1201,15 +1199,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                       {snapshot.actionType === 'inspect' && matchedCraft && (
                         <button
                           type="button"
-                          onClick={async () => {
-                            if ('telemetrySource' in matchedCraft) {
-                              onSelectObject(matchedCraft as SpacecraftObject);
-                            } else {
-                              const resolved = await resolveSpacecraftState(matchedCraft);
-                              onSelectObject(resolved);
-                            }
-                            onNavigateTab('spacecraft');
-                          }}
+                          onClick={() => onNavigateTab('spacecraft')}
                           className="btn btn-primary"
                           style={{ fontSize: '10px', padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                         >

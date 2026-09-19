@@ -7,11 +7,10 @@ import {
   Award,
   ChevronRight,
   X,
-  Radio,
   ExternalLink
 } from 'lucide-react';
 import { MISSIONS_DATABASE, ARCHIVE_DATASETS } from '../../services/data/missionsCatalog';
-import type { MissionRecord, ArchiveDataset } from '../../types/missions';
+import type { MissionRecord } from '../../types/missions';
 import { StatusBadge } from '../../components/common/StatusBadge';
 
 type AgencyFilter = 'ALL' | 'ISRO' | 'NASA' | 'ESA' | 'OTHER';
