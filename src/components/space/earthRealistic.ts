@@ -524,7 +524,7 @@ export function createRealisticEarthShaderMaterial(sunDirectionUniform: THREE.Ve
 
     void main() {
       vUv = uv;
-      vNormal = normalize(normalMatrix * normal);
+      vNormal = normalize(mat3(modelMatrix) * normal);
       vec4 worldPos = modelMatrix * vec4(position, 1.0);
       vWorldPosition = worldPos.xyz;
       vViewDirection = normalize(cameraPosition - worldPos.xyz);
@@ -548,14 +548,13 @@ export function createRealisticEarthShaderMaterial(sunDirectionUniform: THREE.Ve
       vec3 nightColor = texture2D(uNightTexture, vUv).rgb;
       float specMask = texture2D(uSpecularTexture, vUv).r;
 
-      // Surface normal & Sun direction in view-space or model-space
-      // Note: vNormal and uSunDirection are aligned
+      // Surface normal & Sun direction in world space
       float NdotL = dot(vNormal, normalize(uSunDirection));
 
       // Smooth day-to-night terminator transition
       float dayFactor = smoothstep(-0.10, 0.20, NdotL);
 
-      // Specular ocean reflection on sunlit water
+      // Specular ocean reflection on sunlit water in world space
       vec3 lightDir = normalize(uSunDirection);
       vec3 halfVector = normalize(lightDir + vViewDirection);
       float NdotH = max(0.0, dot(vNormal, halfVector));
@@ -566,11 +565,19 @@ export function createRealisticEarthShaderMaterial(sunDirectionUniform: THREE.Ve
       float terminatorGlow = smoothstep(-0.02, 0.12, NdotL) * smoothstep(0.24, 0.08, NdotL);
       vec3 twilightColor = vec3(0.85, 0.48, 0.18) * terminatorGlow * 0.38;
 
+      // Subtle planetary limb darkening for realistic spherical depth
+      float viewDot = clamp(dot(vNormal, vViewDirection), 0.0, 1.0);
+      float limbDarkening = 0.84 + 0.16 * pow(viewDot, 0.45);
+
       // Dark unlit side maintains astronomical deep tone with glowing city lights
       vec3 nightSide = nightColor * (1.0 - dayFactor) * 2.4 + dayColor * 0.035;
-      vec3 daySide = dayColor * (0.85 + 0.35 * max(0.0, NdotL));
+      vec3 daySide = dayColor * (0.85 + 0.35 * max(0.0, NdotL)) * limbDarkening;
 
-      vec3 finalColor = mix(nightSide, daySide, dayFactor) + specularColor + twilightColor;
+      // Subtle atmospheric ocean horizon scatter
+      float horizonScatter = pow(1.0 - viewDot, 2.8) * dayFactor * 0.28;
+      vec3 scatterColor = vec3(0.18, 0.52, 0.88) * horizonScatter;
+
+      vec3 finalColor = mix(nightSide, daySide, dayFactor) + specularColor + twilightColor + scatterColor;
 
       gl_FragColor = vec4(finalColor, 1.0);
     }
@@ -596,7 +603,7 @@ export function createRealisticEarthShaderMaterial(sunDirectionUniform: THREE.Ve
  * and tapering to darkness on the unlit night side.
  */
 export function createRealisticAtmosphereMesh(radius: number, sunDirectionUniform: THREE.Vector3): THREE.Mesh {
-  const atmoGeo = new THREE.SphereGeometry(radius * 1.025, 64, 64);
+  const atmoGeo = new THREE.SphereGeometry(radius * 1.022, 64, 64);
 
   const vertexShader = `
     varying vec3 vNormal;
@@ -604,7 +611,7 @@ export function createRealisticAtmosphereMesh(radius: number, sunDirectionUnifor
     varying vec3 vWorldPosition;
 
     void main() {
-      vNormal = normalize(normalMatrix * normal);
+      vNormal = normalize(mat3(modelMatrix) * normal);
       vec4 worldPos = modelMatrix * vec4(position, 1.0);
       vWorldPosition = worldPos.xyz;
       vViewDirection = normalize(cameraPosition - worldPos.xyz);
@@ -620,20 +627,20 @@ export function createRealisticAtmosphereMesh(radius: number, sunDirectionUnifor
 
     void main() {
       // Fresnel limb factor: strongest at tangential viewing angles
-      float viewDot = max(0.0, dot(vNormal, vViewDirection));
-      float fresnel = pow(1.0 - viewDot, 3.8);
+      float viewDot = clamp(dot(vNormal, vViewDirection), 0.0, 1.0);
+      float fresnel = pow(1.0 - viewDot, 4.2);
 
       // Sunlight interaction: atmosphere glows intensely where sunlit, dims on night limb
       float sunDot = dot(vNormal, normalize(uSunDirection));
-      float sunFacing = smoothstep(-0.25, 0.4, sunDot);
+      float sunFacing = smoothstep(-0.2, 0.45, sunDot);
 
       // Rayleigh blue spectrum with thin turquoise-white inner rim
-      vec3 outerRayleigh = vec3(0.22, 0.58, 0.98); // Deep stratospheric blue
-      vec3 innerAerosol = vec3(0.65, 0.88, 1.0);  // Bright limb aerosol tint
+      vec3 outerRayleigh = vec3(0.24, 0.62, 0.98); // Deep stratospheric blue
+      vec3 innerAerosol = vec3(0.68, 0.90, 1.0);  // Bright limb aerosol tint
       vec3 atmoColor = mix(outerRayleigh, innerAerosol, pow(fresnel, 2.0));
 
-      // Final opacity: subtle, non-intrusive, authentic
-      float alpha = fresnel * (0.15 + 0.85 * sunFacing) * 0.92;
+      // Final opacity: thin, non-intrusive, authentic limb
+      float alpha = fresnel * (0.12 + 0.88 * sunFacing) * 0.88;
 
       gl_FragColor = vec4(atmoColor, alpha);
     }
@@ -647,7 +654,7 @@ export function createRealisticAtmosphereMesh(radius: number, sunDirectionUnifor
     fragmentShader,
     transparent: true,
     blending: THREE.AdditiveBlending,
-    side: THREE.BackSide,
+    side: THREE.FrontSide,
     depthWrite: false
   });
 

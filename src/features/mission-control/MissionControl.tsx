@@ -25,6 +25,12 @@ import type { CrewReport } from '../../types/missions';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import type { TabType } from '../../components/common/Navbar';
 import type { AnalysisType } from '../analysis/ScientificAnalysis';
+import { 
+  createRealisticEarthShaderMaterial, 
+  createRealisticAtmosphereMesh, 
+  createRealisticCloudMesh 
+} from '../../components/space/earthRealistic';
+import { getSpacecraft3DModel } from '../../components/space/spacecraftModelRegistry';
 
 interface MissionControlProps {
   onNavigateTab: (tab: TabType) => void;
@@ -232,84 +238,185 @@ export const MissionControl: React.FC<MissionControlProps> = ({
     loadData();
   }, []);
 
-  // Mini 3D Orbital Vista for the Hero Deck
+  // Mini 3D Orbital Vista for the Hero Deck — Realistic Planetary Simulation
   useEffect(() => {
     if (!miniCanvasRef.current) return;
     const container = miniCanvasRef.current;
     const width = container.clientWidth || 320;
-    const height = container.clientHeight || 200;
+    const height = container.clientHeight || 220;
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 1000);
-    camera.position.set(0, 16, 32);
+
+    // Subtle perspective camera setup keeping the exact existing footprint
+    const camera = new THREE.PerspectiveCamera(36, width / height, 0.1, 500);
+    camera.position.set(0, 9.5, 24.5);
     camera.lookAt(0, 0, 0);
 
-    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    const renderer = new THREE.WebGLRenderer({
+      alpha: true,
+      antialias: true,
+      powerPreference: 'high-performance'
+    });
     renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
     container.innerHTML = '';
     container.appendChild(renderer.domElement);
 
-    // Mini Earth
-    const earthGeo = new THREE.SphereGeometry(5.5, 32, 32);
-    const earthMat = new THREE.MeshStandardMaterial({
-      color: 0x38bdf8,
-      roughness: 0.5,
-      metalness: 0.1
-    });
+    // Primary Sun Direction (World Space) — Illuminates top-right, creating visible terminator & specular highlights
+    const sunDirection = new THREE.Vector3(1.6, 0.5, 1.0).normalize();
+
+    // 1. Planetary Root Group with Earth's real axial tilt (~23.4°)
+    const earthGroup = new THREE.Group();
+    earthGroup.rotation.z = -23.44 * (Math.PI / 180);
+    earthGroup.rotation.x = 0.12; // Slight camera-facing presentation
+    scene.add(earthGroup);
+
+    // 1a. Realistic Earth Sphere (PBR Day/Night Shader with city lights and specular oceans)
+    const earthRadius = 5.5;
+    const earthGeo = new THREE.SphereGeometry(earthRadius, 64, 64);
+    const earthMat = createRealisticEarthShaderMaterial(sunDirection);
     const earthMesh = new THREE.Mesh(earthGeo, earthMat);
-    scene.add(earthMesh);
+    earthGroup.add(earthMesh);
 
-    // Mini Atmospheric Glow
-    const atmoGeo = new THREE.SphereGeometry(5.8, 32, 32);
-    const atmoMat = new THREE.MeshBasicMaterial({
-      color: 0x0284c7,
+    // 1b. Realistic High-Altitude Cloud Layer (Drifting weather systems & cyclones)
+    const cloudsMesh = createRealisticCloudMesh(earthRadius);
+    earthGroup.add(cloudsMesh);
+
+    // 1c. Rayleigh Atmospheric Scattering Shell (Thin limb, glowing on sunlit side)
+    const atmoMesh = createRealisticAtmosphereMesh(earthRadius, sunDirection);
+    earthGroup.add(atmoMesh);
+
+    // 2. Orbital System for ISS (Inclined Low Earth Orbit at ~51.6°)
+    const orbitRadius = 7.6;
+    const orbitGroup = new THREE.Group();
+    orbitGroup.rotation.x = 51.64 * (Math.PI / 180); // Real ISS orbital inclination
+    orbitGroup.rotation.y = 0.32; // Ascending node orientation
+    scene.add(orbitGroup);
+
+    // 2a. Precision Scientific Orbital Track Line
+    const orbitPoints: THREE.Vector3[] = [];
+    const segments = 128;
+    for (let i = 0; i <= segments; i++) {
+      const theta = (i / segments) * Math.PI * 2;
+      orbitPoints.push(new THREE.Vector3(Math.cos(theta) * orbitRadius, 0, Math.sin(theta) * orbitRadius));
+    }
+    const orbitTrackGeo = new THREE.BufferGeometry().setFromPoints(orbitPoints);
+    const orbitTrackMat = new THREE.LineBasicMaterial({
+      color: 0x38bdf8,
       transparent: true,
-      opacity: 0.22,
-      side: THREE.BackSide
+      opacity: 0.32,
+      blending: THREE.AdditiveBlending
     });
-    const atmoMesh = new THREE.Mesh(atmoGeo, atmoMat);
-    scene.add(atmoMesh);
+    const orbitTrackLine = new THREE.Line(orbitTrackGeo, orbitTrackMat);
+    orbitGroup.add(orbitTrackLine);
 
-    // Orbit ring for ISS
-    const issRingGeo = new THREE.RingGeometry(7.6, 7.75, 64);
-    const issRingMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.35 });
-    const issRing = new THREE.Mesh(issRingGeo, issRingMat);
-    issRing.rotation.x = Math.PI / 2.3;
-    scene.add(issRing);
+    // 2b. Authentic Procedural ISS 3D Model with PBR Solar Panels & Radiators
+    const issCraft = getSpacecraft3DModel('iss', { scale: 0.125 });
+    orbitGroup.add(issCraft);
 
-    // Satellite marker
-    const satGeo = new THREE.SphereGeometry(0.3, 12, 12);
-    const satMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    const satMesh = new THREE.Mesh(satGeo, satMat);
-    scene.add(satMesh);
+    // 2c. Subtle Optical Telemetry Pulse Beacon on ISS
+    const beaconGeo = new THREE.SphereGeometry(0.06, 8, 8);
+    const beaconMat = new THREE.MeshBasicMaterial({
+      color: 0x38bdf8,
+      transparent: true,
+      opacity: 0.75
+    });
+    const beacon = new THREE.Mesh(beaconGeo, beaconMat);
+    beacon.position.set(0, 0.45, 0);
+    issCraft.add(beacon);
 
-    // Lighting
-    const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
-    dirLight.position.set(30, 15, 20);
-    scene.add(dirLight);
+    // 3. Realistic Space Lighting
+    // Directional sunlight matching sunDirection
+    const sunLight = new THREE.DirectionalLight(0xfff8ee, 2.6);
+    sunLight.position.copy(sunDirection.clone().multiplyScalar(40));
+    scene.add(sunLight);
 
-    const ambLight = new THREE.AmbientLight(0x0f172a, 1.0);
+    // Deep space dark-side fill
+    const ambLight = new THREE.AmbientLight(0x060d1a, 0.35);
     scene.add(ambLight);
 
+    // Subtle cyan/blue earthshine rim fill
+    const rimLight = new THREE.DirectionalLight(0x1e3a8a, 0.45);
+    rimLight.position.set(-25, -10, -20);
+    scene.add(rimLight);
+
+    // 4. Subtle Distant Starfield for Space Depth
+    const starCount = 360;
+    const starPositions = new Float32Array(starCount * 3);
+    const starColors = new Float32Array(starCount * 3);
+    for (let i = 0; i < starCount; i++) {
+      const r = 70 + Math.random() * 35;
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      starPositions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+      starPositions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+      starPositions[i * 3 + 2] = r * Math.cos(phi);
+
+      const t = Math.random();
+      if (t < 0.65) {
+        starColors[i * 3] = 0.85; starColors[i * 3 + 1] = 0.92; starColors[i * 3 + 2] = 1.0;
+      } else if (t < 0.85) {
+        starColors[i * 3] = 1.0; starColors[i * 3 + 1] = 1.0; starColors[i * 3 + 2] = 1.0;
+      } else {
+        starColors[i * 3] = 1.0; starColors[i * 3 + 1] = 0.88; starColors[i * 3 + 2] = 0.72;
+      }
+    }
+    const starGeo = new THREE.BufferGeometry();
+    starGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+    starGeo.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
+    const starMat = new THREE.PointsMaterial({
+      size: 1.1,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.65,
+      sizeAttenuation: false
+    });
+    const starField = new THREE.Points(starGeo, starMat);
+    scene.add(starField);
+
+    // 5. Delta-Time Animation Loop with Tab Inactivity Pause & Reduced-Motion Respect
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const motionScale = prefersReducedMotion ? 0.15 : 1.0;
+
     let animId = 0;
-    const clock = new THREE.Clock();
+    let lastTime = performance.now();
+    let simTime = 0;
 
-    const animate = () => {
+    const animate = (now: number) => {
       animId = requestAnimationFrame(animate);
-      const t = clock.getElapsedTime();
 
-      earthMesh.rotation.y = t * 0.12;
-      satMesh.position.set(
-        7.68 * Math.cos(t * 1.1),
-        2.2 * Math.sin(t * 1.1),
-        7.68 * Math.sin(t * 1.1) * 0.7
-      );
+      const dt = Math.min((now - lastTime) / 1000, 0.1);
+      lastTime = now;
+
+      // Pause rendering when tab is hidden to conserve CPU/GPU
+      if (document.hidden) return;
+
+      simTime += dt * motionScale;
+
+      // Physically convincing slow Earth & cloud rotation
+      earthMesh.rotation.y = simTime * 0.05;
+      cloudsMesh.rotation.y = simTime * 0.065;
+
+      // Stable Keplerian orbital motion for ISS along inclination plane
+      const orbitSpeed = 0.28;
+      const orbitAngle = simTime * orbitSpeed;
+      const posX = Math.cos(orbitAngle) * orbitRadius;
+      const posZ = Math.sin(orbitAngle) * orbitRadius;
+      issCraft.position.set(posX, 0, posZ);
+
+      // Orient ISS forward along velocity vector (tangent to orbital path)
+      issCraft.rotation.y = -orbitAngle + Math.PI / 2;
+      issCraft.rotation.x = Math.sin(orbitAngle) * 0.04;
+
+      // Gentle telemetry beacon pulse
+      beaconMat.opacity = 0.45 + 0.4 * Math.sin(simTime * 4.0);
 
       renderer.render(scene, camera);
     };
 
-    animate();
+    animId = requestAnimationFrame(animate);
 
     const onResize = () => {
       if (!container) return;
@@ -327,10 +434,19 @@ export const MissionControl: React.FC<MissionControlProps> = ({
       renderer.dispose();
       earthGeo.dispose();
       earthMat.dispose();
-      atmoGeo.dispose();
-      atmoMat.dispose();
-      issRingGeo.dispose();
-      issRingMat.dispose();
+      cloudsMesh.geometry.dispose();
+      (cloudsMesh.material as THREE.Material).dispose();
+      atmoMesh.geometry.dispose();
+      (atmoMesh.material as THREE.Material).dispose();
+      orbitTrackGeo.dispose();
+      orbitTrackMat.dispose();
+      beaconGeo.dispose();
+      beaconMat.dispose();
+      starGeo.dispose();
+      starMat.dispose();
+      if (container.contains(renderer.domElement)) {
+        container.removeChild(renderer.domElement);
+      }
     };
   }, []);
 
