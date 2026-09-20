@@ -70,11 +70,14 @@
   --shadow-card: 0 4px 16px -2px rgba(0, 0, 0, 0.45);
   --shadow-card-hover: 0 8px 24px -2px rgba(0, 0, 0, 0.65), 0 0 16px rgba(56, 189, 248, 0.08);
 
-  /* Mobile Safe Area Insets */
+  /* Mobile Safe Area Insets & Foldable Tokens */
   --sat: env(safe-area-inset-top, 0px);
   --sab: env(safe-area-inset-bottom, 0px);
   --sal: env(safe-area-inset-left, 0px);
   --sar: env(safe-area-inset-right, 0px);
+  --vsl: env(viewport-segment-left 0 0, 0px);
+  --vsr: env(viewport-segment-right 0 0, 0px);
+  --vsw: env(viewport-segment-width 0 0, 100vw);
 }
 
 *,
@@ -89,6 +92,7 @@ html,
 body {
   width: 100%;
   min-height: 100%;
+  min-height: 100dvh;
   background-color: var(--bg-deep-space);
   color: var(--text-primary);
   font-family: var(--font-sans);
@@ -97,39 +101,52 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  position: relative;
 }
 
 #root {
+  width: 100%;
+  max-width: 100%;
   min-height: 100vh;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
   position: relative;
   z-index: 1;
+  overflow-x: hidden;
+}
+
+main {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  flex: 1 0 auto;
 }
 
 /* Typography Hierarchy */
 h1 {
   font-family: var(--font-heading);
-  font-size: clamp(20px, 3.2vw + 6px, 28px);
+  font-size: clamp(19px, 3.8vw + 4px, 28px);
   font-weight: 700;
   letter-spacing: -0.025em;
   color: var(--text-highlight);
-  line-height: 1.22;
+  line-height: 1.24;
+  word-break: break-word;
 }
 
 h2 {
   font-family: var(--font-heading);
-  font-size: clamp(16px, 2vw + 6px, 20px);
+  font-size: clamp(15px, 2.5vw + 4px, 20px);
   font-weight: 600;
   letter-spacing: -0.018em;
   color: var(--text-primary);
   line-height: 1.28;
+  word-break: break-word;
 }
 
 h3 {
   font-family: var(--font-heading);
-  font-size: clamp(13px, 1.5vw + 6px, 15px);
+  font-size: clamp(12.5px, 1.8vw + 4px, 15px);
   font-weight: 600;
   letter-spacing: -0.012em;
   color: var(--text-primary);
@@ -418,7 +435,24 @@ h3 {
     border-bottom: none;
     border-left: none;
     border-right: none;
+    padding-bottom: calc(14px + var(--sab));
     animation: slideUpMobile 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
+.object-inspector-handle {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .object-inspector-handle {
+    display: block;
+    width: 36px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.28);
+    border-radius: var(--radius-full);
+    margin: 8px auto 2px;
+    flex-shrink: 0;
   }
 }
 
@@ -775,5 +809,35 @@ h3 {
 
   .hide-on-mobile-inline {
     display: none !important;
+  }
+}
+
+/* Mission Control Hero Responsive Layout */
+.mission-control-hero {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 24px;
+}
+
+.hero-vista {
+  height: 240px;
+  width: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-left: 1px solid var(--border-hairline);
+}
+
+@media (max-width: 900px) {
+  .mission-control-hero {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .hero-vista {
+    border-left: none;
+    border-top: 1px solid var(--border-hairline);
+    height: 200px;
   }
 }

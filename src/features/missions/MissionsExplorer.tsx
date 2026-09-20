@@ -108,11 +108,11 @@ export const MissionsExplorer: React.FC = () => {
         border: '1px solid var(--border-hairline)'
       }}>
         {/* Sub-view switcher */}
-        <div style={{ display: 'flex', gap: '4px', background: 'var(--surface-inset)', padding: '3px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
+        <div style={{ display: 'flex', gap: '4px', background: 'var(--surface-inset)', padding: '3px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)', flexWrap: 'wrap' }}>
           <button
             onClick={() => setActiveTab('missions')}
             className={`btn ${activeTab === 'missions' ? 'btn-active' : 'btn-ghost'}`}
-            style={{ fontSize: '12px', padding: '5px 12px' }}
+            style={{ fontSize: '12px', padding: '6px 12px', minHeight: '34px', touchAction: 'manipulation' }}
           >
             <BookOpen size={13} />
             <span>Missions Directory ({MISSIONS_DATABASE.length})</span>
@@ -124,7 +124,7 @@ export const MissionsExplorer: React.FC = () => {
               setPreviewMission(null);
             }}
             className={`btn ${activeTab === 'archives' ? 'btn-active' : 'btn-ghost'}`}
-            style={{ fontSize: '12px', padding: '5px 12px' }}
+            style={{ fontSize: '12px', padding: '6px 12px', minHeight: '34px', touchAction: 'manipulation' }}
           >
             <Layers size={13} />
             <span>Open Repositories ({ARCHIVE_DATASETS.length})</span>
@@ -140,7 +140,10 @@ export const MissionsExplorer: React.FC = () => {
                 key={ag}
                 onClick={() => setSelectedAgency(ag)}
                 style={{
-                  padding: '3px 8px',
+                  padding: '4px 9px',
+                  minHeight: '32px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
                   borderRadius: 'var(--radius-xs)',
                   fontSize: '11px',
                   fontFamily: 'var(--font-heading)',
@@ -149,7 +152,8 @@ export const MissionsExplorer: React.FC = () => {
                   border: selectedAgency === ag ? '1px solid var(--border-focus)' : '1px solid transparent',
                   background: selectedAgency === ag ? 'rgba(56, 189, 248, 0.14)' : 'transparent',
                   color: selectedAgency === ag ? 'var(--accent-cyan)' : 'var(--text-muted)',
-                  transition: 'all 0.15s ease'
+                  transition: 'all 0.15s ease',
+                  touchAction: 'manipulation'
                 }}
               >
                 {ag === 'ALL' ? 'All Agencies' : ag}
@@ -168,7 +172,8 @@ export const MissionsExplorer: React.FC = () => {
           borderRadius: 'var(--radius-xs)',
           padding: '6px 10px',
           width: '100%',
-          maxWidth: '280px'
+          flex: '1 1 200px',
+          maxWidth: '320px'
         }}>
           <Search size={13} style={{ color: 'var(--text-muted)' }} />
           <input

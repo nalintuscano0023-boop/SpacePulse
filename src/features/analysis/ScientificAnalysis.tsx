@@ -310,7 +310,7 @@ export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialO
                   key={mode.id}
                   onClick={() => setAnalysisType(mode.id as AnalysisType)}
                   className={`btn ${analysisType === mode.id ? 'btn-active' : 'btn-secondary'}`}
-                  style={{ fontSize: '12px', padding: '6px 10px', gap: '6px' }}
+                  style={{ fontSize: '12px', padding: '6px 10px', gap: '6px', minHeight: '36px', touchAction: 'manipulation' }}
                 >
                   {mode.icon}
                   <span>{mode.label}</span>
@@ -380,7 +380,7 @@ export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialO
             gap: '8px'
           }}>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Target Profile</span>
                 <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#ffffff' }}>{primaryObj.name}</h2>
                 <span className="agency-badge">{primaryObj.category}</span>

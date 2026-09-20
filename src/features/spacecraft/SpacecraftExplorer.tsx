@@ -132,7 +132,8 @@ export const SpacecraftExplorer: React.FC<SpacecraftExplorerProps> = ({
           borderRadius: 'var(--radius-xs)',
           padding: '8px 12px',
           width: '100%',
-          maxWidth: '360px'
+          flex: '1 1 260px',
+          maxWidth: '480px'
         }}>
           <Search size={15} style={{ color: 'var(--text-muted)' }} />
           <input
@@ -184,7 +185,10 @@ export const SpacecraftExplorer: React.FC<SpacecraftExplorerProps> = ({
                   color: isActive ? 'var(--accent-cyan)' : 'var(--text-secondary)',
                   transition: 'all 0.15s ease',
                   touchAction: 'manipulation',
-                  whiteSpace: 'nowrap'
+                  whiteSpace: 'nowrap',
+                  minHeight: '36px',
+                  display: 'inline-flex',
+                  alignItems: 'center'
                 }}
               >
                 {labelMap[cat]}

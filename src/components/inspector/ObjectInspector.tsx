@@ -113,6 +113,9 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
         id="object-inspector-panel"
         className="glass-panel tech-corner object-inspector-panel"
       >
+        {/* Mobile Grab Handle */}
+        <div className="object-inspector-handle" />
+
         {/* Panel Header */}
         <div style={{
           padding: '14px 18px',

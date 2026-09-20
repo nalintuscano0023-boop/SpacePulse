@@ -454,9 +454,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
     <div className="container" style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
       {/* 1. COMMAND OVERVIEW HEADER & JUDGE-FRIENDLY QUICK ACTIONS */}
       <div id="mission-control-overview" className="glass-panel tech-corner mission-control-hero" style={{
-        overflow: 'hidden',
-        gap: '24px',
-        alignItems: 'center'
+        overflow: 'hidden'
       }}>
         {/* Left Column: Command Overview */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -594,15 +592,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
         </div>
 
         {/* Right Column: Mini 3D Orbital Vista */}
-        <div style={{
-          height: '220px',
-          width: '100%',
-          position: 'relative',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderLeft: '1px solid var(--border-hairline)'
-        }} className="hero-vista">
+        <div className="hero-vista">
           <div ref={miniCanvasRef} style={{ width: '100%', height: '100%' }} />
 
           <div style={{

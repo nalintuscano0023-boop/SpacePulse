@@ -6,7 +6,10 @@ import {
   Compass, 
   Database, 
   Clock, 
-  Radio
+  Radio,
+  Menu,
+  X,
+  ChevronRight
 } from 'lucide-react';
 import { formatUtcTime } from '../../utils/time';
 
@@ -19,6 +22,7 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
   const [utcTime, setUtcTime] = useState(formatUtcTime());
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -27,13 +31,61 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
     return () => clearInterval(timer);
   }, []);
 
-  const navItems: { id: TabType; label: string; icon: React.ReactNode; tooltip: string }[] = [
-    { id: 'mission-control', label: 'Mission Control', icon: <Activity size={15} />, tooltip: 'Mission Control: Platform overview and telemetry status' },
-    { id: 'spacecraft', label: 'Spacecraft', icon: <Satellite size={15} />, tooltip: 'Spacecraft: Monitored active fleet, satellites, and 3D models' },
-    { id: 'space-map', label: 'Space Map', icon: <Orbit size={15} />, tooltip: 'Space Map: 3D interactive orbits and real-time celestial visualization' },
-    { id: 'analysis', label: 'Analysis', icon: <Compass size={15} />, tooltip: 'Analysis: Keplerian orbital mechanics, relative velocities, and light delay' },
-    { id: 'missions', label: 'Missions & Data', icon: <Database size={15} />, tooltip: 'Missions & Data: Verified agency dossiers and planetary science archives' }
+  // Close drawer on ESC
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isDrawerOpen) {
+        setIsDrawerOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isDrawerOpen]);
+
+  const navItems: { id: TabType; label: string; icon: React.ReactNode; tooltip: string; subtitle: string }[] = [
+    { 
+      id: 'mission-control', 
+      label: 'Mission Control', 
+      icon: <Activity size={15} />, 
+      tooltip: 'Mission Control: Platform overview and telemetry status',
+      subtitle: 'Global telemetry & fleet overview'
+    },
+    { 
+      id: 'spacecraft', 
+      label: 'Spacecraft', 
+      icon: <Satellite size={15} />, 
+      tooltip: 'Spacecraft: Monitored active fleet, satellites, and 3D models',
+      subtitle: 'Active spacecraft & 3D models'
+    },
+    { 
+      id: 'space-map', 
+      label: 'Space Map', 
+      icon: <Orbit size={15} />, 
+      tooltip: 'Space Map: 3D interactive orbits and real-time celestial visualization',
+      subtitle: '3D Solar System & Earth orbit'
+    },
+    { 
+      id: 'analysis', 
+      label: 'Analysis', 
+      icon: <Compass size={15} />, 
+      tooltip: 'Analysis: Keplerian orbital mechanics, relative velocities, and light delay',
+      subtitle: 'Orbital mechanics & vectors'
+    },
+    { 
+      id: 'missions', 
+      label: 'Missions & Data', 
+      icon: <Database size={15} />, 
+      tooltip: 'Missions & Data: Verified agency dossiers and planetary science archives',
+      subtitle: 'Archives & agency dossiers'
+    }
   ];
+
+  const currentItem = navItems.find(item => item.id === activeTab) || navItems[0];
+
+  const handleItemClick = (id: TabType) => {
+    onSelectTab(id);
+    setIsDrawerOpen(false);
+  };
 
   return (
     <>
@@ -42,16 +94,17 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
         position: 'sticky',
         top: 0,
         zIndex: 100,
-        background: 'rgba(3, 5, 10, 0.85)',
+        background: 'rgba(3, 5, 10, 0.90)',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
         borderBottom: '1px solid var(--border-hairline)',
         paddingTop: 'var(--sat)',
-        paddingLeft: 'max(16px, var(--sal))',
-        paddingRight: 'max(16px, var(--sar))',
+        paddingLeft: 'max(12px, var(--sal))',
+        paddingRight: 'max(12px, var(--sar))',
         minHeight: '56px',
         display: 'flex',
-        alignItems: 'center'
+        alignItems: 'center',
+        width: '100%'
       }}>
         <div style={{
           width: '100%',
@@ -60,20 +113,19 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: '12px',
+          gap: '8px',
           padding: '6px 0'
         }}>
           {/* Brand Identity */}
           <div 
-            onClick={() => onSelectTab('mission-control')}
+            onClick={() => handleItemClick('mission-control')}
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '10px',
+              gap: '8px',
               cursor: 'pointer',
               userSelect: 'none',
-              minWidth: 0,
-              flexShrink: 1
+              flexShrink: 0
             }}
             title="SpacePulse: Space Intelligence & Visualization Platform"
           >
@@ -94,7 +146,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
             <div style={{ minWidth: 0 }}>
               <div style={{
                 fontFamily: 'var(--font-heading)',
-                fontSize: '16px',
+                fontSize: '15px',
                 fontWeight: 700,
                 letterSpacing: '0.08em',
                 color: '#ffffff',
@@ -112,7 +164,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
                   letterSpacing: '0.08em',
                   textTransform: 'uppercase',
                   lineHeight: 1.1,
-                  marginTop: '2px',
+                  marginTop: '1px',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis'
@@ -123,7 +175,41 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
             </div>
           </div>
 
-          {/* Desktop 5-Item Navigation */}
+          {/* Mobile Current Section Indicator Pill (visible < 860px) */}
+          <button
+            onClick={() => setIsDrawerOpen(!isDrawerOpen)}
+            className="mobile-section-pill"
+            aria-label={`Current Section: ${currentItem.label}. Tap to switch section.`}
+            title="Tap to switch section"
+            style={{
+              display: 'none',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '4px 8px',
+              borderRadius: 'var(--radius-full)',
+              background: 'rgba(56, 189, 248, 0.08)',
+              border: '1px solid rgba(56, 189, 248, 0.28)',
+              color: 'var(--accent-cyan)',
+              fontSize: '11px',
+              fontFamily: 'var(--font-heading)',
+              fontWeight: 600,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              maxWidth: '160px',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              touchAction: 'manipulation'
+            }}
+          >
+            <span style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+              {currentItem.icon}
+            </span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {currentItem.label}
+            </span>
+          </button>
+
+          {/* Desktop 5-Item Navigation (visible >= 860px) */}
           <nav style={{
             display: 'none',
             alignItems: 'center',
@@ -147,9 +233,9 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '7px',
-                    padding: '6px 14px',
+                    padding: '6px 12px',
                     borderRadius: 'var(--radius-xs)',
-                    fontSize: '12.5px',
+                    fontSize: '12px',
                     fontWeight: isActive ? 600 : 500,
                     fontFamily: 'var(--font-heading)',
                     letterSpacing: '0.01em',
@@ -171,94 +257,201 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
             })}
           </nav>
 
-          {/* Right Status & Clock */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: 'rgba(255, 255, 255, 0.02)',
-              border: '1px solid var(--border-hairline)',
-              padding: '4px 8px',
-              borderRadius: 'var(--radius-xs)',
-              fontSize: '11px',
-              fontFamily: 'var(--font-mono)',
-              color: 'var(--text-secondary)'
-            }}>
-              <Clock size={12} style={{ color: 'var(--accent-cyan)' }} />
+          {/* Right Status & Clock & Mobile Hamburger Button */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+            {/* UTC Clock */}
+            <div 
+              className="navbar-clock"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                background: 'rgba(255, 255, 255, 0.02)',
+                border: '1px solid var(--border-hairline)',
+                padding: '4px 7px',
+                borderRadius: 'var(--radius-xs)',
+                fontSize: '11px',
+                fontFamily: 'var(--font-mono)',
+                color: 'var(--text-secondary)'
+              }}
+            >
+              <Clock size={11} style={{ color: 'var(--accent-cyan)', flexShrink: 0 }} />
               <span className="mono" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{utcTime}</span>
             </div>
+
+            {/* Mobile Navigation Drawer Toggle (visible < 860px) */}
+            <button
+              onClick={() => setIsDrawerOpen(!isDrawerOpen)}
+              className="mobile-nav-toggle"
+              aria-label={isDrawerOpen ? 'Close Navigation Menu' : 'Open Navigation Menu'}
+              aria-expanded={isDrawerOpen}
+              title={isDrawerOpen ? 'Close Navigation Menu' : 'Open Navigation Menu'}
+              style={{
+                display: 'none',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '38px',
+                height: '38px',
+                minWidth: '38px',
+                minHeight: '38px',
+                borderRadius: 'var(--radius-xs)',
+                background: isDrawerOpen ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.04)',
+                border: isDrawerOpen ? '1px solid var(--accent-cyan)' : '1px solid var(--border-hairline)',
+                color: isDrawerOpen ? '#ffffff' : 'var(--text-primary)',
+                cursor: 'pointer',
+                touchAction: 'manipulation',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              {isDrawerOpen ? <X size={18} /> : <Menu size={18} />}
+            </button>
           </div>
         </div>
       </header>
 
-      {/* Mobile Bottom Floating Navigation Bar */}
-      <div className="mobile-bottom-nav" style={{
-        display: 'none',
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        zIndex: 100,
-        background: 'rgba(3, 5, 10, 0.94)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        borderTop: '1px solid var(--border-hairline)',
-        paddingTop: '6px',
-        paddingBottom: 'calc(6px + var(--sab))',
-        paddingLeft: 'max(4px, var(--sal))',
-        paddingRight: 'max(4px, var(--sar))',
-        justifyContent: 'space-around',
-        alignItems: 'stretch'
-      }}>
-        {navItems.map((item) => {
-          const isActive = activeTab === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => onSelectTab(item.id)}
-              title={item.tooltip}
-              aria-label={item.tooltip}
-              style={{
-                flex: 1,
-                minWidth: 0,
-                minHeight: '48px',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '3px',
-                padding: '4px 2px',
-                borderRadius: 'var(--radius-xs)',
-                fontSize: '10px',
-                fontFamily: 'var(--font-heading)',
-                background: isActive ? 'rgba(56, 189, 248, 0.08)' : 'transparent',
-                border: 'none',
-                borderTop: isActive ? '2px solid var(--accent-cyan)' : '2px solid transparent',
-                color: isActive ? 'var(--accent-cyan)' : 'var(--text-muted)',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                touchAction: 'manipulation'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {item.icon}
-              </div>
-              <span style={{
-                fontSize: '9.5px',
-                lineHeight: 1.1,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                maxWidth: '100%',
-                fontWeight: isActive ? 600 : 400
-              }}>
-                {item.label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      {/* Mobile Aerospace Navigation Drawer Backdrop */}
+      {isDrawerOpen && (
+        <div
+          onClick={() => setIsDrawerOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(2, 4, 8, 0.75)',
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)',
+            zIndex: 98,
+            animation: 'fadeIn 0.2s ease'
+          }}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Mobile Aerospace Navigation Drawer Sheet */}
+      {isDrawerOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 'calc(56px + var(--sat))',
+            left: 0,
+            right: 0,
+            maxHeight: 'calc(100dvh - 56px - var(--sat))',
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            background: 'rgba(5, 12, 24, 0.98)',
+            backdropFilter: 'blur(24px)',
+            WebkitBackdropFilter: 'blur(24px)',
+            borderBottom: '1px solid rgba(56, 189, 248, 0.3)',
+            boxShadow: '0 20px 48px rgba(0, 0, 0, 0.85)',
+            zIndex: 99,
+            padding: '14px 16px calc(18px + var(--sab))',
+            animation: 'slideDownNav 0.22s cubic-bezier(0.16, 1, 0.3, 1)'
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation Menu"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{
+              fontSize: '10px',
+              fontFamily: 'var(--font-mono)',
+              color: 'var(--text-muted)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              padding: '0 4px 4px'
+            }}>
+              SpacePulse Modules
+            </div>
+
+            {navItems.map((item) => {
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleItemClick(item.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    width: '100%',
+                    minHeight: '52px',
+                    padding: '10px 14px',
+                    borderRadius: 'var(--radius-sm)',
+                    background: isActive ? 'rgba(56, 189, 248, 0.14)' : 'rgba(255, 255, 255, 0.025)',
+                    border: isActive ? '1px solid rgba(56, 189, 248, 0.45)' : '1px solid var(--border-hairline)',
+                    color: isActive ? '#ffffff' : 'var(--text-secondary)',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    touchAction: 'manipulation'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+                    <div style={{
+                      width: '34px',
+                      height: '34px',
+                      borderRadius: 'var(--radius-xs)',
+                      background: isActive ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.04)',
+                      border: isActive ? '1px solid var(--accent-cyan)' : '1px solid var(--border-hairline)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: isActive ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                      flexShrink: 0
+                    }}>
+                      {item.icon}
+                    </div>
+
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{
+                        fontSize: '14px',
+                        fontWeight: 600,
+                        fontFamily: 'var(--font-heading)',
+                        color: isActive ? '#ffffff' : 'var(--text-primary)'
+                      }}>
+                        {item.label}
+                      </div>
+                      <div style={{
+                        fontSize: '11px',
+                        color: 'var(--text-muted)',
+                        marginTop: '1px',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}>
+                        {item.subtitle}
+                      </div>
+                    </div>
+                  </div>
+
+                  <ChevronRight 
+                    size={16} 
+                    style={{ 
+                      color: isActive ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                      flexShrink: 0,
+                      marginLeft: '8px'
+                    }} 
+                  />
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={{
+            marginTop: '14px',
+            paddingTop: '12px',
+            borderTop: '1px solid var(--border-hairline)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: '10px',
+            fontFamily: 'var(--font-mono)',
+            color: 'var(--text-muted)'
+          }}>
+            <span>SYSTEM: NOMINAL</span>
+            <span style={{ color: 'var(--accent-cyan)' }}>100% PUBLIC DATA</span>
+          </div>
+        </div>
+      )}
 
       <style>{`
         @media (min-width: 860px) {
@@ -267,19 +460,34 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
           }
         }
         @media (max-width: 859px) {
-          .mobile-bottom-nav {
+          .mobile-nav-toggle {
             display: flex !important;
           }
-          main {
-            padding-bottom: calc(72px + var(--sab)) !important;
+          .mobile-section-pill {
+            display: inline-flex !important;
           }
         }
-        @media (max-width: 540px) {
+        @media (max-width: 600px) {
           .navbar-subtitle {
             display: none !important;
           }
+        }
+        @media (max-width: 440px) {
+          .mobile-section-pill {
+            max-width: 120px !important;
+          }
+        }
+        @media (max-width: 360px) {
+          .mobile-section-pill {
+            display: none !important;
+          }
+        }
+        @keyframes slideDownNav {
+          from { transform: translateY(-12px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
         }
       `}</style>
     </>
   );
 };
+

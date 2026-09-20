@@ -16,7 +16,7 @@ export const Spacecraft3DViewer: React.FC<Spacecraft3DViewerProps> = ({
   onClose
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
-  const [showSubsystems, setShowSubsystems] = useState(true);
+  const [showSubsystems, setShowSubsystems] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 640 : true);
   const isVoyager = craftId.toLowerCase().includes('voyager');
 
   useEffect(() => {
@@ -34,7 +34,8 @@ export const Spacecraft3DViewer: React.FC<Spacecraft3DViewerProps> = ({
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, window.innerWidth < 768 ? 1.5 : 2));
+    renderer.domElement.style.touchAction = 'none';
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.15;
     renderer.shadowMap.enabled = true;
@@ -47,6 +48,10 @@ export const Spacecraft3DViewer: React.FC<Spacecraft3DViewerProps> = ({
     controls.autoRotateSpeed = 1.2;
     controls.minDistance = 2.0;
     controls.maxDistance = 15;
+    controls.touches = {
+      ONE: THREE.TOUCH.ROTATE,
+      TWO: THREE.TOUCH.DOLLY_PAN
+    };
 
     // Professional Studio Lighting
     const keyLight = new THREE.DirectionalLight(0xffffff, 2.4);

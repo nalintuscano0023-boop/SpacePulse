@@ -152,7 +152,7 @@ function AppContent({
         background: 'rgba(3, 7, 18, 0.85)',
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
-        padding: '16px 24px',
+        padding: '16px max(16px, var(--sal)) calc(16px + var(--sab)) max(16px, var(--sar))',
         fontSize: '11px',
         color: 'var(--text-muted)',
         zIndex: 10
@@ -166,7 +166,7 @@ function AppContent({
           flexWrap: 'wrap',
           gap: '12px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <Radio size={13} style={{ color: 'var(--accent-cyan)' }} />
             <span style={{ fontFamily: 'var(--font-heading)', letterSpacing: '0.05em' }}>SPACEPULSE</span>
             <span>• Verified Multi-Agency Space Exploration Console</span>
@@ -198,6 +198,9 @@ function AppContent({
           borderTop: '1px solid rgba(255, 255, 255, 0.03)',
           display: 'flex',
           justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '8px',
           fontSize: '10px'
         }}>
           <span>Standard Celestial Reference Frame: Heliocentric Ecliptic J2000.0 / TEME Geocentric</span>

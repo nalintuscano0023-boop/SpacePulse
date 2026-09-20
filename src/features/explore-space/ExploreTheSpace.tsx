@@ -1074,7 +1074,8 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
     renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, window.innerWidth < 768 ? 1.5 : 1.75));
+    renderer.domElement.style.touchAction = 'none';
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.05;
     container.appendChild(renderer.domElement);
@@ -1087,6 +1088,10 @@ export const ExploreTheSpace: React.FC<ExploreTheSpaceProps> = ({ onExit }) => {
     controls.zoomSpeed = 0.85;
     controls.minDistance = 15;
     controls.maxDistance = 1400;
+    controls.touches = {
+      ONE: THREE.TOUCH.ROTATE,
+      TWO: THREE.TOUCH.DOLLY_PAN
+    };
     controlsRef.current = controls;
 
     const onControlsStart = () => {
