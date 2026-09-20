@@ -314,7 +314,6 @@ export const SPACECRAFT_REGISTRY: SpacecraftDefinition[] = [
 export async function resolveSpacecraftState(def: SpacecraftDefinition, date: Date = new Date()): Promise<SpacecraftObject> {
   const earthEphem = calculatePlanetEphemeris('earth', date);
 
-  // 1. If it's Aditya-L1 (Lagrangian Halo L1)
   if (def.id === 'aditya-l1') {
     const l1 = calculateAdityaL1Ephemeris(date);
     const lightTime = calculateLightTimeSeconds(l1.distanceFromEarthKm);
@@ -339,7 +338,6 @@ export async function resolveSpacecraftState(def: SpacecraftDefinition, date: Da
     };
   }
 
-  // 2. Voyager 1 & 2: Interstellar hyperbolic ephemeris propagation from NASA JPL DSN baseline
   if (def.id === 'voyager-1' || def.id === 'voyager-2') {
     const trackingCap = resolveTrackingCapability(def.id, def.name, null, date);
     const ephem = calculateVoyagerInterstellarEphemeris(def.id, date);
@@ -363,14 +361,13 @@ export async function resolveSpacecraftState(def: SpacecraftDefinition, date: Da
     };
   }
 
-  // 3. Chandrayaan missions
   if (def.id.startsWith('chandrayaan')) {
     const trackingCap = resolveTrackingCapability(def.id, def.name, null, date);
 
     if (def.id === 'chandrayaan-2-orbiter') {
       const distEarth = MOON_MEAN_DISTANCE_KM + 100;
       const lightTime = calculateLightTimeSeconds(distEarth);
-      const vel = 1.63; // ~1.63 km/s in 100 km circular lunar orbit
+      const vel = 1.63;
 
       return {
         ...def,
@@ -410,7 +407,6 @@ export async function resolveSpacecraftState(def: SpacecraftDefinition, date: Da
       };
     }
 
-    // Chandrayaan-1
     const distEarth = MOON_MEAN_DISTANCE_KM;
     const lightTime = calculateLightTimeSeconds(distEarth);
     return {
@@ -430,7 +426,6 @@ export async function resolveSpacecraftState(def: SpacecraftDefinition, date: Da
     };
   }
 
-  // 4. If it has a NORAD ID (Earth Orbit satellite)
   if (def.noradId) {
     try {
       const satTrack = await CelestrakService.getPropagatedSatellite(def.noradId, date);
@@ -479,11 +474,9 @@ export async function resolveSpacecraftState(def: SpacecraftDefinition, date: Da
         };
       }
     } catch {
-      // Fallback below
     }
   }
 
-  // Fallback for unavailable satellite
   const fallbackCap = resolveTrackingCapability(def.id, def.name, {
     noradId: def.noradId || 0,
     isLiveGp: false,

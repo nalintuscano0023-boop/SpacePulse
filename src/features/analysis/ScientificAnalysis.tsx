@@ -67,7 +67,6 @@ export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialO
       const now = new Date();
       const list: AnalyzableObject[] = [];
 
-      // 1. Sun
       list.push({
         id: 'sun',
         name: 'Sun (Sol)',
@@ -78,7 +77,6 @@ export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialO
         orbitType: 'Solar System Barycentric Origin'
       });
 
-      // 2. Major Planets
       ['mercury', 'venus', 'earth', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune'].forEach(p => {
         try {
           const ephem = calculatePlanetEphemeris(p, now);
@@ -101,7 +99,6 @@ export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialO
         }
       });
 
-      // 3. Aditya-L1 at L1
       try {
         const l1 = calculateAdityaL1Ephemeris(now);
         list.push({
@@ -117,7 +114,6 @@ export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialO
         console.error(e);
       }
 
-      // 4. Real Earth-Orbiting Satellites from CelesTrak SGP4
       try {
         const satellites = await CelestrakService.getSupportedEarthSatellites(now);
         const earthObj = list.find(o => o.id === 'earth');
@@ -146,7 +142,6 @@ export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialO
             }
           });
 
-          // Chandrayaan-2 Lunar Orbiter (Verified selenocentric 100 km polar orbit)
           list.push({
             id: 'chandrayaan-2-orbiter',
             name: 'Chandrayaan-2 Orbiter (ISRO)',
@@ -166,7 +161,6 @@ export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialO
         console.error(e);
       }
 
-      // 5. Voyager 1 & 2 (Interstellar Baseline)
       list.push({
         id: 'voyager-1',
         name: 'Voyager 1 (NASA)',
@@ -184,7 +178,6 @@ export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialO
     computeAllPositions();
   }, []);
 
-  // Sync initial selection
   useEffect(() => {
     if (initialObjectId && availableObjects.some(o => o.id === initialObjectId)) {
       setSelectedObjectId(initialObjectId);
@@ -194,7 +187,6 @@ export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialO
   const primaryObj = availableObjects.find(o => o.id === selectedObjectId) || availableObjects[0];
   const compareObj = availableObjects.find(o => o.id === comparisonObjectId) || availableObjects.find(o => o.id === 'earth') || availableObjects[1];
 
-  // Distances to celestial benchmarks
   const earthObj = availableObjects.find(o => o.id === 'earth');
   const sunObj = availableObjects.find(o => o.id === 'sun');
 
@@ -208,7 +200,6 @@ export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialO
 
   const lightDelayToEarthSec = distToEarthKm !== undefined ? calculateLightTimeSeconds(distToEarthKm) : undefined;
 
-  // Comparison metrics
   let compDistanceKm: number | undefined;
   let compRelSpeedKmS: number | undefined;
   let compLightDelaySec: number | undefined;
@@ -221,7 +212,6 @@ export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialO
 
   return (
     <div className="container" style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
-      {/* Header */}
       <div style={{ padding: '12px 0 4px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
           <div style={{
@@ -252,7 +242,6 @@ export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialO
         </p>
       </div>
 
-      {/* 3-Step Guided Workflow Bar */}
       <div className="glass-panel" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div style={{
           display: 'grid',
@@ -260,7 +249,6 @@ export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialO
           gap: '16px',
           alignItems: 'flex-start'
         }}>
-          {/* STEP 1: SELECT OBJECT */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <div style={{ fontSize: '11px', color: 'var(--accent-cyan)', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
               Step 1: Target Object
@@ -294,7 +282,6 @@ export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialO
             </select>
           </div>
 
-          {/* STEP 2: CHOOSE ANALYSIS MODE */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <div style={{ fontSize: '11px', color: 'var(--accent-cyan)', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
               Step 2: Choose Analysis Mode
@@ -318,7 +305,6 @@ export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialO
               ))}
             </div>
 
-            {/* Dynamic Calculation Mode Summary */}
             <div style={{
               fontSize: '11px',
               color: 'var(--text-secondary)',
@@ -335,7 +321,6 @@ export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialO
             </div>
           </div>
 
-          {/* STEP 2B (If Comparison): SELECT SECONDARY OBJECT */}
           {analysisType === 'comparison' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', animation: 'fadeIn 0.2s ease' }}>
               <div style={{ fontSize: '11px', color: 'var(--solar-amber)', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
@@ -366,10 +351,8 @@ export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialO
         </div>
       </div>
 
-      {/* STEP 3: FOCUSED RESULTS VIEW */}
       {primaryObj && (
         <div className="glass-panel tech-corner" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
-          {/* Analysis Card Header */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -395,7 +378,6 @@ export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialO
             </div>
           </div>
 
-          {/* MODE A: DISTANCE & LATENCY */}
           {analysisType === 'distance' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{
@@ -444,7 +426,6 @@ export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialO
             </div>
           )}
 
-          {/* MODE B: KINETIC & MOTION */}
           {analysisType === 'motion' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{
@@ -488,7 +469,6 @@ export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialO
             </div>
           )}
 
-          {/* MODE C: ORBITAL GEOMETRY */}
           {analysisType === 'orbit' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{
@@ -532,7 +512,6 @@ export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialO
             </div>
           )}
 
-          {/* MODE D: VECTOR COMPARISON */}
           {analysisType === 'comparison' && compareObj && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{

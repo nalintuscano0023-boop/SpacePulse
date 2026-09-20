@@ -12,10 +12,10 @@ export interface ArchiveDataset {
   title: string;
   mission: string;
   agency: 'ISRO' | 'NASA' | 'ESA' | 'International';
-  archiveHost: string; // e.g., 'ISRO ISSDC / PRADAN', 'MOSDAC', 'NASA PDS'
+  archiveHost: string;
   officialUrl: string;
-  dataLevel: string; // 'Level 0 (Raw)', 'Level 1B (Calibrated)', 'Level 2 (Derived)'
-  formats: string[]; // e.g. ['PDS4', 'HDF5', 'GeoTIFF', 'XML']
+  dataLevel: string;
+  formats: string[];
   accessType: 'Open Public Access' | 'Open Registered Access';
   description: string;
 }

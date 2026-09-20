@@ -1,20 +1,8 @@
 import * as THREE from 'three';
 
-/**
- * Deep Space Environment Subsystem
- * 
- * Provides:
- * 1. 4-Tier Spatial Deep Space Starfield (16,000 background micro-stars, 5,000 mid-distance spectral stars, 80 navigational guide stars, micro cosmic dust particles)
- * 2. Volumetric Diffuse Milky Way Galactic Disc (point-based, low-contrast, authentic 60° inclination and Sagittarius galactic core)
- * 3. Earth Upper-Atmosphere Meteor System (rare, fast, subtle ionization streaks restricted strictly to Earth's atmospheric region)
- */
 
 let cachedMilkyWayTexture: THREE.CanvasTexture | null = null;
 
-/**
- * Generates a subtle astronomical equirectangular Milky Way Sky Texture (2048 x 1024)
- * Low-contrast, diffuse, with dark dust lanes and faint starlight density.
- */
 export function getMilkyWayTexture(): THREE.CanvasTexture {
   if (cachedMilkyWayTexture) return cachedMilkyWayTexture;
 
@@ -25,17 +13,14 @@ export function getMilkyWayTexture(): THREE.CanvasTexture {
   canvas.height = height;
   const ctx = canvas.getContext('2d')!;
 
-  // 1. Deep Vacuum of Space Background (Near-black with subtle celestial indigo tint)
   ctx.fillStyle = '#010307';
   ctx.fillRect(0, 0, width, height);
 
-  // 2. Draw Galactic Plane (~60° celestial inclination)
   const getGalacticY = (x: number) => {
     const angle = (x / width) * Math.PI * 2;
     return height * 0.5 + Math.sin(angle - 0.6) * (height * 0.32);
   };
 
-  // 2a. Broad Diffuse Galactic Starlight Halo
   for (let x = 0; x < width; x += 12) {
     const cy = getGalacticY(x);
     const radGrad = ctx.createRadialGradient(x, cy, 0, x, cy, 140);
@@ -48,7 +33,6 @@ export function getMilkyWayTexture(): THREE.CanvasTexture {
     ctx.fill();
   }
 
-  // 2b. Dense Galactic Core (Sagittarius Bulge at ~x = 1120)
   const coreX = 1120;
   const coreY = getGalacticY(coreX);
   const coreGrad = ctx.createRadialGradient(coreX, coreY, 0, coreX, coreY, 260);
@@ -61,7 +45,6 @@ export function getMilkyWayTexture(): THREE.CanvasTexture {
   ctx.ellipse(coreX, coreY, 240, 130, -0.45, 0, Math.PI * 2);
   ctx.fill();
 
-  // 2c. Interstellar Dark Dust Lanes (The Great Rift cutting through the galactic plane)
   ctx.fillStyle = '#010307';
   for (let s = 0; s < 180; s++) {
     const x = 700 + (s / 180) * 800;
@@ -73,7 +56,6 @@ export function getMilkyWayTexture(): THREE.CanvasTexture {
     ctx.fill();
   }
 
-  // 2d. Granular Unresolved Stellar Cloud Texture
   ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
   for (let i = 0; i < 5000; i++) {
     const x = Math.random() * width;
@@ -92,9 +74,6 @@ export function getMilkyWayTexture(): THREE.CanvasTexture {
   return cachedMilkyWayTexture;
 }
 
-/**
- * Creates the Milky Way Sky Dome Mesh (very subtle backdrop)
- */
 export function createMilkyWayDome(): THREE.Mesh {
   const mwTex = getMilkyWayTexture();
   const domeGeo = new THREE.SphereGeometry(9000, 48, 48);
@@ -111,16 +90,10 @@ export function createMilkyWayDome(): THREE.Mesh {
   return domeMesh;
 }
 
-/**
- * 4-Tier Spatial Deep Space Starfield with Volumetric Milky Way Band & Dust Parallax
- */
 export function createRealisticStarfield(): THREE.Group {
   const starfieldGroup = new THREE.Group();
   starfieldGroup.name = 'DeepSpace_Starfield';
 
-  // -------------------------------------------------------------
-  // TIER 1: 16,000 Pinpoint Distant Micro-Stars (Infinite depth canopy)
-  // -------------------------------------------------------------
   const microCount = 16000;
   const microGeo = new THREE.BufferGeometry();
   const microPos = new Float32Array(microCount * 3);
@@ -135,7 +108,6 @@ export function createRealisticStarfield(): THREE.Group {
     microPos[i * 3 + 1] = dist * Math.sin(phi) * Math.sin(theta);
     microPos[i * 3 + 2] = dist * Math.cos(phi);
 
-    // Natural magnitude power-law distribution
     const brightness = 0.28 + Math.pow(Math.random(), 3.2) * 0.72;
     microColors[i * 3] = brightness * 0.94;
     microColors[i * 3 + 1] = brightness * 0.96;
@@ -155,10 +127,6 @@ export function createRealisticStarfield(): THREE.Group {
   const microStars = new THREE.Points(microGeo, microMat);
   starfieldGroup.add(microStars);
 
-  // -------------------------------------------------------------
-  // TIER 2: 5,000 Mid-Distance Astronomical Spectral Classification Stars
-  // Authentic B-V Colors: O/B (Blue), A (White), G (Solar Yellow), K (Orange), M (Red)
-  // -------------------------------------------------------------
   const spectralCount = 5000;
   const spectralGeo = new THREE.BufferGeometry();
   const spectralPos = new Float32Array(spectralCount * 3);
@@ -175,27 +143,22 @@ export function createRealisticStarfield(): THREE.Group {
 
     const spectralRoll = Math.random();
     if (spectralRoll < 0.14) {
-      // O/B Class: Hot Blue-White (e.g. Rigel, Spica)
       spectralColors[i * 3] = 0.68;
       spectralColors[i * 3 + 1] = 0.82;
       spectralColors[i * 3 + 2] = 1.0;
     } else if (spectralRoll < 0.42) {
-      // A/F Class: Pure White / Crisp Ivory (e.g. Sirius, Vega, Procyon)
       spectralColors[i * 3] = 0.96;
       spectralColors[i * 3 + 1] = 0.97;
       spectralColors[i * 3 + 2] = 1.0;
     } else if (spectralRoll < 0.72) {
-      // G Class: Solar Yellow (e.g. Sun, Alpha Centauri A, Capella)
       spectralColors[i * 3] = 1.0;
       spectralColors[i * 3 + 1] = 0.94;
       spectralColors[i * 3 + 2] = 0.82;
     } else if (spectralRoll < 0.89) {
-      // K Class: Orange Giant (e.g. Arcturus, Aldebaran)
       spectralColors[i * 3] = 1.0;
       spectralColors[i * 3 + 1] = 0.78;
       spectralColors[i * 3 + 2] = 0.58;
     } else {
-      // M Class: Red Supergiant (e.g. Betelgeuse, Antares)
       spectralColors[i * 3] = 1.0;
       spectralColors[i * 3 + 1] = 0.55;
       spectralColors[i * 3 + 2] = 0.48;
@@ -215,9 +178,6 @@ export function createRealisticStarfield(): THREE.Group {
   const spectralStars = new THREE.Points(spectralGeo, spectralMat);
   starfieldGroup.add(spectralStars);
 
-  // -------------------------------------------------------------
-  // TIER 3: 80 Prominent Navigational Guide Stars (with soft halos)
-  // -------------------------------------------------------------
   const guideCount = 80;
   const guideGeo = new THREE.BufferGeometry();
   const guidePos = new Float32Array(guideCount * 3);
@@ -250,23 +210,17 @@ export function createRealisticStarfield(): THREE.Group {
   const guideStars = new THREE.Points(guideGeo, guideMat);
   starfieldGroup.add(guideStars);
 
-  // -------------------------------------------------------------
-  // TIER 4: Volumetric Point-Based Diffuse Milky Way Disc (6,500 particles)
-  // -------------------------------------------------------------
   const mwCount = 6500;
   const mwGeo = new THREE.BufferGeometry();
   const mwPos = new Float32Array(mwCount * 3);
   const mwColors = new Float32Array(mwCount * 3);
 
-  // Galactic plane orientation: tilted ~60°
   const galRot = new THREE.Euler(0.42, 0, -0.25);
   const vTemp = new THREE.Vector3();
 
   for (let i = 0; i < mwCount; i++) {
-    // Angular distribution along the galactic circle
     const theta = Math.random() * Math.PI * 2;
     const radius = 6800 + Math.random() * 1400;
-    // Gaussian thickness perpendicular to galactic plane
     const zThickness = (Math.random() + Math.random() + Math.random() - 1.5) * 550;
 
     vTemp.set(
@@ -279,7 +233,6 @@ export function createRealisticStarfield(): THREE.Group {
     mwPos[i * 3 + 1] = vTemp.y;
     mwPos[i * 3 + 2] = vTemp.z;
 
-    // Density modulation: Sagittarius core is warmer and denser
     const distToCore = Math.abs(theta - 2.8);
     const isCore = distToCore < 0.6;
     const alpha = (0.2 + Math.random() * 0.4) * (isCore ? 1.4 : 0.85);
@@ -309,10 +262,6 @@ export function createRealisticStarfield(): THREE.Group {
   const mwStars = new THREE.Points(mwGeo, mwMat);
   starfieldGroup.add(mwStars);
 
-  // -------------------------------------------------------------
-  // TIER 5: Foreground Micro Cosmic Velocity Particles (350 points)
-  // Drift providing genuine 3D parallax cues when camera moves
-  // -------------------------------------------------------------
   const dustCount = 350;
   const dustGeo = new THREE.BufferGeometry();
   const dustPos = new Float32Array(dustCount * 3);
@@ -338,12 +287,6 @@ export function createRealisticStarfield(): THREE.Group {
   return starfieldGroup;
 }
 
-/**
- * Earth Upper-Atmosphere Meteor System
- * 
- * Spawns rare, subtle, fast ionization streaks strictly in Earth's atmospheric limb region.
- * Never placed in deep space.
- */
 export interface AtmosphericMeteorSystem {
   group: THREE.Group;
   update: (deltaSeconds: number, earthPos: THREE.Vector3, isEarthFocused: boolean) => void;
@@ -391,18 +334,16 @@ export function createEarthAtmosphericMeteorSystem(): AtmosphericMeteorSystem {
   }
 
   let timeSinceLastSpawn = 0;
-  const SPAWN_INTERVAL = 12.0; // Rare interval ~12 seconds
+  const SPAWN_INTERVAL = 12.0;
 
   const update = (deltaSeconds: number, earthPos: THREE.Vector3, isEarthFocused: boolean) => {
     if (!isEarthFocused) {
-      // Hide all meteors if not in Earth view
       meteorLines.forEach(l => { l.visible = false; });
       return;
     }
 
     timeSinceLastSpawn += deltaSeconds;
 
-    // Check for rare meteor entry in Earth upper atmosphere (~10.2 to 10.4 units radius)
     if (timeSinceLastSpawn > SPAWN_INTERVAL && Math.random() < 0.35) {
       const freeIdx = meteorStates.findIndex(m => !m.active);
       if (freeIdx !== -1) {
@@ -410,9 +351,8 @@ export function createEarthAtmosphericMeteorSystem(): AtmosphericMeteorSystem {
         const state = meteorStates[freeIdx];
         state.active = true;
         state.progress = 0;
-        state.duration = 0.18 + Math.random() * 0.12; // Fast: 180-300ms
+        state.duration = 0.18 + Math.random() * 0.12;
 
-        // Random point on upper atmospheric sphere around Earth (~10.2 visual radius)
         const phi = Math.acos((Math.random() * 2) - 1);
         const theta = Math.random() * Math.PI * 2;
         const rAtmo = 10.25;
@@ -423,14 +363,12 @@ export function createEarthAtmosphericMeteorSystem(): AtmosphericMeteorSystem {
           earthPos.z + rAtmo * Math.cos(phi)
         );
 
-        // Grazing trajectory (downward tangent into upper atmosphere)
         const tangent = new THREE.Vector3(-Math.sin(theta), Math.cos(theta), 0.2).normalize();
         const streakLen = 0.8 + Math.random() * 0.6;
         state.end.copy(state.start).add(tangent.multiplyScalar(streakLen));
       }
     }
 
-    // Update active meteors
     meteorStates.forEach((state, idx) => {
       const line = meteorLines[idx];
       if (!state.active) {
@@ -453,7 +391,6 @@ export function createEarthAtmosphericMeteorSystem(): AtmosphericMeteorSystem {
       line.geometry.setFromPoints([currentTail, currentHead]);
       line.geometry.attributes.position.needsUpdate = true;
 
-      // Bell-curve fade in and out
       const opacity = Math.sin(state.progress * Math.PI) * 0.75;
       (line.material as THREE.LineBasicMaterial).opacity = opacity;
     });

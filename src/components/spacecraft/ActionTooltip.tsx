@@ -18,7 +18,6 @@ export const ActionTooltip: React.FC<ActionTooltipProps> = ({
 }) => {
   const [visible, setVisible] = useState(false);
 
-  // Derive visual tint from explicit state or legacy isUnavailable prop
   const resolvedState: ActionVisualState = state || (isUnavailable ? 'UNSUPPORTED' : 'AVAILABLE');
 
   const getTitleColor = () => {

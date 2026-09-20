@@ -37,8 +37,8 @@ export interface CelestialBody {
   semiMajorAxisAU?: number;
   eccentricity?: number;
   inclinationDeg?: number;
-  currentPosition?: Vector3D; // AU or km based on context
-  currentVelocity?: Vector3D; // km/s
+  currentPosition?: Vector3D;
+  currentVelocity?: Vector3D;
   distanceFromEarthKm?: number;
   distanceFromSunKm?: number;
   lightTimeToEarthSec?: number;
@@ -62,7 +62,6 @@ export interface SpacecraftObject {
   scientificExplanation: string;
   payloads: string[];
   
-  // Dynamic or calculated metrics
   distanceFromEarthKm?: number;
   distanceFromSunKm?: number;
   distanceFromMoonKm?: number;
@@ -70,14 +69,12 @@ export interface SpacecraftObject {
   lightTimeToEarthSec?: number;
   position?: Vector3D;
   
-  // Geodetic info if in Earth orbit
   geodetic?: {
     latitude: number;
     longitude: number;
     altitudeKm: number;
   };
 
-  // Orbital parameters if applicable
   orbitalElements?: {
     epoch: string;
     semiMajorAxisKm?: number;
@@ -112,7 +109,6 @@ export interface InspectableObject {
   scientificExplanation?: string;
   payloads?: string[];
 
-  // Dynamic or calculated metrics
   distanceFromEarthKm?: number;
   distanceFromSunKm?: number;
   distanceFromMoonKm?: number;
@@ -121,17 +117,14 @@ export interface InspectableObject {
   position?: Vector3D;
   radiusKm?: number;
 
-  // True if this object is Earth itself (reference origin, so distance to Earth is origin/ground)
   isEarthOrigin?: boolean;
 
-  // Geodetic info if in Earth orbit
   geodetic?: {
     latitude: number;
     longitude: number;
     altitudeKm: number;
   };
 
-  // Orbital parameters if applicable
   orbitalElements?: {
     epoch: string;
     semiMajorAxisKm?: number;
@@ -148,6 +141,5 @@ export interface InspectableObject {
   telemetrySource: SourceMetadata;
   trackingCapability?: TrackingCapability;
 
-  // Reference to original spacecraft object if applicable
   rawSpacecraft?: SpacecraftObject;
 }

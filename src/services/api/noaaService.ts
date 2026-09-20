@@ -16,7 +16,6 @@ export class NoaaService {
         fetch(`${this.BASE_URL}/products/alerts.json`, { signal: AbortSignal.timeout(6000) })
       ]);
 
-      // 1. Parse Solar Wind
       let solarWind: SolarWindData | null = null;
       if (solarWindRes.status === 'fulfilled' && solarWindRes.value.ok) {
         const swData = await solarWindRes.value.json();
@@ -37,7 +36,6 @@ export class NoaaService {
         }
       }
 
-      // 2. Parse Planetary Kp Index
       let kpIndex: KpIndexData | null = null;
       if (kpRes.status === 'fulfilled' && kpRes.value.ok) {
         const kpData = await kpRes.value.json();
@@ -59,12 +57,10 @@ export class NoaaService {
         }
       }
 
-      // 3. Parse GOES X-ray Flux
       let goesXray: GoesXrayData | null = null;
       if (xrayRes.status === 'fulfilled' && xrayRes.value.ok) {
         const xrayData = await xrayRes.value.json();
         if (Array.isArray(xrayData) && xrayData.length > 0) {
-          // Look for 0.1-0.8 nm band (primary for solar flare classification)
           const primaryEntries = xrayData.filter(x => x.energy === '0.1-0.8nm');
           const latest = primaryEntries.length > 0 ? primaryEntries[primaryEntries.length - 1] : xrayData[xrayData.length - 1];
           
@@ -92,12 +88,10 @@ export class NoaaService {
         }
       }
 
-      // 4. Parse Alerts
       const activeAlerts: SpaceWeatherAlert[] = [];
       if (alertsRes.status === 'fulfilled' && alertsRes.value.ok) {
         const alertsData = await alertsRes.value.json();
         if (Array.isArray(alertsData)) {
-          // Take top 8 latest alerts
           for (let i = 0; i < Math.min(8, alertsData.length); i++) {
             const raw = alertsData[i];
             let severity: SpaceWeatherAlert['severity'] = 'INFO';
@@ -105,7 +99,6 @@ export class NoaaService {
             else if (raw.message?.includes('WARNING')) severity = 'WARNING';
             else if (raw.message?.includes('WATCH')) severity = 'WATCH';
 
-            // Extract first line or headline
             const lines = (raw.message || '').split('\n').map((l: string) => l.trim()).filter(Boolean);
             const summary = lines.find((l: string) => l.startsWith('ALERT:') || l.startsWith('WARNING:') || l.startsWith('WATCH:') || l.startsWith('SUMMARY:')) || lines[0] || 'Space Weather Notice';
 
@@ -121,7 +114,6 @@ export class NoaaService {
         }
       }
 
-      // Determine overall status
       let overallStatus: SpaceWeatherSummary['overallStatus'] = 'NOMINAL';
       if (kpIndex && kpIndex.kp >= 5) {
         overallStatus = 'ACTIVE_STORM';
@@ -138,7 +130,6 @@ export class NoaaService {
         lastUpdated: new Date().toISOString()
       };
 
-      // Cache for 2 minutes
       CacheService.set(cacheKey, summary, 120);
       return summary;
     } catch (err) {

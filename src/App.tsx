@@ -84,16 +84,13 @@ function AppContent({
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-      {/* 1. Deep Space WebGL Environment (Stars & Milky Way) - Decoupled from Open Repositories tab */}
       {activeTab !== 'missions' && <SpaceEnvironment />}
 
-      {/* 2. Floating Aerospace Navigation */}
       <Navbar
         activeTab={activeTab}
         onSelectTab={handleNavigateTab}
       />
 
-      {/* 4. Main Scientific Operations Console */}
       <main style={{ flex: 1, position: 'relative', zIndex: 10, paddingBottom: '32px' }}>
         <ErrorBoundary fallbackTitle="Scientific Component Notice">
           {activeTab === 'mission-control' && (
@@ -134,7 +131,6 @@ function AppContent({
         </ErrorBoundary>
       </main>
 
-      {/* 5. Floating Object Inspector */}
       {selectedObject && isInspectorOpen && activeTab !== 'mission-control' && (
         <ObjectInspector
           key={selectedObject.id}
@@ -145,7 +141,6 @@ function AppContent({
         />
       )}
 
-      {/* 6. Authoritative Footer & Celestial Baseline */}
       <footer style={{
         marginTop: 'auto',
         borderTop: '1px solid var(--border-subtle)',
@@ -208,7 +203,6 @@ function AppContent({
         </div>
       </footer>
 
-      {/* 7. Full-Screen Immersive "Explore the Space" Experience with Spatial Walkthrough */}
       {isExploringSpace && (
         <ExploreTheSpace
           onExit={(targetTab) => {

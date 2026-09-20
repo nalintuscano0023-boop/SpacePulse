@@ -150,7 +150,6 @@ export const MissionControl: React.FC<MissionControlProps> = ({
   const miniCanvasRef = useRef<HTMLDivElement>(null);
   const snapshotStarsRef = useRef<HTMLCanvasElement>(null);
 
-  // Subtle Drifting Starfield for Mission Snapshot Section
   useEffect(() => {
     const canvas = snapshotStarsRef.current;
     if (!canvas) return;
@@ -166,7 +165,6 @@ export const MissionControl: React.FC<MissionControlProps> = ({
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    // 48 subtle drifting stars for depth and aerospace atmosphere
     const stars = Array.from({ length: 48 }, () => ({
       x: Math.random() * (canvas.width || 900),
       y: Math.random() * (canvas.height || 500),
@@ -238,7 +236,6 @@ export const MissionControl: React.FC<MissionControlProps> = ({
     loadData();
   }, []);
 
-  // Mini 3D Orbital Vista for the Hero Deck — Realistic Planetary Simulation
   useEffect(() => {
     if (!miniCanvasRef.current) return;
     const container = miniCanvasRef.current;
@@ -247,7 +244,6 @@ export const MissionControl: React.FC<MissionControlProps> = ({
 
     const scene = new THREE.Scene();
 
-    // Subtle perspective camera setup keeping the exact existing footprint
     const camera = new THREE.PerspectiveCamera(36, width / height, 0.1, 500);
     camera.position.set(0, 9.5, 24.5);
     camera.lookAt(0, 0, 0);
@@ -264,38 +260,31 @@ export const MissionControl: React.FC<MissionControlProps> = ({
     container.innerHTML = '';
     container.appendChild(renderer.domElement);
 
-    // Primary Sun Direction (World Space) — Illuminates top-right, creating visible terminator & specular highlights
     const sunDirection = new THREE.Vector3(1.6, 0.5, 1.0).normalize();
 
-    // 1. Planetary Root Group with Earth's real axial tilt (~23.4°)
     const earthGroup = new THREE.Group();
     earthGroup.rotation.z = -23.44 * (Math.PI / 180);
-    earthGroup.rotation.x = 0.12; // Slight camera-facing presentation
+    earthGroup.rotation.x = 0.12;
     scene.add(earthGroup);
 
-    // 1a. Realistic Earth Sphere (PBR Day/Night Shader with city lights and specular oceans)
     const earthRadius = 5.5;
     const earthGeo = new THREE.SphereGeometry(earthRadius, 64, 64);
     const earthMat = createRealisticEarthShaderMaterial(sunDirection);
     const earthMesh = new THREE.Mesh(earthGeo, earthMat);
     earthGroup.add(earthMesh);
 
-    // 1b. Realistic High-Altitude Cloud Layer (Drifting weather systems & cyclones)
     const cloudsMesh = createRealisticCloudMesh(earthRadius);
     earthGroup.add(cloudsMesh);
 
-    // 1c. Rayleigh Atmospheric Scattering Shell (Thin limb, glowing on sunlit side)
     const atmoMesh = createRealisticAtmosphereMesh(earthRadius, sunDirection);
     earthGroup.add(atmoMesh);
 
-    // 2. Orbital System for ISS (Inclined Low Earth Orbit at ~51.6°)
     const orbitRadius = 7.6;
     const orbitGroup = new THREE.Group();
-    orbitGroup.rotation.x = 51.64 * (Math.PI / 180); // Real ISS orbital inclination
-    orbitGroup.rotation.y = 0.32; // Ascending node orientation
+    orbitGroup.rotation.x = 51.64 * (Math.PI / 180);
+    orbitGroup.rotation.y = 0.32;
     scene.add(orbitGroup);
 
-    // 2a. Precision Scientific Orbital Track Line
     const orbitPoints: THREE.Vector3[] = [];
     const segments = 128;
     for (let i = 0; i <= segments; i++) {
@@ -312,11 +301,9 @@ export const MissionControl: React.FC<MissionControlProps> = ({
     const orbitTrackLine = new THREE.Line(orbitTrackGeo, orbitTrackMat);
     orbitGroup.add(orbitTrackLine);
 
-    // 2b. Authentic Procedural ISS 3D Model with PBR Solar Panels & Radiators
     const issCraft = getSpacecraft3DModel('iss', { scale: 0.125 });
     orbitGroup.add(issCraft);
 
-    // 2c. Subtle Optical Telemetry Pulse Beacon on ISS
     const beaconGeo = new THREE.SphereGeometry(0.06, 8, 8);
     const beaconMat = new THREE.MeshBasicMaterial({
       color: 0x38bdf8,
@@ -327,22 +314,17 @@ export const MissionControl: React.FC<MissionControlProps> = ({
     beacon.position.set(0, 0.45, 0);
     issCraft.add(beacon);
 
-    // 3. Realistic Space Lighting
-    // Directional sunlight matching sunDirection
     const sunLight = new THREE.DirectionalLight(0xfff8ee, 2.6);
     sunLight.position.copy(sunDirection.clone().multiplyScalar(40));
     scene.add(sunLight);
 
-    // Deep space dark-side fill
     const ambLight = new THREE.AmbientLight(0x060d1a, 0.35);
     scene.add(ambLight);
 
-    // Subtle cyan/blue earthshine rim fill
     const rimLight = new THREE.DirectionalLight(0x1e3a8a, 0.45);
     rimLight.position.set(-25, -10, -20);
     scene.add(rimLight);
 
-    // 4. Subtle Distant Starfield for Space Depth
     const starCount = 360;
     const starPositions = new Float32Array(starCount * 3);
     const starColors = new Float32Array(starCount * 3);
@@ -376,7 +358,6 @@ export const MissionControl: React.FC<MissionControlProps> = ({
     const starField = new THREE.Points(starGeo, starMat);
     scene.add(starField);
 
-    // 5. Delta-Time Animation Loop with Tab Inactivity Pause & Reduced-Motion Respect
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const motionScale = prefersReducedMotion ? 0.15 : 1.0;
 
@@ -390,27 +371,22 @@ export const MissionControl: React.FC<MissionControlProps> = ({
       const dt = Math.min((now - lastTime) / 1000, 0.1);
       lastTime = now;
 
-      // Pause rendering when tab is hidden to conserve CPU/GPU
       if (document.hidden) return;
 
       simTime += dt * motionScale;
 
-      // Physically convincing slow Earth & cloud rotation
       earthMesh.rotation.y = simTime * 0.05;
       cloudsMesh.rotation.y = simTime * 0.065;
 
-      // Stable Keplerian orbital motion for ISS along inclination plane
       const orbitSpeed = 0.28;
       const orbitAngle = simTime * orbitSpeed;
       const posX = Math.cos(orbitAngle) * orbitRadius;
       const posZ = Math.sin(orbitAngle) * orbitRadius;
       issCraft.position.set(posX, 0, posZ);
 
-      // Orient ISS forward along velocity vector (tangent to orbital path)
       issCraft.rotation.y = -orbitAngle + Math.PI / 2;
       issCraft.rotation.x = Math.sin(orbitAngle) * 0.04;
 
-      // Gentle telemetry beacon pulse
       beaconMat.opacity = 0.45 + 0.4 * Math.sin(simTime * 4.0);
 
       renderer.render(scene, camera);
@@ -452,11 +428,9 @@ export const MissionControl: React.FC<MissionControlProps> = ({
 
   return (
     <div className="container" style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
-      {/* 1. COMMAND OVERVIEW HEADER & JUDGE-FRIENDLY QUICK ACTIONS */}
       <div id="mission-control-overview" className="glass-panel tech-corner mission-control-hero" style={{
         overflow: 'hidden'
       }}>
-        {/* Left Column: Command Overview */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <div style={{
@@ -489,7 +463,6 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             </p>
           </div>
 
-          {/* Key Global Metrics Strip */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 110px), 1fr))',
@@ -528,7 +501,6 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             </div>
           </div>
 
-          {/* Quick Investigations Area */}
           <div style={{ marginTop: '2px' }}>
             <div style={{
               fontSize: '11px',
@@ -591,7 +563,6 @@ export const MissionControl: React.FC<MissionControlProps> = ({
           </div>
         </div>
 
-        {/* Right Column: Mini 3D Orbital Vista */}
         <div className="hero-vista">
           <div ref={miniCanvasRef} style={{ width: '100%', height: '100%' }} />
 
@@ -612,7 +583,6 @@ export const MissionControl: React.FC<MissionControlProps> = ({
         </div>
       </div>
 
-      {/* 2. PLATFORM CAPABILITIES — HOW SPACEPULSE WORKS (THE 4 PILLARS) */}
       <div id="platform-capabilities-overview" className="glass-panel" style={{ padding: '20px' }}>
         <div style={{
           display: 'flex',
@@ -647,7 +617,6 @@ export const MissionControl: React.FC<MissionControlProps> = ({
           gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))',
           gap: '12px'
         }}>
-          {/* Card 1: Spacecraft */}
           <div
             onClick={() => onNavigateTab('spacecraft')}
             className="glass-card"
@@ -691,7 +660,6 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             </div>
           </div>
 
-          {/* Card 2: Space Map */}
           <div
             onClick={() => onNavigateTab('space-map')}
             className="glass-card"
@@ -735,7 +703,6 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             </div>
           </div>
 
-          {/* Card 3: Analysis */}
           <div
             onClick={() => onNavigateTab('analysis')}
             className="glass-card"
@@ -779,7 +746,6 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             </div>
           </div>
 
-          {/* Card 4: Missions & Data */}
           <div
             onClick={() => onNavigateTab('missions')}
             className="glass-card"
@@ -825,7 +791,6 @@ export const MissionControl: React.FC<MissionControlProps> = ({
         </div>
       </div>
 
-      {/* 2. ACTIVE FLEET HIGHLIGHTS & FLEET AT A GLANCE */}
       <div id="active-fleet-section" className="glass-panel" style={{ padding: '20px' }}>
         <div style={{
           display: 'flex',
@@ -842,7 +807,6 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             </p>
           </div>
 
-          {/* "Fleet at a Glance" Operational Summary (Replaces Duplicate Navigation) */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -940,7 +904,6 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                   {craft.description}
                 </p>
 
-                {/* Telemetry Source Provenance & Quick Track Action */}
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -971,7 +934,6 @@ export const MissionControl: React.FC<MissionControlProps> = ({
         </div>
       </div>
 
-      {/* 3. SPACE ENVIRONMENT & HUMAN CREW PRESENCE */}
       <div 
         id="space-weather-section"
         style={{
@@ -983,10 +945,8 @@ export const MissionControl: React.FC<MissionControlProps> = ({
           borderRadius: 'var(--radius-sm)'
         }}
       >
-        {/* Solar Wind & Space Weather Component */}
         <SpaceWeatherWidget />
 
-        {/* Humanity in Orbit Station Operations */}
         <div className="glass-panel" style={{ padding: '20px' }}>
           <div style={{
             display: 'flex',
@@ -1089,9 +1049,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
         </div>
       </div>
 
-      {/* 4. MISSION SNAPSHOT (Replaces Redundant Mission Navigation) */}
       <div className="glass-panel" style={{ padding: '20px', position: 'relative', overflow: 'hidden' }}>
-        {/* Subtle Drifting Starfield Background Canvas */}
         <canvas
           ref={snapshotStarsRef}
           style={{
@@ -1169,9 +1127,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                     transition: 'all 0.25s ease'
                   }}
                 >
-                  {/* Upper Section */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {/* Header: Name, Agency, Type & Status */}
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1190,7 +1146,6 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                       <StatusBadge status={snapshot.status} compact />
                     </div>
 
-                    {/* Key Mission Metadata: Vehicle & Launch Date */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
                       <div style={{ background: 'var(--surface-inset)', padding: '6px 8px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
                         <div style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Launch Vehicle</div>
@@ -1202,13 +1157,11 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                       </div>
                     </div>
 
-                    {/* Target Destination */}
                     <div style={{ background: 'var(--surface-inset)', padding: '6px 8px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
                       <div style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Target Destination</div>
                       <div style={{ fontWeight: 600, fontSize: '11px', color: 'var(--accent-cyan)', marginTop: '2px' }}>{snapshot.target}</div>
                     </div>
 
-                    {/* Scientific Objective */}
                     <div style={{
                       padding: '8px 10px',
                       background: 'var(--surface-inset)',
@@ -1222,7 +1175,6 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                       {snapshot.objective}
                     </div>
 
-                    {/* Key Payloads & Instruments Preview */}
                     <div style={{ background: 'var(--surface-inset)', padding: '6px 8px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                         <span style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
@@ -1262,7 +1214,6 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                       </div>
                     </div>
 
-                    {/* Inline Expanded Scientific Milestones */}
                     {isExpanded && (
                       <div 
                         style={{
@@ -1286,9 +1237,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                     )}
                   </div>
 
-                  {/* Lower Section / Unified Action Footer */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--border-hairline)', paddingTop: '10px' }}>
-                    {/* Archive Provenance Reference */}
                     <div style={{
                       fontSize: '9px',
                       color: 'var(--text-muted)',
@@ -1300,7 +1249,6 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                       {snapshot.archiveReference}
                     </div>
 
-                    {/* Action Buttons Row */}
                     <div style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -1360,7 +1308,6 @@ export const MissionControl: React.FC<MissionControlProps> = ({
         </div>
       </div>
 
-      {/* 5. DATA HEALTH & PROTOCOLS */}
       <div className="glass-panel" style={{ padding: '18px 20px' }}>
         <div style={{
           display: 'flex',
@@ -1424,7 +1371,6 @@ export const MissionControl: React.FC<MissionControlProps> = ({
         </div>
       </div>
 
-      {/* 6. "EXPLORE THE SPACE" MYSTERIOUS COSMIC INVITATION CTA */}
       {onExploreSpace && (
         <div
           id="explore-space-cta-card"
@@ -1447,7 +1393,6 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             flexWrap: 'wrap'
           }}
         >
-          {/* Subtle Ambient Cosmic Background Glow */}
           <div style={{
             position: 'absolute',
             top: '-50%',

@@ -61,7 +61,6 @@ export const SpacecraftExplorer: React.FC<SpacecraftExplorerProps> = ({
 
   return (
     <div className="container" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* Header */}
       <div style={{ padding: '16px 0 6px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
           <div style={{
@@ -89,7 +88,6 @@ export const SpacecraftExplorer: React.FC<SpacecraftExplorerProps> = ({
           Authoritative directory of active planetary orbiters, solar observatories, deep-space probes, and Earth-orbiting satellites with calculated ephemerides and real-time CelesTrak SGP4 tracking.
         </p>
 
-        {/* Quick Interaction Guide for First-Time Judges */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -114,7 +112,6 @@ export const SpacecraftExplorer: React.FC<SpacecraftExplorerProps> = ({
         </div>
       </div>
 
-      {/* Search & Filter Toolbar */}
       <div style={{
         display: 'flex',
         flexWrap: 'wrap',
@@ -122,7 +119,6 @@ export const SpacecraftExplorer: React.FC<SpacecraftExplorerProps> = ({
         justifyContent: 'space-between',
         gap: '12px'
       }}>
-        {/* Search Bar */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -153,7 +149,6 @@ export const SpacecraftExplorer: React.FC<SpacecraftExplorerProps> = ({
           />
         </div>
 
-        {/* Category Pills */}
         <div style={{
           display: 'flex',
           flexWrap: 'wrap',
@@ -198,7 +193,6 @@ export const SpacecraftExplorer: React.FC<SpacecraftExplorerProps> = ({
         </div>
       </div>
 
-      {/* Catalog Cards Grid */}
       {loading ? (
         <div style={{ padding: '48px', textAlign: 'center' }}>
           <RefreshCw size={24} className="radar-sweep" style={{ color: 'var(--accent-cyan)', margin: '0 auto 16px' }} />
@@ -223,7 +217,6 @@ export const SpacecraftExplorer: React.FC<SpacecraftExplorerProps> = ({
         </div>
       )}
 
-      {/* 3D Spacecraft Architecture Modal */}
       {viewing3DCraft && (
         <Spacecraft3DViewer
           craftId={viewing3DCraft.id}

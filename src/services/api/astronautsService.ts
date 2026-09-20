@@ -41,7 +41,7 @@ export class AstronautsService {
           status: 'LIVE'
         };
 
-        CacheService.set(cacheKey, report, 3600); // 1 hour cache
+        CacheService.set(cacheKey, report, 3600);
         return report;
       }
       return cached.data || this.getFallbackReport();

@@ -1,6 +1,5 @@
 import { Vector3D } from '../../types/space';
 
-// Authoritative astronomical constants (IAU / IERS standard)
 export const SPEED_OF_LIGHT_KM_S = 299792.458;
 export const KM_PER_AU = 149597870.7;
 export const EARTH_RADIUS_KM = 6371.0;

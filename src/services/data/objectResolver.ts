@@ -9,7 +9,6 @@ import {
   SUN_RADIUS_KM 
 } from '../calculations/physics';
 
-// Static planetary radius reference in kilometers
 const PLANET_RADII_KM: Record<string, number> = {
   sun: SUN_RADIUS_KM,
   mercury: 2439.7,
@@ -23,7 +22,6 @@ const PLANET_RADII_KM: Record<string, number> = {
   neptune: 24622.0
 };
 
-// Classification mapping
 const CELESTIAL_CLASSIFICATIONS: Record<string, { category: InspectableObject['category']; typeText: string; description: string; significance: string; payloads: string[] }> = {
   sun: {
     category: 'star',
@@ -97,9 +95,6 @@ const CELESTIAL_CLASSIFICATIONS: Record<string, { category: InspectableObject['c
   }
 };
 
-/**
- * Normalizes an existing SpacecraftObject into the unified InspectableObject schema.
- */
 export function normalizeSpacecraftObject(craft: SpacecraftObject): InspectableObject {
   const isSatellite = craft.noradId !== undefined;
   return {
@@ -134,24 +129,18 @@ export function normalizeSpacecraftObject(craft: SpacecraftObject): InspectableO
   };
 }
 
-/**
- * Resolves any object identifier in SpacePulse into a normalized, authentic InspectableObject.
- * Works dynamically for Earth, Moon, Mars, Sun, all planets, deep-space probes, and satellites.
- */
 export async function resolveInspectableObject(
   objectId: string,
   simDate: Date = new Date()
 ): Promise<InspectableObject | null> {
   const normalizedId = objectId.toLowerCase().trim();
 
-  // 1. Check Spacecraft Registry (Aditya-L1, Voyager 1 & 2, Chandrayaan, Satellites)
   const craftDef = SPACECRAFT_REGISTRY.find(s => s.id === normalizedId || s.id === objectId);
   if (craftDef) {
     const resolvedState = await resolveSpacecraftState(craftDef, simDate);
     return normalizeSpacecraftObject(resolvedState);
   }
 
-  // 2. Check Celestial Bodies (Sun, Earth, Moon, Mars, Planets)
   const meta = CELESTIAL_CLASSIFICATIONS[normalizedId];
   if (meta) {
     const earthEphem = calculatePlanetEphemeris('earth', simDate);
@@ -176,7 +165,7 @@ export async function resolveInspectableObject(
     } else if (isEarth) {
       posKm = earthEphem.positionKm;
       distSunKm = earthEphem.distanceFromSunKm;
-      distEarthKm = undefined; // Earth distance to Earth is reference ground origin
+      distEarthKm = undefined;
       distMoonKm = MOON_MEAN_DISTANCE_KM;
       const v = earthEphem.velocityKmS;
       velocityKmS = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
@@ -185,22 +174,20 @@ export async function resolveInspectableObject(
       distEarthKm = MOON_MEAN_DISTANCE_KM;
       distSunKm = earthEphem.distanceFromSunKm;
       distMoonKm = 0;
-      velocityKmS = 1.022; // Moon mean orbital velocity around Earth in km/s
+      velocityKmS = 1.022;
       lightTimeSec = calculateLightTimeSeconds(MOON_MEAN_DISTANCE_KM);
-      // Moon heliocentric position approximation aligned with Earth
       posKm = {
         x: earthEphem.positionKm.x + MOON_MEAN_DISTANCE_KM,
         y: earthEphem.positionKm.y,
         z: earthEphem.positionKm.z
       };
     } else {
-      // Planet ephemeris via Kepler / VSOP87
       try {
         const ephem = calculatePlanetEphemeris(normalizedId, simDate);
         posKm = ephem.positionKm;
         distSunKm = ephem.distanceFromSunKm;
         distEarthKm = calculateDistanceKm(ephem.positionKm, earthEphem.positionKm);
-        distMoonKm = undefined; // Honest: lunar distance to distant planets is not tracked as a primary metric
+        distMoonKm = undefined;
         const v = ephem.velocityKmS;
         velocityKmS = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
         lightTimeSec = calculateLightTimeSeconds(distEarthKm);

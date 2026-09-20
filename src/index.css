@@ -1,35 +1,29 @@
 :root {
-  /* Astronomical Primary Space Colors */
   --bg-deep-space: #020408;
   --bg-space-navy: #060e1c;
   --bg-midnight: #091428;
 
-  /* Glass Surface Palette */
   --surface-panel: rgba(7, 15, 28, 0.80);
   --surface-card: rgba(10, 20, 36, 0.68);
   --surface-card-hover: rgba(14, 28, 50, 0.85);
   --surface-inset: rgba(3, 6, 12, 0.70);
 
-  /* Restrained Precision Borders */
   --border-hairline: rgba(255, 255, 255, 0.07);
   --border-subtle: rgba(56, 189, 248, 0.16);
   --border-focus: rgba(56, 189, 248, 0.42);
   --border-active: #38bdf8;
 
-  /* Typography Colors */
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
   --text-muted: #64748b;
   --text-highlight: #ffffff;
 
-  /* Restrained Accents */
   --accent-cyan: #38bdf8;
   --accent-cyan-subtle: rgba(56, 189, 248, 0.12);
   --solar-amber: #f59e0b;
   --planetary-blue: #60a5fa;
   --cosmic-indigo: #818cf8;
 
-  /* Data Provenance Standards */
   --status-live: #10b981;
   --status-live-bg: rgba(16, 185, 129, 0.12);
   --status-live-border: rgba(16, 185, 129, 0.3);
@@ -54,12 +48,10 @@
   --status-error-bg: rgba(239, 68, 68, 0.12);
   --status-error-border: rgba(239, 68, 68, 0.3);
 
-  /* Typography */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-heading: 'Space Grotesk', var(--font-sans);
   --font-mono: 'JetBrains Mono', monospace;
 
-  /* Restrained Radii & Shadows */
   --radius-xs: 4px;
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -70,7 +62,6 @@
   --shadow-card: 0 4px 16px -2px rgba(0, 0, 0, 0.45);
   --shadow-card-hover: 0 8px 24px -2px rgba(0, 0, 0, 0.65), 0 0 16px rgba(56, 189, 248, 0.08);
 
-  /* Mobile Safe Area Insets & Foldable Tokens */
   --sat: env(safe-area-inset-top, 0px);
   --sab: env(safe-area-inset-bottom, 0px);
   --sal: env(safe-area-inset-left, 0px);
@@ -123,7 +114,6 @@ main {
   flex: 1 0 auto;
 }
 
-/* Typography Hierarchy */
 h1 {
   font-family: var(--font-heading);
   font-size: clamp(19px, 3.8vw + 4px, 28px);
@@ -157,7 +147,6 @@ h3 {
   font-variant-numeric: tabular-nums;
 }
 
-/* Scientific Glass Panels */
 .glass-panel {
   background: var(--surface-panel);
   backdrop-filter: blur(16px);
@@ -185,7 +174,6 @@ h3 {
   box-shadow: var(--shadow-card-hover);
 }
 
-/* Corner Precision Reticles */
 .tech-corner {
   position: relative;
 }
@@ -214,7 +202,6 @@ h3 {
   pointer-events: none;
 }
 
-/* Buttons */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -291,7 +278,6 @@ h3 {
   box-shadow: 0 0 14px rgba(56, 189, 248, 0.18);
 }
 
-/* Layout Containers */
 .container {
   width: 100%;
   max-width: 1540px;
@@ -317,7 +303,6 @@ h3 {
   }
 }
 
-/* Prevent iOS browser auto-zoom on input focus */
 @media (max-width: 768px) {
   input[type="text"],
   input[type="search"],
@@ -327,7 +312,6 @@ h3 {
   }
 }
 
-/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
@@ -346,7 +330,6 @@ h3 {
   background: rgba(56, 189, 248, 0.4);
 }
 
-/* Reduced Motion Support */
 @media (prefers-reduced-motion: reduce) {
 
   *,
@@ -359,7 +342,6 @@ h3 {
   }
 }
 
-/* Standardized Spacecraft Card & Action Styles */
 .spacecraft-card {
   display: flex;
   flex-direction: column;
@@ -384,7 +366,6 @@ h3 {
   box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.5), 0 0 12px rgba(56, 189, 248, 0.05);
 }
 
-/* Responsive Object Inspector Architecture */
 .object-inspector-backdrop {
   display: none;
 }
@@ -461,7 +442,6 @@ h3 {
   to { transform: translateY(0); opacity: 1; }
 }
 
-/* Collapsible Section Styles for Object Inspector — Guaranteed No Compression */
 .inspector-accordion {
   flex-shrink: 0;
   border: 1px solid var(--border-hairline);
@@ -532,7 +512,6 @@ h3 {
   overflow: visible;
 }
 
-/* Compact Data Table Styles */
 .data-table-container {
   width: 100%;
   border-collapse: collapse;
@@ -651,7 +630,6 @@ h3 {
   }
 }
 
-/* Eye / 3D View button: always visible by default without hover */
 .spacecraft-card .btn-icon-action,
 .spacecraft-card .btn-eye-view,
 .btn-icon-action.btn-eye-view {
@@ -660,7 +638,6 @@ h3 {
   display: inline-flex;
 }
 
-/* 1. AVAILABLE: Crisp cyan accent */
 .btn-icon-action.state-available {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(56, 189, 248, 0.28);
@@ -688,7 +665,6 @@ h3 {
   color: #fff;
 }
 
-/* 2. LIMITED: Crisp amber accent denoting historical or surface telemetry */
 .btn-icon-action.state-limited {
   background: rgba(245, 158, 11, 0.07);
   border: 1px solid rgba(245, 158, 11, 0.35);
@@ -704,7 +680,6 @@ h3 {
   box-shadow: 0 0 10px rgba(245, 158, 11, 0.22);
 }
 
-/* 3. UNSUPPORTED: Fully visible, solid disabled box. NEVER INVISIBLE! */
 .btn-icon-action.state-unsupported,
 .btn-icon-action:disabled,
 .btn-icon-action[aria-disabled="true"] {
@@ -721,7 +696,6 @@ h3 {
   background: rgba(255, 255, 255, 0.04) !important;
 }
 
-/* Tooltip container */
 .action-tooltip-anchor {
   position: relative;
   display: inline-flex;
@@ -746,7 +720,6 @@ h3 {
   animation: tooltipFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Arrow indicator */
 .action-tooltip-popover::after {
   content: '';
   position: absolute;
@@ -769,7 +742,6 @@ h3 {
   }
 }
 
-/* Object Acquired HUD Inspect Button */
 .inspect-action-btn {
   background: rgba(56, 189, 248, 0.08);
   border: 1px solid rgba(56, 189, 248, 0.3);
@@ -812,7 +784,6 @@ h3 {
   }
 }
 
-/* Mission Control Hero Responsive Layout */
 .mission-control-hero {
   display: grid;
   grid-template-columns: 1fr 340px;
@@ -842,7 +813,6 @@ h3 {
   }
 }
 
-/* Deep-Space Mission Control Technical Primitives */
 .bg-space-grid {
   background-image: 
     linear-gradient(to right, rgba(56, 189, 248, 0.025) 1px, transparent 1px),

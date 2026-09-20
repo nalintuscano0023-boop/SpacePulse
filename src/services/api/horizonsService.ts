@@ -16,10 +16,6 @@ export interface HorizonsResult {
 export class HorizonsService {
   private static BASE_URL = 'https://ssd.jpl.nasa.gov/api/horizons.api';
 
-  /**
-   * Attempts to query NASA JPL Horizons API directly.
-   * If browser CORS blocks the request, returns a descriptive fallback result without inventing fake data.
-   */
   static async queryHorizons(command: string, center = '500@10'): Promise<HorizonsResult> {
     const now = new Date();
     const startTimeStr = now.toISOString().split('T')[0];
@@ -50,7 +46,6 @@ export class HorizonsService {
       const json = await res.json();
 
       if (json && json.result) {
-        // Parse $$SOE ... $$EOE vector block
         const match = json.result.match(/\$\$SOE([\s\S]*?)\$\$EOE/);
         if (match && match[1]) {
           const block = match[1];
@@ -79,10 +74,8 @@ export class HorizonsService {
         }
       }
     } catch {
-      // CORS or network failure
     }
 
-    // Honest handling: Explicitly indicate browser CORS constraint
     return {
       targetId: command,
       targetName: `JPL Target ${command}`,

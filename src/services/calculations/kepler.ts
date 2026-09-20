@@ -2,15 +2,14 @@ import { Vector3D } from '../../types/space';
 import { KM_PER_AU } from './physics';
 
 export interface KeplerianElements {
-  a0: number; aRate: number; // semi-major axis (AU, AU/century)
-  e0: number; eRate: number; // eccentricity
-  i0: number; iRate: number; // inclination (deg, deg/century)
-  l0: number; lRate: number; // mean longitude (deg, deg/century)
-  w0: number; wRate: number; // longitude of perihelion (deg, deg/century)
-  o0: number; oRate: number; // longitude of ascending node (deg, deg/century)
+  a0: number; aRate: number;
+  e0: number; eRate: number;
+  i0: number; iRate: number;
+  l0: number; lRate: number;
+  w0: number; wRate: number;
+  o0: number; oRate: number;
 }
 
-// NASA JPL Standish (1992) Table of Keplerian Elements for J2000.0 (Valid 1800 AD - 2050+ AD)
 const PLANETARY_DATA: Record<string, KeplerianElements> = {
   mercury: {
     a0: 0.38709927, aRate: 0.00000037,
@@ -109,7 +108,6 @@ export function calculatePlanetEphemeris(planetId: string, date: Date = new Date
 
   const T = julianCenturiesSinceJ2000(date);
 
-  // 1. Compute orbital elements at epoch T
   const a = elements.a0 + elements.aRate * T;
   const e = elements.e0 + elements.eRate * T;
   const I = (elements.i0 + elements.iRate * T) * DEG2RAD;
@@ -117,11 +115,9 @@ export function calculatePlanetEphemeris(planetId: string, date: Date = new Date
   const wBar = normalizeDeg(elements.w0 + elements.wRate * T);
   const omegaNode = normalizeDeg(elements.o0 + elements.oRate * T) * DEG2RAD;
 
-  // 2. Argument of perihelion & Mean anomaly
   const w = normalizeDeg(wBar - (elements.o0 + elements.oRate * T)) * DEG2RAD;
   const M = normalizeDeg(L - wBar) * DEG2RAD;
 
-  // 3. Solve Kepler's equation M = E - e*sin(E) using Newton-Raphson
   let E = M;
   for (let iter = 0; iter < 10; iter++) {
     const dE = (E - e * Math.sin(E) - M) / (1.0 - e * Math.cos(E));
@@ -129,11 +125,9 @@ export function calculatePlanetEphemeris(planetId: string, date: Date = new Date
     if (Math.abs(dE) < 1e-12) break;
   }
 
-  // 4. Heliocentric coordinates in orbital plane
   const xPrime = a * (Math.cos(E) - e);
   const yPrime = a * Math.sqrt(Math.max(0, 1.0 - e * e)) * Math.sin(E);
 
-  // 5. Transform to Heliocentric Ecliptic coordinates (J2000)
   const cosW = Math.cos(w);
   const sinW = Math.sin(w);
   const cosNode = Math.cos(omegaNode);
@@ -150,13 +144,10 @@ export function calculatePlanetEphemeris(planetId: string, date: Date = new Date
   const rAU = Math.sqrt(x * x + y * y + z * z);
   const rKm = rAU * KM_PER_AU;
 
-  // 6. Orbital velocity computation via vis-viva equation: v = sqrt(GM_sun * (2/r - 1/a))
-  // GM_sun = 1.32712440018e11 km^3/s^2
   const GM_SUN = 1.32712440018e11;
   const aKm = a * KM_PER_AU;
   const speed = Math.sqrt(Math.max(0, GM_SUN * (2.0 / rKm - 1.0 / aKm)));
 
-  // Velocity vector direction approximately perpendicular to position in orbital plane
   const vxPrime = -speed * Math.sin(E) / (1 - e * Math.cos(E));
   const vyPrime = speed * Math.sqrt(1 - e * e) * Math.cos(E) / (1 - e * Math.cos(E));
   const vx = (cosW * cosNode - sinW * sinNode * cosI) * vxPrime +
@@ -173,21 +164,18 @@ export function calculatePlanetEphemeris(planetId: string, date: Date = new Date
   };
 }
 
-// Lunar geocentric coordinates using fundamental lunar perturbation terms
 export function calculateMoonGeocentric(date: Date = new Date()): {
   positionKm: Vector3D;
   distanceKm: number;
 } {
   const T = julianCenturiesSinceJ2000(date);
 
-  // Mean orbital elements of Moon (Meeus / ELP-2000)
-  const LPrime = (218.3164477 + 481267.88123421 * T) * DEG2RAD; // Mean longitude
-  const D = (297.8501921 + 445267.1114034 * T) * DEG2RAD; // Mean elongation
-  const M = (357.5291092 + 35999.0502909 * T) * DEG2RAD; // Sun mean anomaly
-  const MPrime = (134.9633964 + 477198.8675055 * T) * DEG2RAD; // Moon mean anomaly
-  const F = (93.2720950 + 483202.0175233 * T) * DEG2RAD; // Moon argument of latitude
+  const LPrime = (218.3164477 + 481267.88123421 * T) * DEG2RAD;
+  const D = (297.8501921 + 445267.1114034 * T) * DEG2RAD;
+  const M = (357.5291092 + 35999.0502909 * T) * DEG2RAD;
+  const MPrime = (134.9633964 + 477198.8675055 * T) * DEG2RAD;
+  const F = (93.2720950 + 483202.0175233 * T) * DEG2RAD;
 
-  // Periodic perturbation terms
   const l = LPrime +
     (6.288774 * Math.sin(MPrime) +
      1.274027 * Math.sin(2 * D - MPrime) +

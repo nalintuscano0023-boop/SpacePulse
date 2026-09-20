@@ -27,7 +27,6 @@ export const SpaceWeatherWidget: React.FC<SpaceWeatherWidgetProps> = ({ compact 
       const res = await NoaaService.fetchSpaceWeatherSummary();
       setData(res);
     } catch {
-      // Handled gracefully in service
     } finally {
       setLoading(false);
     }
@@ -35,7 +34,7 @@ export const SpaceWeatherWidget: React.FC<SpaceWeatherWidgetProps> = ({ compact 
 
   useEffect(() => {
     loadWeather();
-    const interval = setInterval(loadWeather, 180000); // 3-minute poll
+    const interval = setInterval(loadWeather, 180000);
     return () => clearInterval(interval);
   }, []);
 
@@ -65,7 +64,6 @@ export const SpaceWeatherWidget: React.FC<SpaceWeatherWidgetProps> = ({ compact 
 
   return (
     <div className="glass-panel" style={{ padding: '20px', borderRadius: 'var(--radius-md)' }}>
-      {/* Header with Solar Accent */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -114,14 +112,12 @@ export const SpaceWeatherWidget: React.FC<SpaceWeatherWidgetProps> = ({ compact 
         </div>
       </div>
 
-      {/* Solar Plasma & Radiation Metrics */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: compact ? '1fr 1fr' : 'repeat(auto-fit, minmax(180px, 1fr))',
         gap: '12px',
         marginBottom: '16px'
       }}>
-        {/* Solar Wind Proton Velocity */}
         <div style={{ background: 'var(--surface-inset)', padding: '12px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase' }}>
             <Wind size={12} style={{ color: 'var(--accent-cyan)' }} />
@@ -138,7 +134,6 @@ export const SpaceWeatherWidget: React.FC<SpaceWeatherWidgetProps> = ({ compact 
           </div>
         </div>
 
-        {/* Planetary Kp Index */}
         <div style={{ background: 'var(--surface-inset)', padding: '12px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase' }}>
             <ShieldAlert size={12} style={{ color: kpInfo.color }} />
@@ -155,7 +150,6 @@ export const SpaceWeatherWidget: React.FC<SpaceWeatherWidgetProps> = ({ compact 
           </div>
         </div>
 
-        {/* Solar X-ray Flux Monitor */}
         <div style={{ background: 'var(--surface-inset)', padding: '12px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', fontSize: '10px', textTransform: 'uppercase' }}>
             <Flame size={12} style={{ color: 'var(--solar-amber)' }} />
@@ -176,7 +170,6 @@ export const SpaceWeatherWidget: React.FC<SpaceWeatherWidgetProps> = ({ compact 
         </div>
       </div>
 
-      {/* Verified SWPC Space Weather Bulletins */}
       <div style={{
         marginTop: '12px',
         paddingTop: '12px',

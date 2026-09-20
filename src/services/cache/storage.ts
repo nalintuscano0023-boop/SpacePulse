@@ -1,7 +1,7 @@
 interface CacheEnvelope<T> {
   data: T;
-  cachedAt: number; // epoch ms
-  expiresAt: number; // epoch ms
+  cachedAt: number;
+  expiresAt: number;
 }
 
 export class CacheService {
@@ -40,7 +40,6 @@ export class CacheService {
       };
       localStorage.setItem(this.PREFIX + key, JSON.stringify(envelope));
     } catch {
-      // Ignore quota exceeded or storage disabled
     }
   }
 
@@ -48,7 +47,6 @@ export class CacheService {
     try {
       localStorage.removeItem(this.PREFIX + key);
     } catch {
-      // Ignore
     }
   }
 }

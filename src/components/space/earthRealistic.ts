@@ -1,30 +1,17 @@
 import * as THREE from 'three';
 
-/**
- * Realistic Earth Rendering Subsystem
- * 
- * Provides:
- * 1. High-fidelity procedural Earth day-surface texture with continents, biomes, topography, and shelf waters
- * 2. High-fidelity procedural night-side city lights texture with authentic global population clusters
- * 3. Procedural high-altitude cloud cover texture with weather fronts and cyclones
- * 4. Custom Day/Night Earth Shader Material with specular ocean reflectance and smooth twilight terminator
- * 5. Rayleigh atmospheric scattering shell shader with directional sunlight Fresnel limb
- */
 
-// Cache textures for maximum performance (generated only once)
 let cachedEarthDayTexture: THREE.CanvasTexture | null = null;
 let cachedEarthNightTexture: THREE.CanvasTexture | null = null;
 let cachedEarthCloudsTexture: THREE.CanvasTexture | null = null;
 let cachedEarthSpecularTexture: THREE.CanvasTexture | null = null;
 
-// Helper: Converts spherical geographic (lonDeg, latDeg) to equirectangular canvas coords (x, y)
 function geoToCanvas(lonDeg: number, latDeg: number, width: number, height: number): [number, number] {
   const x = ((lonDeg + 180) / 360) * width;
   const y = ((90 - latDeg) / 180) * height;
   return [x, y];
 }
 
-// Helper: Draws a smooth polygon from an array of [lon, lat] coordinates
 function drawGeoPolygon(
   ctx: CanvasRenderingContext2D,
   points: [number, number][],
@@ -56,10 +43,6 @@ function drawGeoPolygon(
   }
 }
 
-/**
- * Generates the Day-Surface Earth Texture (2048 x 1024)
- * Featuring accurate continents, biomes (deserts, forests, taiga, ice), mountain ridges, and coastal waters.
- */
 export function getRealisticEarthDayTexture(): THREE.CanvasTexture {
   if (cachedEarthDayTexture) return cachedEarthDayTexture;
 
@@ -70,18 +53,15 @@ export function getRealisticEarthDayTexture(): THREE.CanvasTexture {
   canvas.height = height;
   const ctx = canvas.getContext('2d')!;
 
-  // 1. Deep Ocean Base with Depth Gradient
   const oceanGrad = ctx.createLinearGradient(0, 0, 0, height);
-  oceanGrad.addColorStop(0, '#0a2342'); // Arctic ocean
+  oceanGrad.addColorStop(0, '#0a2342');
   oceanGrad.addColorStop(0.2, '#041d3d');
-  oceanGrad.addColorStop(0.5, '#031933'); // Deep equatorial trench
+  oceanGrad.addColorStop(0.5, '#031933');
   oceanGrad.addColorStop(0.8, '#041d3d');
-  oceanGrad.addColorStop(1, '#09213e'); // Southern ocean
+  oceanGrad.addColorStop(1, '#09213e');
   ctx.fillStyle = oceanGrad;
   ctx.fillRect(0, 0, width, height);
 
-  // 2. Continental Coastlines & Landmass Polygons
-  // North America
   const northAmerica: [number, number][] = [
     [-168, 65], [-160, 71], [-140, 70], [-130, 69], [-120, 68], [-110, 68], [-95, 70],
     [-85, 68], [-80, 62], [-75, 58], [-60, 52], [-53, 47], [-64, 44], [-70, 42],
@@ -91,13 +71,11 @@ export function getRealisticEarthDayTexture(): THREE.CanvasTexture {
     [-138, 59], [-150, 60], [-162, 55], [-166, 60], [-168, 65]
   ];
 
-  // Greenland
   const greenland: [number, number][] = [
     [-45, 60], [-35, 65], [-20, 70], [-18, 77], [-25, 83], [-45, 83],
     [-55, 80], [-58, 76], [-52, 70], [-45, 60]
   ];
 
-  // South America
   const southAmerica: [number, number][] = [
     [-77, 8], [-72, 11], [-62, 10], [-50, 2], [-38, -4], [-35, -7],
     [-38, -13], [-40, -22], [-48, -28], [-53, -33], [-60, -38], [-65, -45],
@@ -105,7 +83,6 @@ export function getRealisticEarthDayTexture(): THREE.CanvasTexture {
     [-80, -3], [-79, 2], [-77, 8]
   ];
 
-  // Eurasia (Europe + Asia)
   const eurasia: [number, number][] = [
     [-9, 39], [-9, 43], [-1, 44], [0, 49], [-4, 53], [5, 53], [5, 58],
     [10, 56], [12, 54], [18, 55], [20, 60], [25, 71], [35, 70], [50, 68],
@@ -117,7 +94,6 @@ export function getRealisticEarthDayTexture(): THREE.CanvasTexture {
     [15, 40], [14, 45], [5, 43], [-5, 36], [-9, 39]
   ];
 
-  // British Isles & Scandinavia
   const scandinavia: [number, number][] = [
     [5, 58], [10, 59], [15, 56], [20, 60], [28, 70], [24, 71], [15, 68], [5, 62], [5, 58]
   ];
@@ -125,7 +101,6 @@ export function getRealisticEarthDayTexture(): THREE.CanvasTexture {
     [-5, 50], [-1, 51], [1, 53], [-2, 57], [-5, 58], [-7, 55], [-5, 50]
   ];
 
-  // Africa
   const africa: [number, number][] = [
     [-17, 15], [-17, 21], [-13, 28], [-5, 36], [10, 37], [12, 33],
     [25, 32], [32, 31], [33, 27], [38, 20], [43, 12], [51, 10],
@@ -134,36 +109,30 @@ export function getRealisticEarthDayTexture(): THREE.CanvasTexture {
     [-13, 8], [-17, 15]
   ];
 
-  // Madagascar
   const madagascar: [number, number][] = [
     [44, -12], [50, -14], [47, -25], [44, -25], [44, -12]
   ];
 
-  // India
   const india: [number, number][] = [
     [68, 24], [72, 21], [74, 15], [77, 8], [80, 13], [84, 18], [88, 22],
     [88, 27], [80, 28], [72, 28], [68, 24]
   ];
 
-  // Australia
   const australia: [number, number][] = [
     [113, -22], [115, -34], [125, -32], [135, -34], [142, -38], [150, -36],
     [153, -28], [148, -20], [142, -11], [132, -12], [130, -16], [123, -16],
     [118, -20], [113, -22]
   ];
 
-  // Japan
   const japan: [number, number][] = [
     [130, 32], [136, 35], [141, 38], [144, 44], [141, 45], [138, 38], [132, 34], [130, 32]
   ];
 
-  // Antarctica
   const antarctica: [number, number][] = [
     [-180, -70], [-120, -73], [-70, -64], [-55, -64], [-30, -74], [20, -69],
     [70, -66], [120, -66], [160, -71], [180, -78], [180, -90], [-180, -90]
   ];
 
-  // 3. Draw Coastal Turquoise Continental Shelf Glow
   const drawContinentalShelf = (pts: [number, number][]) => {
     drawGeoPolygon(ctx, pts, width, height, undefined, '#134e75', 18);
     drawGeoPolygon(ctx, pts, width, height, undefined, '#1e628f', 8);
@@ -171,18 +140,16 @@ export function getRealisticEarthDayTexture(): THREE.CanvasTexture {
 
   [northAmerica, southAmerica, eurasia, africa, australia, greenland, india, scandinavia, britishIsles].forEach(drawContinentalShelf);
 
-  // 4. Fill Landmasses with Natural Biome Colors
-  const landBaseColor = '#2d5a27'; // Lush temperate forest green
+  const landBaseColor = '#2d5a27';
   [northAmerica, southAmerica, eurasia, africa, australia, scandinavia, britishIsles, madagascar, japan].forEach(pts => {
     drawGeoPolygon(ctx, pts, width, height, landBaseColor);
   });
 
-  // 5. Desert Biomes (Sahara, Arabian Peninsula, Kalahari, Gobi, Australian Outback)
   const sahara: [number, number][] = [
     [-14, 18], [-12, 28], [-2, 32], [12, 31], [25, 30], [33, 27], [32, 17],
     [24, 16], [15, 14], [0, 16], [-14, 18]
   ];
-  drawGeoPolygon(ctx, sahara, width, height, '#c49a52'); // Golden desert sand
+  drawGeoPolygon(ctx, sahara, width, height, '#c49a52');
 
   const arabia: [number, number][] = [
     [36, 28], [42, 30], [50, 26], [58, 23], [54, 17], [48, 14], [44, 13], [36, 28]
@@ -192,14 +159,13 @@ export function getRealisticEarthDayTexture(): THREE.CanvasTexture {
   const outback: [number, number][] = [
     [120, -22], [130, -20], [140, -23], [142, -30], [132, -31], [122, -28], [120, -22]
   ];
-  drawGeoPolygon(ctx, outback, width, height, '#b05d3b'); // Red terracotta outback
+  drawGeoPolygon(ctx, outback, width, height, '#b05d3b');
 
   const gobi: [number, number][] = [
     [92, 44], [105, 45], [115, 43], [110, 38], [95, 38], [92, 44]
   ];
   drawGeoPolygon(ctx, gobi, width, height, '#ad8e5b');
 
-  // 6. Mountain Ranges with Snow/Rock Elevation (Andes, Rockies, Himalayas, Alps)
   const himalayas: [number, number][] = [
     [74, 34], [82, 31], [90, 29], [96, 28], [94, 32], [85, 35], [74, 34]
   ];
@@ -217,7 +183,6 @@ export function getRealisticEarthDayTexture(): THREE.CanvasTexture {
   ];
   drawGeoPolygon(ctx, rockies, width, height, '#64748b');
 
-  // 7. Boreal / Taiga Forests (Siberia, Northern Canada, Scandinavia)
   const siberiaTaiga: [number, number][] = [
     [40, 58], [70, 62], [100, 64], [130, 64], [150, 60], [150, 54],
     [120, 52], [90, 52], [60, 54], [40, 58]
@@ -230,15 +195,12 @@ export function getRealisticEarthDayTexture(): THREE.CanvasTexture {
   ];
   drawGeoPolygon(ctx, canadaTaiga, width, height, '#1a3d1e');
 
-  // 8. Polar Ice Sheets (Greenland, Antarctica, Arctic Sea Ice)
   drawGeoPolygon(ctx, greenland, width, height, '#f8fafc');
   drawGeoPolygon(ctx, antarctica, width, height, '#f1f5f9');
 
-  // Arctic Sea Ice cap
   ctx.fillStyle = '#f1f5f9';
   ctx.fillRect(0, 0, width, 42);
 
-  // Subtle fractal ocean surface shimmer
   ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
   for (let i = 0; i < 400; i++) {
     const x = Math.random() * width;
@@ -255,10 +217,6 @@ export function getRealisticEarthDayTexture(): THREE.CanvasTexture {
   return cachedEarthDayTexture;
 }
 
-/**
- * Generates the Night-Side City Lights Texture (2048 x 1024)
- * Authentic distribution of nocturnal light filaments matching human population hubs.
- */
 export function getRealisticEarthNightTexture(): THREE.CanvasTexture {
   if (cachedEarthNightTexture) return cachedEarthNightTexture;
 
@@ -269,19 +227,17 @@ export function getRealisticEarthNightTexture(): THREE.CanvasTexture {
   canvas.height = height;
   const ctx = canvas.getContext('2d')!;
 
-  // 1. Black Space / Unlit Dark Oceans
   ctx.fillStyle = '#020408';
   ctx.fillRect(0, 0, width, height);
 
-  // Helper to draw realistic urban light clusters with warm amber/golden halo
   const drawCityCluster = (lonDeg: number, latDeg: number, radiusKm: number, intensity: number) => {
     const [cx, cy] = geoToCanvas(lonDeg, latDeg, width, height);
     const r = Math.max(2, (radiusKm / 40000) * width * 1.8);
 
     const radGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-    radGrad.addColorStop(0, `rgba(255, 238, 170, ${intensity * 0.95})`); // Bright incandescent core
-    radGrad.addColorStop(0.3, `rgba(245, 158, 11, ${intensity * 0.7})`);  // Sodium vapor amber
-    radGrad.addColorStop(0.7, `rgba(217, 119, 6, ${intensity * 0.3})`);   // Warm peripheral glow
+    radGrad.addColorStop(0, `rgba(255, 238, 170, ${intensity * 0.95})`);
+    radGrad.addColorStop(0.3, `rgba(245, 158, 11, ${intensity * 0.7})`);
+    radGrad.addColorStop(0.7, `rgba(217, 119, 6, ${intensity * 0.3})`);
     radGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
     ctx.fillStyle = radGrad;
@@ -290,68 +246,62 @@ export function getRealisticEarthNightTexture(): THREE.CanvasTexture {
     ctx.fill();
   };
 
-  // 2. Metropolitan Hubs & Urban Corridors
-  // Europe (Dense golden network)
   const europeCities: [number, number, number, number][] = [
-    [-0.1, 51.5, 450, 0.95], // London
-    [2.35, 48.85, 420, 0.95], // Paris
-    [6.9, 51.2, 500, 0.98],  // Rhine-Ruhr corridor
-    [4.9, 52.3, 350, 0.9],   // Randstad (Amsterdam/Rotterdam)
-    [9.2, 45.46, 380, 0.9],  // Milan / Po Valley
-    [-3.7, 40.4, 300, 0.85], // Madrid
-    [13.4, 52.5, 320, 0.85], // Berlin
-    [21.0, 52.2, 280, 0.75], // Warsaw
-    [37.6, 55.75, 450, 0.9]  // Moscow
+    [-0.1, 51.5, 450, 0.95],
+    [2.35, 48.85, 420, 0.95],
+    [6.9, 51.2, 500, 0.98],
+    [4.9, 52.3, 350, 0.9],
+    [9.2, 45.46, 380, 0.9],
+    [-3.7, 40.4, 300, 0.85],
+    [13.4, 52.5, 320, 0.85],
+    [21.0, 52.2, 280, 0.75],
+    [37.6, 55.75, 450, 0.9]
   ];
   europeCities.forEach(([lon, lat, r, int]) => drawCityCluster(lon, lat, r, int));
 
-  // North America (Megalopolis corridors)
   const naCities: [number, number, number, number][] = [
-    [-74.0, 40.7, 550, 0.98], // NYC / Boston-Washington corridor
-    [-87.6, 41.88, 420, 0.95], // Chicago / Great Lakes
-    [-118.2, 34.05, 520, 0.95], // Los Angeles
-    [-122.4, 37.77, 400, 0.92], // San Francisco Bay Area
-    [-95.3, 29.76, 380, 0.85], // Houston
-    [-96.8, 32.78, 360, 0.85], // Dallas
-    [-84.3, 33.75, 340, 0.8],  // Atlanta
-    [-80.2, 25.76, 320, 0.85], // Miami
-    [-123.1, 49.28, 280, 0.75], // Vancouver / Seattle
-    [-99.1, 19.43, 480, 0.95]  // Mexico City
+    [-74.0, 40.7, 550, 0.98],
+    [-87.6, 41.88, 420, 0.95],
+    [-118.2, 34.05, 520, 0.95],
+    [-122.4, 37.77, 400, 0.92],
+    [-95.3, 29.76, 380, 0.85],
+    [-96.8, 32.78, 360, 0.85],
+    [-84.3, 33.75, 340, 0.8],
+    [-80.2, 25.76, 320, 0.85],
+    [-123.1, 49.28, 280, 0.75],
+    [-99.1, 19.43, 480, 0.95]
   ];
   naCities.forEach(([lon, lat, r, int]) => drawCityCluster(lon, lat, r, int));
 
-  // East & South Asia (High density urban ribbons)
   const asiaCities: [number, number, number, number][] = [
-    [139.7, 35.68, 650, 1.0],  // Tokyo-Yokohama-Osaka Taiheiyo Belt
-    [121.47, 31.23, 600, 1.0], // Shanghai / Yangtze River Delta
-    [116.4, 39.9, 580, 0.98],  // Beijing-Tianjin
-    [113.2, 23.1, 620, 1.0],   // Pearl River Delta (Guangzhou/Shenzhen/HK)
-    [126.97, 37.56, 520, 0.95], // Seoul
-    [77.2, 28.6, 580, 0.95],   // Delhi / NCR
-    [72.87, 19.07, 520, 0.95], // Mumbai
-    [77.59, 12.97, 420, 0.9],  // Bangalore
-    [88.36, 22.57, 400, 0.85], // Kolkata
-    [80.27, 13.08, 360, 0.85], // Chennai
-    [100.5, 13.75, 420, 0.88], // Bangkok
-    [106.8, -6.2, 450, 0.9],   // Jakarta
-    [103.8, 1.35, 300, 0.95],  // Singapore
-    [31.2, 30.0, 480, 0.92]    // Cairo / Nile Delta Ribbon
+    [139.7, 35.68, 650, 1.0],
+    [121.47, 31.23, 600, 1.0],
+    [116.4, 39.9, 580, 0.98],
+    [113.2, 23.1, 620, 1.0],
+    [126.97, 37.56, 520, 0.95],
+    [77.2, 28.6, 580, 0.95],
+    [72.87, 19.07, 520, 0.95],
+    [77.59, 12.97, 420, 0.9],
+    [88.36, 22.57, 400, 0.85],
+    [80.27, 13.08, 360, 0.85],
+    [100.5, 13.75, 420, 0.88],
+    [106.8, -6.2, 450, 0.9],
+    [103.8, 1.35, 300, 0.95],
+    [31.2, 30.0, 480, 0.92]
   ];
   asiaCities.forEach(([lon, lat, r, int]) => drawCityCluster(lon, lat, r, int));
 
-  // South America & Africa & Oceania
   const otherCities: [number, number, number, number][] = [
-    [-46.6, -23.55, 520, 0.95], // São Paulo
-    [-43.17, -22.9, 450, 0.9],  // Rio de Janeiro
-    [-58.38, -34.6, 450, 0.9],  // Buenos Aires
-    [-70.66, -33.45, 350, 0.8], // Santiago
-    [28.04, -26.2, 380, 0.85],  // Johannesburg / Pretoria
-    [151.2, -33.86, 380, 0.85], // Sydney
-    [144.96, -37.81, 350, 0.8]  // Melbourne
+    [-46.6, -23.55, 520, 0.95],
+    [-43.17, -22.9, 450, 0.9],
+    [-58.38, -34.6, 450, 0.9],
+    [-70.66, -33.45, 350, 0.8],
+    [28.04, -26.2, 380, 0.85],
+    [151.2, -33.86, 380, 0.85],
+    [144.96, -37.81, 350, 0.8]
   ];
   otherCities.forEach(([lon, lat, r, int]) => drawCityCluster(lon, lat, r, int));
 
-  // Connect city networks with fine transit filaments (highways/coastal ribbons)
   ctx.strokeStyle = 'rgba(245, 158, 11, 0.2)';
   ctx.lineWidth = 1.2;
   const filaments: [number, number, number, number][] = [
@@ -382,10 +332,6 @@ export function getRealisticEarthNightTexture(): THREE.CanvasTexture {
   return cachedEarthNightTexture;
 }
 
-/**
- * Generates the Ocean Specular Map (1024 x 512)
- * Pure white over reflective oceans, pure black over matte continents.
- */
 export function getRealisticEarthSpecularTexture(): THREE.CanvasTexture {
   if (cachedEarthSpecularTexture) return cachedEarthSpecularTexture;
 
@@ -396,22 +342,14 @@ export function getRealisticEarthSpecularTexture(): THREE.CanvasTexture {
   canvas.height = height;
   const ctx = canvas.getContext('2d')!;
 
-  // 1. Water is highly reflective
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, width, height);
 
-  // 2. Land is non-reflective (matte)
-  // Mask out major landmasses
   const landmassMasks = [
-    // NA
     [[-168, 65], [-120, 68], [-60, 52], [-76, 35], [-84, 10], [-105, 20], [-130, 54], [-168, 65]],
-    // SA
     [[-77, 8], [-35, -7], [-53, -33], [-68, -53], [-75, -45], [-80, -3], [-77, 8]],
-    // Eurasia
     [[-9, 39], [25, 71], [110, 74], [178, 65], [140, 50], [106, 12], [78, 8], [44, 28], [-9, 39]],
-    // Africa
     [[-17, 15], [-5, 36], [32, 31], [51, 10], [28, -33], [12, -18], [-17, 15]],
-    // Australia
     [[113, -22], [142, -38], [153, -28], [130, -16], [113, -22]]
   ];
 
@@ -423,10 +361,6 @@ export function getRealisticEarthSpecularTexture(): THREE.CanvasTexture {
   return cachedEarthSpecularTexture;
 }
 
-/**
- * Generates the High-Altitude Cloud Layer Texture (2048 x 1024)
- * Featuring realistic cyclonic swirls, ITCZ equatorial bands, and soft atmospheric wisps.
- */
 export function getRealisticEarthCloudsTexture(): THREE.CanvasTexture {
   if (cachedEarthCloudsTexture) return cachedEarthCloudsTexture;
 
@@ -438,7 +372,6 @@ export function getRealisticEarthCloudsTexture(): THREE.CanvasTexture {
   const ctx = canvas.getContext('2d')!;
   ctx.clearRect(0, 0, width, height);
 
-  // Helper to draw a soft feathered cloud cloudlet
   const drawCloudlet = (cx: number, cy: number, rx: number, ry: number, angle: number, opacity: number) => {
     ctx.save();
     ctx.translate(cx, cy);
@@ -455,7 +388,6 @@ export function getRealisticEarthCloudsTexture(): THREE.CanvasTexture {
     ctx.restore();
   };
 
-  // Helper to draw a cyclonic hurricane / low-pressure spiral cloud
   const drawCyclonicStorm = (lonDeg: number, latDeg: number, radiusKm: number) => {
     const [cx, cy] = geoToCanvas(lonDeg, latDeg, width, height);
     const baseR = (radiusKm / 40000) * width;
@@ -470,35 +402,29 @@ export function getRealisticEarthCloudsTexture(): THREE.CanvasTexture {
         drawCloudlet(px, py, 12 + t * 24, 6 + t * 14, theta + 0.5, 0.45 - t * 0.2);
       }
     }
-    // Eye of the storm center
     drawCloudlet(cx, cy, 18, 14, 0, 0.65);
   };
 
-  // 1. Intertropical Convergence Zone (ITCZ) - Discontinuous clouds near equator
   for (let lon = -180; lon <= 180; lon += 6) {
     const lat = 2 + Math.sin((lon / 180) * Math.PI * 3) * 6;
     const [x, y] = geoToCanvas(lon, lat, width, height);
     drawCloudlet(x, y, 45 + Math.random() * 35, 14 + Math.random() * 12, (Math.random() - 0.5) * 0.2, 0.45);
   }
 
-  // 2. Mid-Latitude Weather Fronts (40° - 60° North & South)
   for (let lon = -180; lon <= 180; lon += 12) {
-    // North Atlantic & Pacific storms
     const nLat = 48 + Math.cos((lon / 180) * Math.PI * 4) * 12;
     const [nx, ny] = geoToCanvas(lon, nLat, width, height);
     drawCloudlet(nx, ny, 60 + Math.random() * 40, 18 + Math.random() * 15, 0.25, 0.42);
 
-    // Roaring Forties southern front
     const sLat = -50 + Math.sin((lon / 180) * Math.PI * 4) * 8;
     const [sx, sy] = geoToCanvas(lon, sLat, width, height);
     drawCloudlet(sx, sy, 70 + Math.random() * 45, 16 + Math.random() * 12, -0.2, 0.48);
   }
 
-  // 3. Prominent Cyclones / Storm Systems
-  drawCyclonicStorm(-45, 38, 1200);   // North Atlantic gale
-  drawCyclonicStorm(148, 22, 1400);  // Western Pacific Typhoon
-  drawCyclonicStorm(90, 16, 1100);   // Bay of Bengal cyclonic depression
-  drawCyclonicStorm(-110, -32, 1300); // South Pacific low
+  drawCyclonicStorm(-45, 38, 1200);
+  drawCyclonicStorm(148, 22, 1400);
+  drawCyclonicStorm(90, 16, 1100);
+  drawCyclonicStorm(-110, -32, 1300);
 
   cachedEarthCloudsTexture = new THREE.CanvasTexture(canvas);
   cachedEarthCloudsTexture.wrapS = THREE.RepeatWrapping;
@@ -506,11 +432,6 @@ export function getRealisticEarthCloudsTexture(): THREE.CanvasTexture {
   return cachedEarthCloudsTexture;
 }
 
-/**
- * Creates a Custom Day/Night Earth Shader Material
- * Seamlessly blends the illuminated Day surface with nocturnal city lights across the terminator,
- * complete with specular ocean reflections and subtle twilight scattering.
- */
 export function createRealisticEarthShaderMaterial(sunDirectionUniform: THREE.Vector3): THREE.ShaderMaterial {
   const dayTex = getRealisticEarthDayTexture();
   const nightTex = getRealisticEarthNightTexture();
@@ -597,11 +518,6 @@ export function createRealisticEarthShaderMaterial(sunDirectionUniform: THREE.Ve
   } as THREE.ShaderMaterialParameters);
 }
 
-/**
- * Creates the Rayleigh Atmospheric Scattering Rim Shell
- * Produces a thin, authentic cyan-blue atmospheric limb visible primarily around the planet's edge
- * and tapering to darkness on the unlit night side.
- */
 export function createRealisticAtmosphereMesh(radius: number, sunDirectionUniform: THREE.Vector3): THREE.Mesh {
   const atmoGeo = new THREE.SphereGeometry(radius * 1.022, 64, 64);
 
@@ -661,10 +577,6 @@ export function createRealisticAtmosphereMesh(radius: number, sunDirectionUnifor
   return new THREE.Mesh(atmoGeo, atmoMat);
 }
 
-/**
- * Creates the Separate Cloud Layer Mesh (radius * 1.012)
- * Features slow independent rotation, soft transparency, and authentic cloud patterns.
- */
 export function createRealisticCloudMesh(radius: number): THREE.Mesh {
   const cloudsTex = getRealisticEarthCloudsTexture();
   const cloudGeo = new THREE.SphereGeometry(radius * 1.012, 64, 64);

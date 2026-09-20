@@ -53,7 +53,6 @@ export const Spacecraft3DViewer: React.FC<Spacecraft3DViewerProps> = ({
       TWO: THREE.TOUCH.DOLLY_PAN
     };
 
-    // Professional Studio Lighting
     const keyLight = new THREE.DirectionalLight(0xffffff, 2.4);
     keyLight.position.set(5, 8, 6);
     scene.add(keyLight);
@@ -69,16 +68,13 @@ export const Spacecraft3DViewer: React.FC<Spacecraft3DViewerProps> = ({
     const ambientLight = new THREE.AmbientLight(0x1e293b, 1.2);
     scene.add(ambientLight);
 
-    // Subtle grid platform
     const grid = new THREE.GridHelper(10, 20, 0x1e293b, 0x0a101f);
     grid.position.y = -1.8;
     scene.add(grid);
 
-    // Mount Authentic Spacecraft-Specific 3D Model from Registry
     const model = getSpacecraft3DModel(craftId, { scale: 1.5 });
     scene.add(model);
 
-    // Resize Handler with orientation change support
     const handleResize = () => {
       if (!container) return;
       const w = container.clientWidth;
@@ -90,7 +86,6 @@ export const Spacecraft3DViewer: React.FC<Spacecraft3DViewerProps> = ({
     window.addEventListener('resize', handleResize);
     window.addEventListener('orientationchange', handleResize);
 
-    // Animation Loop
     let animId: number;
     const animate = () => {
       animId = requestAnimationFrame(animate);
@@ -138,7 +133,6 @@ export const Spacecraft3DViewer: React.FC<Spacecraft3DViewerProps> = ({
           boxShadow: '0 24px 64px rgba(0, 0, 0, 0.75)'
         }}
       >
-        {/* Modal Header */}
         <div
           style={{
             padding: '12px 16px',
@@ -231,7 +225,6 @@ export const Spacecraft3DViewer: React.FC<Spacecraft3DViewerProps> = ({
           </div>
         </div>
 
-        {/* Positional Transparency Indicator for Voyager */}
         {isVoyager && (
           <div
             style={{
@@ -255,11 +248,9 @@ export const Spacecraft3DViewer: React.FC<Spacecraft3DViewerProps> = ({
           </div>
         )}
 
-        {/* Main 3D Canvas Area */}
         <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
           <div ref={mountRef} style={{ width: '100%', height: '100%', outline: 'none' }} />
 
-          {/* Controls Hint */}
           <div
             style={{
               position: 'absolute',
@@ -289,7 +280,6 @@ export const Spacecraft3DViewer: React.FC<Spacecraft3DViewerProps> = ({
             </span>
           </div>
 
-          {/* Subsystems Breakdown Overlay (Right Side) */}
           {showSubsystems && (
             <div
               style={{

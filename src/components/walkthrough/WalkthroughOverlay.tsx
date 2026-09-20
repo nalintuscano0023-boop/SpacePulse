@@ -26,13 +26,11 @@ export const WalkthroughOverlay: React.FC = () => {
   });
   const tooltipRef = useRef<HTMLDivElement>(null);
 
-  // Update target bounding box and position tooltip
   const updatePosition = useCallback(() => {
     if (!isActive || !currentStep) return;
 
     let targetEl = document.querySelector(currentStep.targetSelector) as HTMLElement | null;
 
-    // Fallback if specific ID not yet in DOM: find by role or fallback to body center
     if (!targetEl) {
       if (currentStep.targetSelector.includes('inspector')) {
         targetEl = document.querySelector('.object-inspector-panel') as HTMLElement | null;
@@ -43,21 +41,18 @@ export const WalkthroughOverlay: React.FC = () => {
       const rect = targetEl.getBoundingClientRect();
       setTargetRect(rect);
 
-      // Scroll target into view if needed
       if (rect.top < 70 || rect.bottom > window.innerHeight - 70) {
         targetEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
 
-      // Compute tooltip positioning
       const margin = 14;
       const tooltipW = Math.min(360, window.innerWidth - 32);
-      const tooltipH = 220; // Estimated height
+      const tooltipH = 220;
 
       let top = rect.bottom + margin;
       let left = rect.left + rect.width / 2 - tooltipW / 2;
       let placement = 'bottom';
 
-      // Preferred placement adjustments
       if (currentStep.preferredPlacement === 'top' || (top + tooltipH > window.innerHeight && rect.top - tooltipH - margin > 60)) {
         top = rect.top - tooltipH - margin;
         placement = 'top';
@@ -71,14 +66,12 @@ export const WalkthroughOverlay: React.FC = () => {
         placement = 'right';
       }
 
-      // Constrain inside viewport (accounting for mobile bottom nav bar if present)
       const bottomNavOffset = window.innerWidth <= 860 ? 86 : 20;
       left = Math.max(16, Math.min(window.innerWidth - tooltipW - 16, left));
       top = Math.max(70, Math.min(window.innerHeight - tooltipH - bottomNavOffset, top));
 
       setTooltipPos({ top, left, placement });
     } else {
-      // If target element is not in DOM, center tooltip gracefully
       setTargetRect(null);
       const bottomNavOffset = window.innerWidth <= 860 ? 40 : 0;
       setTooltipPos({
@@ -105,7 +98,6 @@ export const WalkthroughOverlay: React.FC = () => {
     };
   }, [updatePosition]);
 
-  // Keyboard navigation
   useEffect(() => {
     if (!isActive) return;
 
@@ -123,7 +115,6 @@ export const WalkthroughOverlay: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isActive, skipWalkthrough, nextStep, prevStep]);
 
-  // ACTIVE INTERACTIVE GUIDED TOUR
   if (!isActive || !currentStep) return null;
 
   const stepFormatted = String(currentStep.stepNumber).padStart(2, '0');
@@ -132,7 +123,6 @@ export const WalkthroughOverlay: React.FC = () => {
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, pointerEvents: 'none' }}>
-      {/* Dimmed Background Overlay */}
       <div 
         onClick={skipWalkthrough}
         style={{
@@ -144,7 +134,6 @@ export const WalkthroughOverlay: React.FC = () => {
         }} 
       />
 
-      {/* Target Element Highlight Box (Focus Ring) */}
       {targetRect && (
         <div
           style={{
@@ -163,7 +152,6 @@ export const WalkthroughOverlay: React.FC = () => {
         />
       )}
 
-      {/* Floating Contextual Tooltip */}
       <div
         ref={tooltipRef}
         className="glass-panel tech-corner"
@@ -186,7 +174,6 @@ export const WalkthroughOverlay: React.FC = () => {
           animation: 'walkthroughTooltipPop 0.25s ease'
         }}
       >
-        {/* Step Indicator & Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{
@@ -229,7 +216,6 @@ export const WalkthroughOverlay: React.FC = () => {
           </button>
         </div>
 
-        {/* Step Title & Description */}
         <div>
           <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#ffffff', margin: '0 0 4px' }}>
             {currentStep.title}
@@ -239,7 +225,6 @@ export const WalkthroughOverlay: React.FC = () => {
           </p>
         </div>
 
-        {/* Visual Progress Dots */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '5px', margin: '2px 0' }}>
           {WALKTHROUGH_STEPS.map((step, idx) => (
             <div
@@ -259,7 +244,6 @@ export const WalkthroughOverlay: React.FC = () => {
           ))}
         </div>
 
-        {/* Footer Navigation Controls */}
         <div style={{
           display: 'flex',
           alignItems: 'center',

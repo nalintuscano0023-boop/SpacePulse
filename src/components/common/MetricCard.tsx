@@ -38,7 +38,6 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         overflow: 'hidden'
       }}
     >
-      {/* Top row: Label & Icon / Status */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -68,7 +67,6 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         )}
       </div>
 
-      {/* Middle row: Primary Value & Unit */}
       <div style={{
         display: 'flex',
         alignItems: 'baseline',
@@ -94,7 +92,6 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         )}
       </div>
 
-      {/* Bottom row: Subtext or Source footnote */}
       {(subtext || metadata) && (
         <div style={{
           marginTop: '8px',

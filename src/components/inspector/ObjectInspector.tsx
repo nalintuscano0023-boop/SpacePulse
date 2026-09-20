@@ -39,16 +39,13 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
 }) => {
   const [show3DViewer, setShow3DViewer] = useState(false);
   
-  // All accordion sections start collapsed by default (empty Set)
   const [expandedSections, setExpandedSections] = useState<Set<string>>(() => new Set());
 
-  // Reset all accordion sections when the inspected object changes
   const objectId = rawObject ? ('id' in rawObject ? rawObject.id : (rawObject as any).id) : null;
   useEffect(() => {
     setExpandedSections(new Set());
   }, [objectId]);
 
-  // Clean up accordion state on unmount
   useEffect(() => {
     return () => {
       setExpandedSections(new Set());
@@ -74,7 +71,6 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
     });
   };
 
-  // Lock body scroll while inspector is open
   useEffect(() => {
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -102,7 +98,6 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
 
   return (
     <>
-      {/* Mobile Backdrop Overlay */}
       <div 
         className="object-inspector-backdrop" 
         onClick={handleClose} 
@@ -113,10 +108,8 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
         id="object-inspector-panel"
         className="glass-panel tech-corner object-inspector-panel"
       >
-        {/* Mobile Grab Handle */}
         <div className="object-inspector-handle" />
 
-        {/* Panel Header */}
         <div style={{
           padding: '14px 18px',
           borderBottom: '1px solid var(--border-hairline)',
@@ -188,7 +181,6 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
           </button>
         </div>
 
-        {/* Panel Scrollable Body */}
         <div style={{
           flex: '1 1 0%',
           minHeight: 0,
@@ -200,7 +192,6 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
           gap: '12px'
         }}>
 
-          {/* 1. OVERVIEW SECTION */}
           <div className="inspector-accordion">
             <button
               type="button"
@@ -280,7 +271,6 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
             </div>
           </div>
 
-          {/* 2. POSITION & DISTANCE SECTION */}
           <div className="inspector-accordion">
             <button
               type="button"
@@ -333,7 +323,6 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
                   )}
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    {/* Distance from Earth */}
                     <div style={{ background: 'var(--surface-inset)', padding: '10px', borderRadius: 'var(--radius-xs)' }}>
                       <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                         {object.geodetic?.altitudeKm ? 'Orbital Altitude' : 'Distance to Earth'}
@@ -354,7 +343,6 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
                       )}
                     </div>
 
-                    {/* Distance from Sun */}
                     <div style={{ background: 'var(--surface-inset)', padding: '10px', borderRadius: 'var(--radius-xs)' }}>
                       <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Distance to Sun</div>
                       <div className="mono" style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-primary)', marginTop: '3px' }}>
@@ -371,7 +359,6 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
                       )}
                     </div>
 
-                    {/* One-Way Light Delay */}
                     <div style={{ background: 'var(--surface-inset)', padding: '10px', borderRadius: 'var(--radius-xs)' }}>
                       <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Signal Delay (c)</div>
                       <div className="mono" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--accent-cyan)', marginTop: '3px' }}>
@@ -379,7 +366,6 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
                       </div>
                     </div>
 
-                    {/* Distance from Moon */}
                     <div style={{ background: 'var(--surface-inset)', padding: '10px', borderRadius: 'var(--radius-xs)' }}>
                       <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Distance to Moon</div>
                       <div className="mono" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginTop: '3px' }}>
@@ -392,7 +378,6 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
                     </div>
                   </div>
 
-                  {/* 3D State Coordinates */}
                   <div style={{ background: 'var(--surface-inset)', padding: '10px', borderRadius: 'var(--radius-xs)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
                       <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
@@ -434,7 +419,6 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
             </div>
           </div>
 
-          {/* 3. ORBIT & MOTION SECTION */}
           <div className="inspector-accordion">
             <button
               type="button"
@@ -483,7 +467,6 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
                     </div>
                   </div>
 
-                  {/* Sub-Satellite Geodetic Track for Earth Orbit Satellites */}
                   {object.geodetic && (
                     <div style={{ background: 'var(--surface-inset)', padding: '10px', borderRadius: 'var(--radius-xs)' }}>
                       <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
@@ -506,7 +489,6 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
                     </div>
                   )}
 
-                  {/* Keplerian Orbit Elements from verified SGP4 GP Data */}
                   {object.orbitalElements && (
                     <div style={{ background: 'var(--surface-inset)', padding: '10px', borderRadius: 'var(--radius-xs)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -555,7 +537,6 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
             </div>
           </div>
 
-          {/* 4. MISSION & INSTRUMENTATION SECTION */}
           <div className="inspector-accordion">
             <button
               type="button"
@@ -621,7 +602,6 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
             </div>
           </div>
 
-          {/* 5. DATA SOURCE & UPSTREAM VERIFICATION */}
           <div className="inspector-accordion">
             <button
               type="button"
@@ -673,7 +653,6 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
           </div>
         </div>
 
-        {/* Action Footer */}
         <div style={{
           padding: '12px 20px',
           paddingBottom: 'calc(12px + var(--sab, 0px))',
@@ -684,7 +663,6 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
           background: 'rgba(3, 5, 10, 0.95)',
           flexShrink: 0
         }}>
-          {/* 3D Model Architecture Viewer Button (for Spacecraft / Satellites) */}
           {!isCelestial ? (
             <button
               onClick={() => setShow3DViewer(true)}
@@ -766,7 +744,6 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
         `}</style>
       </div>
 
-      {/* 3D Spacecraft Architecture Modal */}
       {show3DViewer && (
         <Spacecraft3DViewer
           craftId={object.id}

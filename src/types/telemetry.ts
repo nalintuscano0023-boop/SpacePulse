@@ -11,7 +11,7 @@ export type DataStatus =
 export interface SourceMetadata {
   sourceName: string;
   sourceUrl?: string;
-  timestamp: string; // ISO string or UTC string
+  timestamp: string;
   status: DataStatus;
   statusNote?: string;
   updateFrequency?: string;

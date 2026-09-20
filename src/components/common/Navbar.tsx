@@ -31,7 +31,6 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
     return () => clearInterval(timer);
   }, []);
 
-  // Close drawer on ESC
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isDrawerOpen) {
@@ -94,7 +93,6 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
 
   return (
     <>
-      {/* Top Floating Aerospace Bar */}
       <header style={{
         position: 'sticky',
         top: 0,
@@ -121,7 +119,6 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
           gap: '8px',
           padding: '6px 0'
         }}>
-          {/* Brand Identity */}
           <div 
             onClick={() => handleItemClick('mission-control')}
             style={{
@@ -180,7 +177,6 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
             </div>
           </div>
 
-          {/* Mobile Current Section Indicator Pill (visible < 860px) */}
           <button
             onClick={() => setIsDrawerOpen(!isDrawerOpen)}
             className="mobile-section-pill"
@@ -214,7 +210,6 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
             </span>
           </button>
 
-          {/* Desktop 5-Item Navigation (visible >= 860px) */}
           <nav style={{
             display: 'none',
             alignItems: 'center',
@@ -270,9 +265,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
             })}
           </nav>
 
-          {/* Right Status & Clock & Mobile Hamburger Button */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-            {/* Live Data Connection Beacon */}
             <div 
               className="navbar-status-beacon"
               style={{
@@ -294,7 +287,6 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
               <span>FEEDS: ACTIVE</span>
             </div>
 
-            {/* UTC Clock */}
             <div 
               className="navbar-clock"
               style={{
@@ -314,7 +306,6 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
               <span className="mono" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{utcTime}</span>
             </div>
 
-            {/* Mobile Navigation Drawer Toggle (visible < 860px) */}
             <button
               onClick={() => setIsDrawerOpen(!isDrawerOpen)}
               className="mobile-nav-toggle"
@@ -344,7 +335,6 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
         </div>
       </header>
 
-      {/* Mobile Aerospace Navigation Drawer Backdrop */}
       {isDrawerOpen && (
         <div
           onClick={() => setIsDrawerOpen(false)}
@@ -361,7 +351,6 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
         />
       )}
 
-      {/* Mobile Aerospace Navigation Drawer Sheet */}
       {isDrawerOpen && (
         <div
           style={{

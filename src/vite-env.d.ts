@@ -1,4 +1,3 @@
-/// <reference types="vite/client" />
 
 interface ImportMetaEnv {
   readonly VITE_NOAA_SWPC_URL?: string;

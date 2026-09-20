@@ -8,13 +8,11 @@
     "allowArbitraryExtensions": true,
     "skipLibCheck": true,
 
-    /* Bundler mode */
     "moduleResolution": "bundler",
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
 
-    /* Strictness */
     "strict": true,
     "noFallthroughCasesInSwitch": true
   },

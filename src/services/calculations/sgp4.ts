@@ -67,7 +67,6 @@ export function propagateTle(line1: string, line2: string, date: Date = new Date
   }
 }
 
-// Generate orbit path points (one complete revolution)
 export function generateOrbitPath(line1: string, line2: string, date: Date = new Date(), samples = 120): Vector3D[] {
   const points: Vector3D[] = [];
   try {
@@ -89,7 +88,6 @@ export function generateOrbitPath(line1: string, line2: string, date: Date = new
       }
     }
   } catch {
-    // If error, return empty
   }
   return points;
 }

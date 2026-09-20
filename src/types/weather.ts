@@ -1,21 +1,21 @@
 import { SourceMetadata } from './telemetry';
 
 export interface SolarWindData {
-  protonSpeedKmS: number; // km/s
+  protonSpeedKmS: number;
   timestamp: string;
   source: SourceMetadata;
 }
 
 export interface KpIndexData {
-  kp: number; // 0 to 9
+  kp: number;
   aRunning?: number;
   timestamp: string;
   source: SourceMetadata;
 }
 
 export interface GoesXrayData {
-  energyBand: string; // e.g. "0.1-0.8nm"
-  flux: number; // W/m^2
+  energyBand: string;
+  flux: number;
   flareClass: 'A' | 'B' | 'C' | 'M' | 'X';
   timestamp: string;
   source: SourceMetadata;
@@ -28,7 +28,7 @@ export interface SpaceWeatherAlert {
   summary: string;
   description: string;
   severity: 'INFO' | 'WATCH' | 'WARNING' | 'ALERT';
-  scaleCategory?: string; // G1-G5, R1-R5, S1-S5
+  scaleCategory?: string;
 }
 
 export interface SpaceWeatherSummary {

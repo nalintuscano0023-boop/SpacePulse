@@ -42,7 +42,6 @@ export const MissionsExplorer: React.FC = () => {
 
   return (
     <div className="container" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* Header */}
       <div style={{ padding: '12px 0 4px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
           <div style={{
@@ -72,7 +71,6 @@ export const MissionsExplorer: React.FC = () => {
           Verified mission dossiers, payload instrumentation records, and planetary science repositories from ISRO (PRADAN / MOSDAC), NASA PDS, and international space agencies.
         </p>
 
-        {/* Quick Interaction Guide for First-Time Judges */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -95,7 +93,6 @@ export const MissionsExplorer: React.FC = () => {
         </div>
       </div>
 
-      {/* Toolbar: Search, Filters & Sub-view Switcher */}
       <div style={{
         display: 'flex',
         flexWrap: 'wrap',
@@ -107,7 +104,6 @@ export const MissionsExplorer: React.FC = () => {
         borderRadius: 'var(--radius-sm)',
         border: '1px solid var(--border-hairline)'
       }}>
-        {/* Sub-view switcher */}
         <div style={{ display: 'flex', gap: '4px', background: 'var(--surface-inset)', padding: '3px', borderRadius: 'var(--radius-xs)', border: '1px solid var(--border-hairline)', flexWrap: 'wrap' }}>
           <button
             onClick={() => setActiveTab('missions')}
@@ -131,7 +127,6 @@ export const MissionsExplorer: React.FC = () => {
           </button>
         </div>
 
-        {/* Agency Filters (for Missions) */}
         {activeTab === 'missions' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginRight: '4px' }}>Filter:</span>
@@ -162,7 +157,6 @@ export const MissionsExplorer: React.FC = () => {
           </div>
         )}
 
-        {/* Search Input */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -194,10 +188,8 @@ export const MissionsExplorer: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Tab Content */}
       {activeTab === 'missions' ? (
         <div className="glass-panel" style={{ overflow: 'hidden' }}>
-          {/* Compact Mission Rows Table */}
           <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <table className="data-table-container" style={{ minWidth: '660px' }}>
               <thead>
@@ -282,7 +274,6 @@ export const MissionsExplorer: React.FC = () => {
           </div>
         </div>
       ) : (
-        /* Planetary Science Datasets Directory (Compact Rows) */
         <div className="glass-panel" style={{ overflow: 'hidden' }}>
           <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <table className="data-table-container" style={{ width: '100%', minWidth: '540px' }}>
@@ -333,7 +324,6 @@ export const MissionsExplorer: React.FC = () => {
         </div>
       )}
 
-      {/* Selected Mission Detailed Dossier Preview (Active Missions Tab Only) */}
       {activeTab === 'missions' && previewMission && (
         <div
           className="glass-panel tech-corner"
@@ -388,7 +378,6 @@ export const MissionsExplorer: React.FC = () => {
             </div>
           </div>
 
-          {/* Overview Text */}
           <div>
             <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>
               Mission Summary
@@ -398,7 +387,6 @@ export const MissionsExplorer: React.FC = () => {
             </p>
           </div>
 
-          {/* Key Achievements */}
           <div>
             <div style={{ fontSize: '11px', color: 'var(--solar-amber)', textTransform: 'uppercase', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
               <Award size={13} />
@@ -427,7 +415,6 @@ export const MissionsExplorer: React.FC = () => {
             </div>
           </div>
 
-          {/* Payloads Grid */}
           <div>
             <div style={{ fontSize: '11px', color: 'var(--accent-cyan)', textTransform: 'uppercase', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
               <Layers size={13} />

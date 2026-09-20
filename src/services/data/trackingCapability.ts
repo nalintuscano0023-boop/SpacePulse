@@ -1,8 +1,3 @@
-/**
- * Central Tracking Capability System
- * Single source of truth for tracking methods, orbital regimes, authoritative sources,
- * and context-aware tracking capability resolution across SpacePulse.
- */
 
 export type TrackingStatus = 
   | 'CURRENT' 
@@ -13,14 +8,14 @@ export type TrackingStatus =
   | 'SOURCE_ERROR';
 
 export type TrackingMethod = 
-  | 'SGP4_PROPAGATION'          // Earth-orbiting satellites via CelesTrak GP/TLE/OMM + satellite.js
-  | 'LAGRANGE_HALO_EPHEMERIS'   // Sun-Earth L1 Halo dynamics (Aditya-L1)
-  | 'KEPLERIAN_EPHEMERIS'       // Planetary ephemeris via VSOP87 / Kepler
-  | 'LUNAR_ORBIT_BASELINE'      // Selenocentric 100 km polar orbit baseline (Chandrayaan-2)
-  | 'LUNAR_SURFACE_FIXED'       // Fixed lunar surface landing site (Chandrayaan-3 Shiv Shakti Point)
-  | 'HISTORICAL_ARCHIVE'        // Completed historical mission archives (Chandrayaan-1)
-  | 'INTERSTELLAR_BASELINE'     // Deep space probe DSN baseline (Voyager 1 & 2)
-  | 'NONE';                     // Unsupported / untracked
+  | 'SGP4_PROPAGATION'
+  | 'LAGRANGE_HALO_EPHEMERIS'
+  | 'KEPLERIAN_EPHEMERIS'
+  | 'LUNAR_ORBIT_BASELINE'
+  | 'LUNAR_SURFACE_FIXED'
+  | 'HISTORICAL_ARCHIVE'
+  | 'INTERSTELLAR_BASELINE'
+  | 'NONE';
 
 export type OrbitalRegime = 
   | 'LEO' 
@@ -67,9 +62,6 @@ export interface SatelliteTrackContext {
   hasValidState: boolean;
 }
 
-/**
- * Derives human-readable status labels and contextual descriptions.
- */
 export function getStatusPresentation(
   status: TrackingStatus, 
   method: TrackingMethod, 
@@ -124,10 +116,6 @@ export function getStatusPresentation(
   }
 }
 
-/**
- * Base capability definitions for all known spacecraft in the catalog.
- * Guarantees every spacecraft is cataloged with its real physical regime and supported tracking method.
- */
 interface BaseSpacecraftCapabilityDef {
   id: string;
   name: string;
@@ -362,10 +350,6 @@ const SPACECRAFT_CAPABILITY_REGISTRY: Record<string, BaseSpacecraftCapabilityDef
   }
 };
 
-/**
- * Dynamically resolves the authentic tracking capability for any spacecraft object.
- * Checks satellite track context, epoch age, and calculation status.
- */
 export function resolveTrackingCapability(
   craftId: string,
   craftName: string,
@@ -374,7 +358,6 @@ export function resolveTrackingCapability(
 ): TrackingCapability {
   const base = SPACECRAFT_CAPABILITY_REGISTRY[craftId];
 
-  // 1. If it is an Earth satellite with real-time GP/SGP4 context
   if (base && base.supportedTrackingMethod === 'SGP4_PROPAGATION') {
     const noradId = satContext?.noradId ?? base.noradId;
     const hasValidState = satContext?.hasValidState ?? false;
@@ -417,7 +400,6 @@ export function resolveTrackingCapability(
     };
   }
 
-  // 2. If it is a registered deep-space, solar, or lunar mission
   if (base) {
     const dataTimestamp = customDate.toISOString();
     const presentation = getStatusPresentation(base.defaultStatus, base.supportedTrackingMethod, dataTimestamp, base.statusContext);
@@ -445,7 +427,6 @@ export function resolveTrackingCapability(
     };
   }
 
-  // 3. Dynamic fallback for any uncataloged or dynamically loaded Earth satellite by NORAD ID
   if (satContext && satContext.noradId) {
     const dataTimestamp = satContext.timestamp || customDate.toISOString();
     const status: TrackingStatus = satContext.isLiveGp ? 'CURRENT' : satContext.hasValidState ? 'CALCULATED' : 'LAST_AVAILABLE';
@@ -474,7 +455,6 @@ export function resolveTrackingCapability(
     };
   }
 
-  // 4. Default safe fallback for unknown objects (truthful DATA_UNAVAILABLE, zero invented vectors)
   const presentation = getStatusPresentation('DATA_UNAVAILABLE', 'NONE', undefined, 'No supported public ephemeris is currently available');
   return {
     objectId: craftId,
@@ -495,9 +475,6 @@ export function resolveTrackingCapability(
   };
 }
 
-/**
- * Returns the capability audit matrix for all registered spacecraft in SpacePulse.
- */
 export function getAllRegisteredTrackingCapabilities(): TrackingCapability[] {
   return Object.keys(SPACECRAFT_CAPABILITY_REGISTRY).map(id => {
     const base = SPACECRAFT_CAPABILITY_REGISTRY[id];
@@ -505,11 +482,6 @@ export function getAllRegisteredTrackingCapabilities(): TrackingCapability[] {
   });
 }
 
-/**
- * Action-level capability architecture
- * Decouples data status (e.g. HISTORICAL, CURRENT, CALCULATED) from UI action states.
- * Guarantees all spacecraft cards render identical action slots without invisible or collapsing buttons.
- */
 export type ActionVisualState = 'AVAILABLE' | 'LIMITED' | 'UNSUPPORTED';
 
 export interface ActionCapabilityDescriptor {
@@ -528,10 +500,6 @@ export interface SpacecraftActionSet {
   track: ActionCapabilityDescriptor;
 }
 
-/**
- * Universal Action Capability Resolver
- * Evaluates a spacecraft's profile and returns the exact visual state for every action slot.
- */
 export function resolveSpacecraftActionSet(craft: {
   id: string;
   name: string;
@@ -542,7 +510,6 @@ export function resolveSpacecraftActionSet(craft: {
   const cap = craft.trackingCapability || resolveTrackingCapability(craft.id, craft.name);
   const dataStatus = craft.telemetrySource?.status || cap.status;
 
-  // 1. Inspect: Universally accessible across all spacecraft
   const inspect: ActionCapabilityDescriptor = {
     actionId: 'inspect',
     state: 'AVAILABLE',
@@ -552,7 +519,6 @@ export function resolveSpacecraftActionSet(craft: {
     tooltipDescription: `Inspect technical specifications, telemetry, and mission profile for ${craft.name}`
   };
 
-  // 2. 3D Model Architecture Viewer: Universally accessible across all fleet spacecraft
   const view3D: ActionCapabilityDescriptor = {
     actionId: 'view3D',
     state: 'AVAILABLE',
@@ -562,7 +528,6 @@ export function resolveSpacecraftActionSet(craft: {
     tooltipDescription: `Inspect interactive 3D model, payloads, and engineering subsystems for ${craft.name}`
   };
 
-  // 3. Focus in 3D Space Map
   let focus: ActionCapabilityDescriptor;
   if (craft.id === 'chandrayaan-1') {
     focus = {
@@ -593,7 +558,6 @@ export function resolveSpacecraftActionSet(craft: {
     };
   }
 
-  // 4. Track Vectors / Historical Orbit
   let track: ActionCapabilityDescriptor;
   if (craft.id === 'chandrayaan-1') {
     track = {

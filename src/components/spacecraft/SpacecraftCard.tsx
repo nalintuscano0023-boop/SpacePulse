@@ -29,10 +29,8 @@ export const SpacecraftCard: React.FC<SpacecraftCardProps> = ({
   return (
     <div className="glass-card spacecraft-card">
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        {/* 1. Header with Name, Operator, Mission Subtitle, and Data Status */}
         <SpacecraftHeader craft={craft} />
 
-        {/* 2. Key Values Chip Bar (Clean essential parameters) */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -70,7 +68,6 @@ export const SpacecraftCard: React.FC<SpacecraftCardProps> = ({
           </span>
         </div>
 
-        {/* 3. Concise Overview Snippet */}
         <div
           style={{
             fontSize: '12px',
@@ -88,7 +85,6 @@ export const SpacecraftCard: React.FC<SpacecraftCardProps> = ({
         </div>
       </div>
 
-      {/* 4. Unified Action Bar: [ Inspect ] [ Visibility / 3D ] [ Focus ] [ Track ] */}
       <div style={{ marginTop: 'auto', width: '100%' }}>
         <SpacecraftActions
           craft={craft}

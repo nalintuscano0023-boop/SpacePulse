@@ -166,7 +166,6 @@ export const WalkthroughProvider: React.FC<WalkthroughProviderProps> = ({
       const nextConfig = WALKTHROUGH_STEPS[nextIdx];
       setCurrentStepIndex(nextIdx);
 
-      // Handle step-specific automations
       if (nextConfig.id === 'step-object-inspector' && onInspectSampleObject) {
         onInspectSampleObject();
       }
@@ -175,7 +174,6 @@ export const WalkthroughProvider: React.FC<WalkthroughProviderProps> = ({
         onNavigateTab(nextConfig.targetTab);
       }
     } else {
-      // Final step finish
       setIsActive(false);
     }
   }, [currentStepIndex, onNavigateTab, onInspectSampleObject]);

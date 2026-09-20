@@ -19,12 +19,10 @@ export const SpacecraftActions: React.FC<SpacecraftActionsProps> = ({
   onFocus,
   onTrack
 }) => {
-  // Authoritative action capabilities resolved independently from data status
   const actions = resolveSpacecraftActionSet(craft);
 
   const handleTrackClick = () => {
     if (craft.id === 'chandrayaan-1' || craft.id === 'chandrayaan-3-surface') {
-      // Historical or lunar surface mission: opening inspector displays archived orbit or landing telemetry
       onSelect(craft);
     } else if (actions.track.isClickable) {
       onTrack(craft.id);
@@ -33,7 +31,6 @@ export const SpacecraftActions: React.FC<SpacecraftActionsProps> = ({
 
   return (
     <div className="action-bar-container">
-      {/* 1. Primary Inspect Button */}
       <div className="action-slot action-slot-primary">
         <ActionTooltip
           title={actions.inspect.tooltipTitle}
@@ -52,7 +49,6 @@ export const SpacecraftActions: React.FC<SpacecraftActionsProps> = ({
         </ActionTooltip>
       </div>
 
-      {/* 2. 3D Model Architecture Viewer */}
       <div className="action-slot">
         <ActionTooltip
           title={actions.view3D.tooltipTitle}
@@ -70,7 +66,6 @@ export const SpacecraftActions: React.FC<SpacecraftActionsProps> = ({
         </ActionTooltip>
       </div>
 
-      {/* 3. Focus in 3D Space Map */}
       <div className="action-slot">
         <ActionTooltip
           title={actions.focus.tooltipTitle}
@@ -90,7 +85,6 @@ export const SpacecraftActions: React.FC<SpacecraftActionsProps> = ({
         </ActionTooltip>
       </div>
 
-      {/* 4. Track Vectors / Historical Orbit */}
       <div className="action-slot">
         <ActionTooltip
           title={actions.track.tooltipTitle}

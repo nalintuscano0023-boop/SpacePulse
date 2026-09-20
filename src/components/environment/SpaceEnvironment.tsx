@@ -8,7 +8,6 @@ export const SpaceEnvironment: React.FC = () => {
     if (!mountRef.current) return;
     const container = mountRef.current;
 
-    // Check WebGL support
     let isWebGLAvailable = true;
     try {
       const canvas = document.createElement('canvas');
@@ -24,15 +23,12 @@ export const SpaceEnvironment: React.FC = () => {
     const width = window.innerWidth;
     const height = window.innerHeight;
 
-    // 1. Scene
     const scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x03050a, 0.0004);
 
-    // 2. Camera
     const camera = new THREE.PerspectiveCamera(60, width / height, 1, 4000);
     camera.position.z = 800;
 
-    // 3. Renderer
     const isMobile = window.innerWidth < 768;
     const renderer = new THREE.WebGLRenderer({
       alpha: true,
@@ -50,18 +46,17 @@ export const SpaceEnvironment: React.FC = () => {
     container.innerHTML = '';
     container.appendChild(renderer.domElement);
 
-    // 4. Layer 1: Distant Stellar Background
     const distantStarCount = isMobile ? 1200 : 3200;
     const distantGeo = new THREE.BufferGeometry();
     const distantPositions = new Float32Array(distantStarCount * 3);
     const distantColors = new Float32Array(distantStarCount * 3);
 
     const spectralColors = [
-      new THREE.Color(0xa5b4fc), // O/B class blue-white
-      new THREE.Color(0xe0e7ff), // A class white
-      new THREE.Color(0xfef08a), // G class yellow (solar)
-      new THREE.Color(0xfdba74), // K class orange
-      new THREE.Color(0xfca5a5)  // M class reddish
+      new THREE.Color(0xa5b4fc),
+      new THREE.Color(0xe0e7ff),
+      new THREE.Color(0xfef08a),
+      new THREE.Color(0xfdba74),
+      new THREE.Color(0xfca5a5)
     ];
 
     for (let i = 0; i < distantStarCount; i++) {
@@ -93,26 +88,20 @@ export const SpaceEnvironment: React.FC = () => {
     const distantStars = new THREE.Points(distantGeo, distantMat);
     scene.add(distantStars);
 
-    // 5. Layer 2: Milky Way Galactic Band
     const mwStarCount = isMobile ? 2000 : 5500;
     const mwGeo = new THREE.BufferGeometry();
     const mwPositions = new Float32Array(mwStarCount * 3);
     const mwColors = new Float32Array(mwStarCount * 3);
 
-    // Galactic band angle
     const galacticAngle = -Math.PI / 3.8;
     const cosG = Math.cos(galacticAngle);
     const sinG = Math.sin(galacticAngle);
 
     for (let i = 0; i < mwStarCount; i++) {
-      // Longitude along galactic plane
       const t = (Math.random() - 0.5) * 2800;
-      // Gaussian spread perpendicular to plane (central galactic disc)
       const u = (Math.random() + Math.random() + Math.random() - 1.5) * 260;
-      // Depth
       const z = -600 + (Math.random() - 0.5) * 800;
 
-      // Rotate into galactic plane
       const x = t * cosG - u * sinG;
       const y = t * sinG + u * cosG;
 
@@ -120,7 +109,6 @@ export const SpaceEnvironment: React.FC = () => {
       mwPositions[i * 3 + 1] = y;
       mwPositions[i * 3 + 2] = z;
 
-      // Color gradation: deep violet & cosmic blue at edges, warm celestial star-density at core
       const coreFactor = Math.exp(-(u * u) / 25000);
       const isCore = Math.random() < coreFactor;
 
@@ -129,7 +117,6 @@ export const SpaceEnvironment: React.FC = () => {
         mwColors[i * 3 + 1] = 0.88 + Math.random() * 0.12;
         mwColors[i * 3 + 2] = 0.98;
       } else {
-        // Deep cosmic violet / indigo dust lane
         mwColors[i * 3] = 0.25 + Math.random() * 0.25;
         mwColors[i * 3 + 1] = 0.35 + Math.random() * 0.35;
         mwColors[i * 3 + 2] = 0.75 + Math.random() * 0.25;
@@ -149,7 +136,6 @@ export const SpaceEnvironment: React.FC = () => {
     const milkyWay = new THREE.Points(mwGeo, mwMat);
     scene.add(milkyWay);
 
-    // 6. Layer 3: Foreground Twinkling Stars
     const fgCount = isMobile ? 180 : 450;
     const fgGeo = new THREE.BufferGeometry();
     const fgPositions = new Float32Array(fgCount * 3);
@@ -179,7 +165,6 @@ export const SpaceEnvironment: React.FC = () => {
     const fgStars = new THREE.Points(fgGeo, fgMat);
     scene.add(fgStars);
 
-    // Subtle parallax mouse tracking
     let targetMouseX = 0;
     let targetMouseY = 0;
     let currentMouseX = 0;
@@ -194,7 +179,6 @@ export const SpaceEnvironment: React.FC = () => {
       window.addEventListener('mousemove', onMouseMove, { passive: true });
     }
 
-    // Resize
     const onResize = () => {
       const w = window.innerWidth;
       const h = window.innerHeight;
@@ -208,7 +192,6 @@ export const SpaceEnvironment: React.FC = () => {
 
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    // Animation Loop
     let animId = 0;
     let clock = new THREE.Clock();
 
@@ -217,12 +200,10 @@ export const SpaceEnvironment: React.FC = () => {
       
       if (!prefersReducedMotion) {
         const elapsed = clock.getElapsedTime();
-        // Gentle, subtle celestial rotation (extremely slow to feel vast and tranquil)
         distantStars.rotation.y = elapsed * 0.0012;
         milkyWay.rotation.y = elapsed * 0.0016;
         fgStars.rotation.y = elapsed * 0.0022;
 
-        // Smooth parallax damping
         currentMouseX += (targetMouseX - currentMouseX) * 0.03;
         currentMouseY += (targetMouseY - currentMouseY) * 0.03;
 

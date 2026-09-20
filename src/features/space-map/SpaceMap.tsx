@@ -92,45 +92,35 @@ interface FlyToAnimation {
   durationMs: number;
 }
 
-// True astronomical orbital periods (in Earth days) for full 360° Keplerian sampling
 const ORBITAL_PERIODS_DAYS: Record<string, number> = {
   mercury: 87.97,
   venus: 224.70,
   earth: 365.25,
   mars: 686.98,
-  jupiter: 4332.59,  // ~11.86 Earth years
-  saturn: 10759.22,  // ~29.46 Earth years
-  uranus: 30685.40,  // ~84.0 Earth years
-  neptune: 60189.00  // ~164.8 Earth years
+  jupiter: 4332.59,
+  saturn: 10759.22,
+  uranus: 30685.40,
+  neptune: 60189.00
 };
 
-// Authentic sidereal rotation rates (radians per animation frame)
 const PLANET_ROTATION_SPEEDS: Record<string, number> = {
   mercury: 0.0004,
-  venus: -0.0003, // Retrograde rotation
+  venus: -0.0003,
   earth: 0.0028,
   mars: 0.0027,
-  jupiter: 0.0068, // Rapid rotation of gas giant
+  jupiter: 0.0068,
   saturn: 0.0064,
-  uranus: -0.0042, // Retrograde & tilted on side
+  uranus: -0.0042,
   neptune: 0.0045
 };
 
-/**
- * Computes visual distance in scene units from true heliocentric distance in AU
- */
 function computeVisualDistance(rAU: number, mode: ScaleMode): number {
   if (mode === 'SCIENTIFIC') {
     return Math.max(0.1, rAU * 22.0);
   }
-  // Exploration Scale: Continuous non-linear power-law compression
-  // Preserves exact ordering, true heliocentric angles, and eccentricity variations
   return Math.max(4.8, 16.5 * Math.pow(Math.max(0.01, rAU), 0.52) + 4.5);
 }
 
-/**
- * Transforms heliocentric ecliptic J2000 coordinates (in AU) to Three.js scene coordinates
- */
 function eclipticToSceneCoords(posAU: { x: number; y: number; z: number }, mode: ScaleMode): THREE.Vector3 {
   const rAU = Math.sqrt(posAU.x * posAU.x + posAU.y * posAU.y + posAU.z * posAU.z);
   const visualR = computeVisualDistance(rAU, mode);
@@ -143,7 +133,6 @@ function eclipticToSceneCoords(posAU: { x: number; y: number; z: number }, mode:
   );
 }
 
-// Satellite distance mapping around Earth in Earth-Orbit mode
 function mapSatelliteVisualRadius(altKm: number): number {
   const EARTH_VISUAL_R = 10.0;
   if (altKm < 2000) {
@@ -162,19 +151,16 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
   
-  // View Modes & Active State
   const [viewMode, setViewMode] = useState<ViewMode>('SOLAR_SYSTEM');
   const [scaleMode, setScaleMode] = useState<ScaleMode>('EXPLORATION');
   const [selectedBodyId, setSelectedBodyId] = useState<string | null>(selectedObjectId || null);
   const [simDate, setSimDate] = useState<Date>(new Date());
   
-  // Layer Toggles
   const [showPlanets, setShowPlanets] = useState<boolean>(true);
   const [showOrbits, setShowOrbits] = useState<boolean>(true);
   const [showSpacecraft, setShowSpacecraft] = useState<boolean>(true);
   const [showSatellites, setShowSatellites] = useState<boolean>(true);
 
-  // Status & Telemetry
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
   const [webGLFailed, setWebGLFailed] = useState<boolean>(false);
   const [isFetchingSatellites, setIsFetchingSatellites] = useState<boolean>(false);
@@ -185,7 +171,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
   const [isMobileControlsOpen, setIsMobileControlsOpen] = useState<boolean>(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState<boolean>(false);
 
-  // 1. Cinematic 0-9s Arrival Sequence State
   const [isArrivalActive, setIsArrivalActive] = useState<boolean>(() => {
     try {
       const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -198,14 +183,11 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
   });
   const [arrivalSeconds, setArrivalSeconds] = useState<number>(0);
 
-  // 2. "Orbital View" Spacewalk Camera Mode State
   const [isOrbitalView, setIsOrbitalView] = useState<boolean>(false);
 
-  // 3. 7-Step Spacepulse Space Tour State (1 to 7, 0 = inactive)
   const [tourStep, setTourStep] = useState<number>(0);
   const [tourPaused, setTourPaused] = useState<boolean>(false);
 
-  // HUD Telemetry State
   const [hudData, setHudData] = useState<{
     name: string;
     catalogId?: string;
@@ -221,7 +203,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     isUnavailable?: boolean;
   } | null>(null);
 
-  // Three.js References
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -233,16 +214,13 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
   const animIdRef = useRef<number>(0);
   const meteorSystemRef = useRef<ReturnType<typeof createEarthAtmosphericMeteorSystem> | null>(null);
 
-  // Lighting References for Dynamic Celestial Illuminance
   const sunPointLightRef = useRef<THREE.PointLight | null>(null);
   const sunDirLightRef = useRef<THREE.DirectionalLight | null>(null);
   const ambientLightRef = useRef<THREE.AmbientLight | null>(null);
 
-  // Smooth Fly-To Camera Flight Reference
   const flyToAnimRef = useRef<FlyToAnimation | null>(null);
   const handleObjectSelectionRef = useRef<(objectId: string, shouldInspect?: boolean) => void>(() => {});
 
-  // Synchronize selection from parent prop
   useEffect(() => {
     if (selectedObjectId) {
       setSelectedBodyId(selectedObjectId);
@@ -255,7 +233,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     }
   }, [selectedObjectId]);
 
-  // Smooth Fly-To Interpolator Function
   const flyToTarget = useCallback((targetPos: THREE.Vector3, targetLook: THREE.Vector3, durationMs: number = 1350) => {
     if (!cameraRef.current || !controlsRef.current) return;
     flyToAnimRef.current = {
@@ -268,17 +245,13 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     };
   }, []);
 
-  // Preset Camera Compositions
   const applyCameraComposition = useCallback((comp: CameraComposition) => {
     if (!cameraRef.current) return;
     if (comp === 'ECLIPTIC_3_4') {
-      // Carefully composed 3/4 diagonal depth: Sun slightly off-center, inner/outer depth
       flyToTarget(new THREE.Vector3(38, 28, 78), new THREE.Vector3(-4, -1, 3), 1300);
     } else if (comp === 'WIDE_HELIOCENTRIC') {
-      // Full system overview with large negative space
       flyToTarget(new THREE.Vector3(12, 110, 240), new THREE.Vector3(0, -1, 0), 1400);
     } else if (comp === 'SUNRISE_HORIZON') {
-      // Cinematic sunrise composition looking past Earth towards the radiant Sun
       const earth = bodiesRef.current.get('earth');
       if (earth) {
         const earthPos = earth.position;
@@ -288,7 +261,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         flyToTarget(new THREE.Vector3(20, 6, 24), new THREE.Vector3(0, 0, 0), 1200);
       }
     } else if (comp === 'SATURN_RING_PLANE') {
-      // Grazing shallow elevation across Saturn's ring system
       const saturn = bodiesRef.current.get('saturn');
       if (saturn) {
         const sPos = saturn.position;
@@ -310,7 +282,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     }
   }, [viewMode, scaleMode, flyToTarget, applyCameraComposition]);
 
-  // Focus on specific object with smooth ease-in-out flight
   const focusOnObject = useCallback((id: string) => {
     let body = bodiesRef.current.get(id);
     if (!body && id.startsWith('chandrayaan')) {
@@ -352,7 +323,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         viewDist = 4.0;
       }
 
-      // Compute camera offset along current viewing angle with slight upward elevation
       const currentDir = cameraRef.current.position.clone().sub(targetLook).normalize();
       if (currentDir.y < 0.25) currentDir.y = 0.35;
       currentDir.normalize();
@@ -362,7 +332,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     }
   }, [viewMode, selectedBodyId, flyToTarget]);
 
-  // Unified object selection and inspection handler
   const handleObjectSelection = useCallback(async (objectId: string, shouldInspect: boolean = false) => {
     setSelectedBodyId(objectId);
     const body = bodiesRef.current.get(objectId);
@@ -382,7 +351,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
   }, [simDate, onInspectObject, onSelectObject]);
   handleObjectSelectionRef.current = handleObjectSelection;
 
-  // Skip Cinematic Arrival
   const skipArrival = useCallback(() => {
     setIsArrivalActive(false);
     try {
@@ -393,7 +361,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     applyCameraComposition('ECLIPTIC_3_4');
   }, [applyCameraComposition]);
 
-  // 7-Step Space Tour Transitions
   const handleTourStep = useCallback((step: number) => {
     setTourStep(step);
     if (step === 0) {
@@ -402,13 +369,10 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     }
 
     if (step === 1) {
-      // Step 1: Entering deep space
       flyToTarget(new THREE.Vector3(0, 240, 580), new THREE.Vector3(0, 0, 0), 1600);
     } else if (step === 2) {
-      // Step 2: Approaching the Solar System (Sun ignition)
       flyToTarget(new THREE.Vector3(38, 28, 78), new THREE.Vector3(-4, -1, 3), 1600);
     } else if (step === 3) {
-      // Step 3: The inner worlds (Mercury, Venus, Earth, Mars)
       const earth = bodiesRef.current.get('earth');
       if (earth) {
         setSelectedBodyId('earth');
@@ -416,7 +380,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         flyToTarget(earth.position.clone().add(new THREE.Vector3(6.5, 3.8, 8.5)), earth.position.clone(), 1600);
       }
     } else if (step === 4) {
-      // Step 4: The outer worlds (Jupiter and Saturn's rings)
       const saturn = bodiesRef.current.get('saturn');
       if (saturn) {
         setSelectedBodyId('saturn');
@@ -424,7 +387,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         flyToTarget(saturn.position.clone().add(new THREE.Vector3(14.0, 4.5, 16.0)), saturn.position.clone(), 1700);
       }
     } else if (step === 5) {
-      // Step 5: Beyond the giants (Uranus and Neptune)
       const neptune = bodiesRef.current.get('neptune');
       if (neptune) {
         setSelectedBodyId('neptune');
@@ -432,7 +394,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         flyToTarget(neptune.position.clone().add(new THREE.Vector3(12.0, 3.5, 14.0)), neptune.position.clone(), 1700);
       }
     } else if (step === 6) {
-      // Step 6: Human exploration (Aditya-L1, satellites, human presence)
       const aditya = bodiesRef.current.get('aditya-l1');
       if (aditya) {
         setSelectedBodyId('aditya-l1');
@@ -440,14 +401,12 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         flyToTarget(aditya.position.clone().add(new THREE.Vector3(4.5, 2.0, 5.5)), aditya.position.clone(), 1600);
       }
     } else if (step === 7) {
-      // Step 7: Return to full observatory overview
       setSelectedBodyId(null);
       setHudData(null);
       applyCameraComposition('ECLIPTIC_3_4');
     }
   }, [flyToTarget, resetView, applyCameraComposition]);
 
-  // Auto-advance tour if not paused
   useEffect(() => {
     if (tourStep === 0 || tourPaused) return;
     const timer = setTimeout(() => {
@@ -460,9 +419,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     return () => clearTimeout(timer);
   }, [tourStep, tourPaused, handleTourStep]);
 
-  // =========================================================================
-  // 1. INITIALIZE THREE.JS SCENE & RENDERER (Runs Once)
-  // =========================================================================
   useEffect(() => {
     const container = mountRef.current;
     if (!container) return;
@@ -488,11 +444,8 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     scene.background = new THREE.Color('#000204');
     sceneRef.current = scene;
 
-    // Perspective Camera: 50° FOV gives natural depth perception
     const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 35000);
     
-    // Starting camera coordinates:
-    // If arrival is active, start in deep black space; otherwise use cinematic 3/4 composition
     if (isArrivalActive) {
       camera.position.set(0, 320, 780);
       camera.lookAt(0, 0, 0);
@@ -529,16 +482,13 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     };
     controlsRef.current = controls;
 
-    // 4-Tier Deep Space Starfield with Volumetric Milky Way Band
     const starfield = createRealisticStarfield();
     scene.add(starfield);
 
-    // Earth Upper-Atmosphere Meteor System
     const meteorSystem = createEarthAtmosphericMeteorSystem();
     scene.add(meteorSystem.group);
     meteorSystemRef.current = meteorSystem;
 
-    // Dynamic Multi-Source Illuminating System
     const sunPointLight = new THREE.PointLight(0xfffaec, 4.2, 8000, 0.06);
     sunPointLight.position.set(0, 0, 0);
     scene.add(sunPointLight);
@@ -554,7 +504,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     scene.add(ambientLight);
     ambientLightRef.current = ambientLight;
 
-    // Distance Ranging Vector
     const distGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0)]);
     const distMat = new THREE.LineDashedMaterial({ color: 0x38bdf8, dashSize: 2, gapSize: 1.5, transparent: true, opacity: 0.55 });
     const distanceLine = new THREE.Line(distGeo, distMat);
@@ -562,13 +511,11 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     scene.add(distanceLine);
     distLineRef.current = distanceLine;
 
-    // Scientific Target Acquisition Reticle
     const reticle = createScientificReticle(2.2);
     reticle.visible = false;
     scene.add(reticle);
     reticleRef.current = reticle;
 
-    // Resize Observer
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const w = entry.contentRect.width || container.clientWidth || 300;
@@ -582,7 +529,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     });
     resizeObserver.observe(container);
 
-    // Raycaster for Hover & Click
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
 
@@ -661,7 +607,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         const dy = e.changedTouches[0].clientY - touchStartY;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
-        // Tap detected if brief touch (< 300ms) with minimal movement (< 14px)
         if (dt < 300 && dist < 14) {
           const rect = renderer.domElement.getBoundingClientRect();
           mouse.x = ((e.changedTouches[0].clientX - rect.left) / rect.width) * 2 - 1;
@@ -692,7 +637,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     renderer.domElement.addEventListener('touchstart', onTouchStart, { passive: true });
     renderer.domElement.addEventListener('touchend', onTouchEnd, { passive: true });
 
-    // Animation Loop
     let lastTime = performance.now();
     let arrivalElapsedSec = 0;
 
@@ -702,31 +646,25 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
       const deltaSec = Math.min(0.1, (now - lastTime) / 1000);
       lastTime = now;
 
-      // 1. Cinematic Arrival Sequence Progression
       if (isArrivalActive) {
         arrivalElapsedSec += deltaSec;
         setArrivalSeconds(arrivalElapsedSec);
 
         if (arrivalElapsedSec <= 2.0) {
-          // 0-2s: Deep black space, camera holds
         } else if (arrivalElapsedSec <= 4.0) {
-          // 2-4s: Slow forward drift
           camera.position.z -= deltaSec * 35;
         } else if (arrivalElapsedSec <= 6.0) {
-          // 4-6s: Sun illuminates, camera sweeps down
           const t6 = (arrivalElapsedSec - 4.0) / 2.0;
           camera.position.y = THREE.MathUtils.lerp(320, 110, t6);
           camera.position.z = THREE.MathUtils.lerp(710, 220, t6);
           camera.lookAt(0, 0, 0);
         } else if (arrivalElapsedSec <= 9.0) {
-          // 6-9s: Glides smoothly into normal 3/4 composition
           const t9 = (arrivalElapsedSec - 6.0) / 3.0;
           const ease = t9 < 0.5 ? 4 * t9 * t9 * t9 : 1 - Math.pow(-2 * t9 + 2, 3) / 2;
           camera.position.lerpVectors(new THREE.Vector3(25, 110, 220), new THREE.Vector3(38, 28, 78), ease);
           controls.target.lerpVectors(new THREE.Vector3(0, 0, 0), new THREE.Vector3(-4, -1, 3), ease);
           controls.update();
         } else {
-          // 9+s: Settle
           setIsArrivalActive(false);
           try {
             localStorage.setItem('spacepulse_cinematic_arrival_completed', 'true');
@@ -735,7 +673,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         }
       }
 
-      // 2. "Orbital View" Spacewalk Camera Drift Mode
       else if (isOrbitalView) {
         const t = now * 0.00018;
         const driftRadius = 135.0;
@@ -746,7 +683,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         controls.update();
       }
 
-      // 3. Smooth Camera Fly-To Interpolation
       else if (flyToAnimRef.current) {
         const anim = flyToAnimRef.current;
         const elapsed = now - anim.startTime;
@@ -767,7 +703,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         controls.update();
       }
 
-      // 4. Update Earth Atmospheric Meteors
       if (meteorSystemRef.current) {
         const earth = bodiesRef.current.get('earth');
         const earthPos = earth ? earth.position : new THREE.Vector3(0, 0, 0);
@@ -778,7 +713,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         );
       }
 
-      // 5. Rotate Planets at Believable Speeds
       bodiesRef.current.forEach(body => {
         const speed = PLANET_ROTATION_SPEEDS[body.id] || 0.002;
         if (body.planetMesh) {
@@ -796,7 +730,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         }
       });
 
-      // 6. Selection Reticle subtle rotation
       if (reticleRef.current && reticleRef.current.visible) {
         reticleRef.current.rotation.z += 0.008;
       }
@@ -821,9 +754,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     };
   }, []);
 
-  // =========================================================================
-  // 2. BUILD BASE ASTRONOMICAL SCENE (Solar System or Earth Orbit)
-  // =========================================================================
   useEffect(() => {
     const scene = sceneRef.current;
     if (!scene) return;
@@ -842,7 +772,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         ambientLightRef.current.intensity = 0.22;
       }
 
-      // 1. Sun (Authentic Self-Illuminated Star)
       const sunSystem = createRealisticSun(4.5);
       scene.add(sunSystem.mesh);
 
@@ -857,7 +786,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         color: '#f59e0b'
       });
 
-      // 2. All 8 Major Planets
       const planetKeys = ['mercury', 'venus', 'earth', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune'];
 
       planetKeys.forEach(pId => {
@@ -877,7 +805,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
           planetObj.group.visible = showPlanets;
           scene.add(planetObj.group);
 
-          // If Earth, add the Moon
           if (pId === 'earth') {
             const moonGeo = new THREE.SphereGeometry(visualRadius * 0.27, 24, 24);
             const moonMat = new THREE.MeshStandardMaterial({ color: 0xcfd8dc, roughness: 0.9 });
@@ -895,7 +822,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
             cloudsMeshRef.current = planetObj.cloudsMesh || null;
           }
 
-          // Keplerian Elliptical Orbit Path
           let orbitLine: THREE.Line | undefined;
           if (showOrbits) {
             const orbitPts: THREE.Vector3[] = [];
@@ -939,7 +865,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         }
       });
 
-      // 3. Aditya-L1 Solar Observatory at Sun-Earth L1
       try {
         const l1 = calculateAdityaL1Ephemeris(simDate);
         const earthBody = bodiesRef.current.get('earth');
@@ -992,7 +917,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         console.error('Aditya-L1 error:', e);
       }
 
-      // 4. Interstellar Spacecraft: Voyager 1 & Voyager 2
       const voyagerProbes: Array<'voyager-1' | 'voyager-2'> = ['voyager-1', 'voyager-2'];
       for (const vId of voyagerProbes) {
         try {
@@ -1001,7 +925,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
 
           const vMesh = getSpacecraft3DModel(vId, { scale: 0.55, isMapMode: true });
           vMesh.position.copy(vVisualPos);
-          // Point high-gain antenna dish back toward inner Solar System / Earth
           vMesh.lookAt(0, 0, 0);
           vMesh.userData = { bodyId: vId };
           vMesh.traverse(child => {
@@ -1010,7 +933,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
           vMesh.visible = showSpacecraft;
           scene.add(vMesh);
 
-          // Asymptotic interstellar escape trajectory line
           let escapeLine: THREE.Line | undefined;
           if (showOrbits) {
             const linePts = [
@@ -1056,7 +978,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         }
       }
 
-      // 5. Chandrayaan-1 Historical Lunar Mission
       const ch1Def = SPACECRAFT_REGISTRY.find(s => s.id === 'chandrayaan-1');
       const earthBody = bodiesRef.current.get('earth');
       if (ch1Def && earthBody) {
@@ -1082,7 +1003,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
       }
 
     } else {
-      // EARTH ORBIT TRACKING MODE
       if (sunPointLightRef.current) sunPointLightRef.current.intensity = 0.0;
       if (sunDirLightRef.current) sunDirLightRef.current.intensity = 3.2;
       if (ambientLightRef.current) {
@@ -1281,7 +1201,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
 
   }, [viewMode, scaleMode, simDate, showPlanets, showOrbits, showSpacecraft, showSatellites]);
 
-  // Update HUD & Selection Reticle when selection changes
   useEffect(() => {
     const reticle = reticleRef.current;
     const distLine = distLineRef.current;
@@ -1355,7 +1274,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     }
   }, [selectedBodyId, viewMode, simDate]);
 
-  // Search Objects Registry
   const searchableList = useMemo(() => {
     return [
       { id: 'sun', name: 'Sun (Sol)', type: 'star', category: 'Star' },
@@ -1418,7 +1336,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     handleObjectSelection(obj.id, false);
   };
 
-  // Fallback if WebGL is completely unsupported
   if (webGLFailed) {
     return (
       <div className="container" style={{ padding: '48px 24px', textAlign: 'center' }}>
@@ -1447,7 +1364,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         display: 'block'
       }}
     >
-      {/* 3D WebGL Canvas Mount Container */}
       <div
         ref={mountRef}
         style={{
@@ -1460,7 +1376,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         }}
       />
 
-      {/* 1. Cinematic 0-9s Arrival Overlay & Skip Button */}
       {isArrivalActive && (
         <div style={{
           position: 'absolute',
@@ -1497,10 +1412,8 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         </div>
       )}
 
-      {/* 2. "Orbital View" Spacewalk Mode Active HUD Overlay */}
       {isOrbitalView && (
         <>
-          {/* Subtle Spacecraft Observation Viewport Vignette Edge */}
           <div style={{
             position: 'absolute',
             inset: 0,
@@ -1526,7 +1439,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
             </div>
           </div>
 
-          {/* Floating Exit Orbital View Button */}
           <div style={{
             position: 'absolute',
             top: '20px',
@@ -1556,10 +1468,8 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         </>
       )}
 
-      {/* Top Scientific Control Toolbar (Hidden in Spacewalk Mode) */}
       {!isOrbitalView && (
         <>
-          {/* Desktop Toolbar (visible >= 860px) */}
           <div 
             className="desktop-space-map-hud"
             style={{
@@ -1574,7 +1484,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
               zIndex: 20
             }}
           >
-          {/* Sub-Header: Reference Frame & Status */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -1635,9 +1544,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
             gap: '12px',
             flexWrap: 'wrap'
           }}>
-            {/* Left Controls */}
             <div id="space-map-controls-panel" style={{ display: 'flex', alignItems: 'center', gap: '8px', pointerEvents: 'auto', flexWrap: 'wrap' }}>
-              {/* Mode Switcher */}
               <div className="glass-panel" style={{ display: 'flex', padding: '3px', borderRadius: 'var(--radius-xs)', gap: '3px', background: 'rgba(5, 12, 24, 0.88)' }}>
                 <button
                   onClick={() => {
@@ -1692,7 +1599,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
                 </button>
               </div>
 
-              {/* Scale Mode Switcher */}
               {viewMode === 'SOLAR_SYSTEM' && (
                 <div className="glass-panel" style={{ display: 'flex', padding: '3px', borderRadius: 'var(--radius-xs)', gap: '3px', background: 'rgba(5, 12, 24, 0.88)' }}>
                   <button
@@ -1742,7 +1648,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
                 </div>
               )}
 
-              {/* Quick Selectors */}
               {viewMode === 'EARTH_ORBIT' ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
                   {['iss', 'css-tiangong', 'hubble', 'astrosat', 'cartosat-3', 'eos-06'].map(satId => {
@@ -1791,7 +1696,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
                 </div>
               )}
 
-              {/* Search Bar */}
               <div style={{ position: 'relative' }}>
                 <div style={{
                   display: 'flex',
@@ -1867,9 +1771,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
               </div>
             </div>
 
-            {/* Right Controls: Compositions, Spacewalk, Tour, Layers, Reset */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', pointerEvents: 'auto' }}>
-              {/* Spacewalk / Orbital View Button */}
               {viewMode === 'SOLAR_SYSTEM' && (
                 <button
                   onClick={() => setIsOrbitalView(true)}
@@ -1890,7 +1792,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
                 </button>
               )}
 
-              {/* 7-Step Tour Button */}
               {viewMode === 'SOLAR_SYSTEM' && (
                 <button
                   onClick={() => handleTourStep(1)}
@@ -1926,7 +1827,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
           </div>
         </div>
 
-        {/* Mobile Top Toolbar (visible < 860px) */}
         <div 
           className="mobile-space-map-hud"
           style={{
@@ -1941,7 +1841,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
             pointerEvents: 'none'
           }}
         >
-          {/* If Mobile Search is Active: Full-Width Search Bar */}
           {isMobileSearchOpen ? (
             <div style={{
               display: 'flex',
@@ -2004,7 +1903,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
               width: '100%',
               gap: '6px'
             }}>
-              {/* Compact Status Pill */}
               <div style={{
                 fontSize: '10px',
                 fontFamily: 'var(--font-mono)',
@@ -2028,7 +1926,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
                 <span style={{ color: 'var(--text-muted)' }}>{viewMode === 'EARTH_ORBIT' ? 'SGP4' : 'J2000'}</span>
               </div>
 
-              {/* Action Buttons: Search Toggle & Controls Toggle */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', pointerEvents: 'auto', flexShrink: 0 }}>
                 <button
                   onClick={() => setIsMobileSearchOpen(true)}
@@ -2073,7 +1970,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
             </div>
           )}
 
-          {/* Search Dropdown Results on Mobile */}
           {isMobileSearchOpen && showSearchDropdown && searchResults.length > 0 && (
             <div
               className="glass-panel"
@@ -2114,7 +2010,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
           )}
         </div>
 
-        {/* Mobile Controls Bottom Sheet */}
         {isMobileControlsOpen && (
           <div
             style={{
@@ -2139,10 +2034,8 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
               boxShadow: '0 -12px 40px rgba(0, 0, 0, 0.85)'
             }}
           >
-            {/* Grab bar */}
             <div className="object-inspector-handle" style={{ display: 'block', margin: '0 auto 6px' }} />
 
-            {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ fontSize: '12px', fontFamily: 'var(--font-heading)', fontWeight: 700, color: '#ffffff', letterSpacing: '0.04em' }}>
                 SPACE MAP CONTROLS &amp; TARGETS
@@ -2164,7 +2057,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
               </button>
             </div>
 
-            {/* Mode Switcher */}
             <div>
               <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
                 Reference Frame &amp; Mode
@@ -2195,7 +2087,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
               </div>
             </div>
 
-            {/* Scale mode (if Solar System) */}
             {viewMode === 'SOLAR_SYSTEM' && (
               <div>
                 <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
@@ -2225,7 +2116,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
               </div>
             )}
 
-            {/* Quick Targets */}
             <div>
               <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
                 Quick Focus Targets
@@ -2265,7 +2155,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
               </div>
             </div>
 
-            {/* Visual Actions */}
             <div>
               <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
                 View &amp; Features
@@ -2322,7 +2211,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
               </div>
             </div>
 
-            {/* Mobile Time Scrubber */}
             <div style={{
               background: 'var(--surface-inset)',
               borderRadius: 'var(--radius-xs)',
@@ -2367,7 +2255,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
       </>
       )}
 
-      {/* 3. 7-Step Spacepulse Space Tour Interactive Player Modal */}
       {tourStep > 0 && !isOrbitalView && (
         <div
           className="glass-panel tech-corner"
@@ -2501,7 +2388,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         </div>
       )}
 
-      {/* Hover Tooltip */}
       {hoveredBody && !isOrbitalView && (
         <div
           style={{
@@ -2528,7 +2414,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         </div>
       )}
 
-      {/* Target Acquisition HUD Reticle (Bottom Left) */}
       {!isOrbitalView && hudData && (
         <div
           className="glass-panel tech-corner space-map-hud"
@@ -2674,7 +2559,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         </div>
       )}
 
-      {/* Scientific Transparency Scale Disclaimer (Bottom Center) */}
       {!isOrbitalView && (
         <div
           className="space-map-scale-disclaimer"
@@ -2709,7 +2593,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         </div>
       )}
 
-      {/* Time Scrubber (Bottom Right - Desktop) */}
       {!isOrbitalView && (
         <div
           className="glass-panel desktop-time-scrubber"
@@ -2765,7 +2648,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         </div>
       )}
 
-      {/* 3D Spacecraft Architecture Viewer Modal */}
       {viewing3DViewer && (
         <Spacecraft3DViewer
           craftId={viewing3DViewer.id}
