@@ -46,6 +46,10 @@
   --status-unavailable-bg: rgba(100, 116, 139, 0.12);
   --status-unavailable-border: rgba(100, 116, 139, 0.3);
 
+  --status-historical: #a855f7;
+  --status-historical-bg: rgba(168, 85, 247, 0.12);
+  --status-historical-border: rgba(168, 85, 247, 0.3);
+
   --status-error: #ef4444;
   --status-error-bg: rgba(239, 68, 68, 0.12);
   --status-error-border: rgba(239, 68, 68, 0.3);

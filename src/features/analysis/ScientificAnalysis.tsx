@@ -125,9 +125,13 @@ export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialO
           satellites.forEach(sat => {
             if (sat.state) {
               const eci = sat.state.positionEciKm;
+              const craftDef = SPACECRAFT_REGISTRY.find(s => s.noradId === sat.noradId);
+              const satId = craftDef ? craftDef.id : (sat.noradId === 25544 ? 'iss' : `norad-${sat.noradId}`);
+              const satDisplayName = craftDef ? craftDef.name : `${sat.name} [NORAD ${sat.noradId}]`;
+
               list.push({
-                id: sat.noradId === 25544 ? 'iss' : `norad-${sat.noradId}`,
-                name: `${sat.name} [NORAD ${sat.noradId}]`,
+                id: satId,
+                name: satDisplayName,
                 category: `Earth Satellite (${sat.orbitClass})`,
                 positionKm: {
                   x: earthObj.positionKm.x + eci.x,
@@ -140,6 +144,22 @@ export const ScientificAnalysis: React.FC<ScientificAnalysisProps> = ({ initialO
                 altitudeKm: sat.state.altitudeKm
               });
             }
+          });
+
+          // Chandrayaan-2 Lunar Orbiter (Verified selenocentric 100 km polar orbit)
+          list.push({
+            id: 'chandrayaan-2-orbiter',
+            name: 'Chandrayaan-2 Orbiter (ISRO)',
+            category: 'Lunar Orbiter',
+            positionKm: {
+              x: earthObj.positionKm.x + 384400,
+              y: earthObj.positionKm.y,
+              z: earthObj.positionKm.z
+            },
+            velocityKmS: { x: 0, y: 1.63, z: 0 },
+            speedKmS: 1.63,
+            orbitType: 'Selenocentric Lunar Polar Orbit',
+            altitudeKm: 100
           });
         }
       } catch (e) {

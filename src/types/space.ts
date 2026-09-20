@@ -1,4 +1,5 @@
 import { SourceMetadata } from './telemetry';
+import type { TrackingCapability } from '../services/data/trackingCapability';
 
 export interface Vector3D {
   x: number;
@@ -89,6 +90,7 @@ export interface SpacecraftObject {
   };
 
   telemetrySource: SourceMetadata;
+  trackingCapability?: TrackingCapability;
 }
 
 export type ObjectCategory = 'spacecraft' | 'satellite' | 'planet' | 'moon' | 'star';
@@ -129,9 +131,22 @@ export interface InspectableObject {
     altitudeKm: number;
   };
 
+  // Orbital parameters if applicable
+  orbitalElements?: {
+    epoch: string;
+    semiMajorAxisKm?: number;
+    inclinationDeg: number;
+    eccentricity: number;
+    periodMinutes?: number;
+    raanDeg?: number;
+    argPericenterDeg?: number;
+    meanAnomalyDeg?: number;
+  };
+
   noradId?: number;
   jplId?: string;
   telemetrySource: SourceMetadata;
+  trackingCapability?: TrackingCapability;
 
   // Reference to original spacecraft object if applicable
   rawSpacecraft?: SpacecraftObject;

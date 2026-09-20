@@ -10,6 +10,7 @@ interface StatusBadgeProps {
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, metadata, compact = false }) => {
   const getBadgeConfig = () => {
     switch (status) {
+      case 'CURRENT':
       case 'LIVE':
         return {
           label: 'CURRENT',
@@ -34,6 +35,15 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, metadata, comp
           bg: 'var(--status-last-bg)',
           border: 'var(--status-last-border)'
         };
+      case 'HISTORICAL':
+        return {
+          label: 'HISTORICAL',
+          symbol: '●',
+          color: 'var(--status-historical)',
+          bg: 'var(--status-historical-bg)',
+          border: 'var(--status-historical-border)'
+        };
+      case 'DATA_UNAVAILABLE':
       case 'UNAVAILABLE':
         return {
           label: 'DATA UNAVAILABLE',
@@ -49,6 +59,14 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, metadata, comp
           color: 'var(--status-error)',
           bg: 'var(--status-error-bg)',
           border: 'var(--status-error-border)'
+        };
+      default:
+        return {
+          label: 'DATA UNAVAILABLE',
+          symbol: '○',
+          color: 'var(--status-unavailable)',
+          bg: 'var(--status-unavailable-bg)',
+          border: 'var(--status-unavailable-border)'
         };
     }
   };

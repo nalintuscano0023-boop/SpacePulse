@@ -22,6 +22,7 @@ import { formatDistanceKm, formatVelocityKmS } from '../../utils/formatters';
 import { formatLightTime, kmToAu } from '../../services/calculations/physics';
 import { Spacecraft3DViewer } from './Spacecraft3DViewer';
 import { ActionTooltip } from '../spacecraft/ActionTooltip';
+import { resolveTrackingCapability } from '../../services/data/trackingCapability';
 
 interface ObjectInspectorProps {
   object: InspectableObject | SpacecraftObject | null;
@@ -85,6 +86,7 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
   if (!rawObject) return null;
 
   const object: InspectableObject = 'category' in rawObject ? rawObject : normalizeSpacecraftObject(rawObject);
+  const cap = object.trackingCapability || resolveTrackingCapability(object.id, object.name);
 
   const isVoyager = object.id.includes('voyager');
   const isCelestial = object.category === 'planet' || object.category === 'star' || object.category === 'moon';
@@ -500,6 +502,51 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
                       </div>
                     </div>
                   )}
+
+                  {/* Keplerian Orbit Elements from verified SGP4 GP Data */}
+                  {object.orbitalElements && (
+                    <div style={{ background: 'var(--surface-inset)', padding: '10px', borderRadius: 'var(--radius-xs)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                          Keplerian Orbital Elements (SGP4 Model)
+                        </div>
+                        <span style={{ fontSize: '9px', color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)' }}>
+                          CALCULATED
+                        </span>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        <div>
+                          <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>ORBITAL PERIOD</span>
+                          <div className="mono" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                            {object.orbitalElements.periodMinutes ? `${object.orbitalElements.periodMinutes.toFixed(1)} min` : 'N/A'}
+                          </div>
+                        </div>
+                        <div>
+                          <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>INCLINATION</span>
+                          <div className="mono" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                            {object.orbitalElements.inclinationDeg.toFixed(2)}°
+                          </div>
+                        </div>
+                        <div>
+                          <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>ECCENTRICITY</span>
+                          <div className="mono" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                            {object.orbitalElements.eccentricity.toFixed(5)}
+                          </div>
+                        </div>
+                        <div>
+                          <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>SEMI-MAJOR AXIS</span>
+                          <div className="mono" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                            {object.orbitalElements.semiMajorAxisKm ? `${Math.round(object.orbitalElements.semiMajorAxisKm).toLocaleString()} km` : 'N/A'}
+                          </div>
+                        </div>
+                      </div>
+                      {object.orbitalElements.epoch && (
+                        <div style={{ fontSize: '10px', color: 'var(--text-muted)', borderTop: '1px solid var(--border-hairline)', paddingTop: '4px' }}>
+                          Epoch: <span style={{ color: 'var(--text-secondary)' }}>{object.orbitalElements.epoch}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -603,13 +650,19 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
               className={`inspector-accordion-body ${isExpanded('data') ? 'open' : ''}`}
             >
               <div className="inspector-accordion-inner">
-                <div className="inspector-accordion-content" style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '11px' }}>
+                <div className="inspector-accordion-content" style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '11px' }}>
                   <div>Primary Stream: <strong style={{ color: 'var(--text-primary)' }}>{object.telemetrySource.sourceName}</strong></div>
-                  {object.telemetrySource.statusNote && (
-                    <div style={{ color: 'var(--accent-cyan)' }}>{object.telemetrySource.statusNote}</div>
+                  <div style={{ color: 'var(--accent-cyan)' }}>{cap.statusLabel} — {cap.statusDescription}</div>
+                  {object.telemetrySource.statusNote && object.telemetrySource.statusNote !== cap.statusDescription && (
+                    <div style={{ color: 'var(--text-secondary)' }}>{object.telemetrySource.statusNote}</div>
                   )}
-                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                    Last Stream Synchronized: {new Date(object.telemetrySource.timestamp).toUTCString()}
+                  {object.telemetrySource.calculationMethod && (
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                      Method: <span style={{ color: 'var(--text-secondary)' }}>{object.telemetrySource.calculationMethod}</span>
+                    </div>
+                  )}
+                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', borderTop: '1px solid var(--border-hairline)', paddingTop: '4px' }}>
+                    Data Timestamp: {new Date(cap.dataTimestamp || object.telemetrySource.timestamp).toUTCString()}
                   </div>
                 </div>
               </div>
@@ -642,7 +695,7 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
           ) : null}
 
           {onFocusOnMap && (
-            !isVoyager ? (
+            cap.canFocusOnMap ? (
               <button
                 onClick={() => onFocusOnMap(object.id)}
                 className="btn btn-primary"
@@ -654,8 +707,8 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
               </button>
             ) : (
               <ActionTooltip
-                title="FOCUS UNAVAILABLE"
-                description="Reliable positional data is unavailable for this object."
+                title={cap.statusLabel}
+                description={cap.focusReason}
                 isUnavailable
               >
                 <button
@@ -672,20 +725,20 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
           )}
 
           {onOpenInAnalysis && (
-            !isVoyager ? (
+            cap.canTrackVectors ? (
               <button
                 onClick={() => onOpenInAnalysis(object.id)}
                 className="btn btn-secondary"
                 style={{ minHeight: '38px', fontSize: '12px', padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                title="Vector Analysis"
-                aria-label="Open in Vector Analysis"
+                title={`Track vectors for ${object.name}`}
+                aria-label={`Open ${object.name} in Vector Analysis`}
               >
                 <Compass size={14} />
               </button>
             ) : (
               <ActionTooltip
-                title="TRACKING UNAVAILABLE"
-                description="No browser-accessible verified ephemeris is currently available."
+                title={cap.statusLabel}
+                description={cap.trackReason}
                 isUnavailable
               >
                 <button
@@ -693,7 +746,7 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
                   aria-disabled="true"
                   className="btn btn-secondary"
                   style={{ minHeight: '38px', fontSize: '12px', padding: '8px 12px', opacity: 0.4, cursor: 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  aria-label="Vector tracking unavailable"
+                  aria-label={`Vector tracking unavailable: ${cap.trackReason}`}
                 >
                   <Compass size={14} />
                 </button>

@@ -3,6 +3,8 @@ import { Activity, Eye, Orbit, Compass } from 'lucide-react';
 import type { SpacecraftObject } from '../../types/space';
 import { ActionTooltip } from './ActionTooltip';
 
+import { resolveTrackingCapability } from '../../services/data/trackingCapability';
+
 interface SpacecraftActionsProps {
   craft: SpacecraftObject;
   onSelect: (obj: SpacecraftObject) => void;
@@ -18,45 +20,16 @@ export const SpacecraftActions: React.FC<SpacecraftActionsProps> = ({
   onFocus,
   onTrack
 }) => {
-  const isVoyager = craft.id.includes('voyager');
+  // Authoritative tracking capability resolved from central source of truth
+  const cap = craft.trackingCapability || resolveTrackingCapability(craft.id, craft.name);
 
-  // Capability resolution: Focus on 3D Space Map
-  let focusEnabled = false;
-  let focusReasonTitle = 'FOCUS UNAVAILABLE';
-  let focusReason = 'Reliable positional data is unavailable for this object.';
+  const focusEnabled = cap.canFocusOnMap;
+  const focusReasonTitle = focusEnabled ? 'FOCUS 3D MAP' : cap.statusLabel;
+  const focusReason = cap.focusReason;
 
-  if (isVoyager) {
-    focusEnabled = false;
-    focusReasonTitle = 'FOCUS UNAVAILABLE';
-    focusReason = 'Reliable positional data is unavailable for this object.';
-  } else if (craft.id === 'aditya-l1') {
-    focusEnabled = true;
-  } else if (craft.noradId !== undefined && craft.position !== undefined) {
-    focusEnabled = true;
-  } else {
-    focusEnabled = false;
-    focusReasonTitle = 'FOCUS UNAVAILABLE';
-    focusReason = '3D map positioning is unavailable for this coordinate frame.';
-  }
-
-  // Capability resolution: Vector Tracking / Analysis
-  let trackEnabled = false;
-  let trackReasonTitle = 'TRACKING UNAVAILABLE';
-  let trackReason = 'No browser-accessible verified ephemeris is currently available.';
-
-  if (isVoyager) {
-    trackEnabled = false;
-    trackReasonTitle = 'TRACKING UNAVAILABLE';
-    trackReason = 'No browser-accessible verified ephemeris is currently available.';
-  } else if (craft.id === 'aditya-l1') {
-    trackEnabled = true;
-  } else if (craft.noradId !== undefined && craft.isOperational) {
-    trackEnabled = true;
-  } else {
-    trackEnabled = false;
-    trackReasonTitle = 'TRACKING UNAVAILABLE';
-    trackReason = 'Orbital vector propagation is not available for this mission profile.';
-  }
+  const trackEnabled = cap.canTrackVectors;
+  const trackReasonTitle = trackEnabled ? 'TRACK VECTORS' : cap.statusLabel;
+  const trackReason = cap.trackReason;
 
   return (
     <div className="action-bar-container">

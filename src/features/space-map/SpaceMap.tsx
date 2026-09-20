@@ -24,6 +24,7 @@ import { calculatePlanetEphemeris } from '../../services/calculations/kepler';
 import { calculateAdityaL1Ephemeris } from '../../services/calculations/lagrange';
 import { CelestrakService, SatelliteTrackData } from '../../services/api/celestrakService';
 import { SPACECRAFT_REGISTRY, resolveSpacecraftState } from '../../services/data/spacecraftCatalog';
+import { resolveTrackingCapability } from '../../services/data/trackingCapability';
 import type { InspectableObject, SpacecraftObject } from '../../types/space';
 import { resolveInspectableObject, normalizeSpacecraftObject } from '../../services/data/objectResolver';
 import { formatDistanceKm } from '../../utils/formatters';
@@ -288,10 +289,13 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
 
   // Synchronize selection from parent prop
   useEffect(() => {
-    if (selectedObjectId && selectedObjectId !== selectedBodyId) {
+    if (selectedObjectId) {
       setSelectedBodyId(selectedObjectId);
-      if (['iss', 'css-tiangong', 'hubble', 'astrosat', 'cartosat-3', 'eos-06', 'noaa-19', 'terra'].includes(selectedObjectId)) {
+      const isEarthSat = ['iss', 'css-tiangong', 'hubble', 'astrosat', 'cartosat-3', 'eos-06', 'noaa-19', 'terra'].includes(selectedObjectId) || selectedObjectId.startsWith('norad-');
+      if (isEarthSat) {
         setViewMode('EARTH_ORBIT');
+      } else if (selectedObjectId !== 'moon' && !selectedObjectId.startsWith('chandrayaan')) {
+        setViewMode('SOLAR_SYSTEM');
       }
     }
   }, [selectedObjectId]);
@@ -1051,8 +1055,19 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
             }
 
             const craftDef = SPACECRAFT_REGISTRY.find(s => s.noradId === sat.noradId);
+            const craftId = craftDef ? craftDef.id : `norad-${sat.noradId}`;
+            const trackingCap = resolveTrackingCapability(craftId, sat.name, {
+              noradId: sat.noradId,
+              isLiveGp: sat.isLiveGp,
+              epochDate: sat.epochDate,
+              epochStr: sat.epochStr,
+              orbitClass: sat.orbitClass,
+              timestamp: sat.telemetrySource.timestamp,
+              hasValidState: true
+            }, simDate);
+
             const craftObj: SpacecraftObject = {
-              id: craftDef ? craftDef.id : `norad-${sat.noradId}`,
+              id: craftId,
               name: sat.name,
               noradId: sat.noradId,
               agency: craftDef ? craftDef.agency : 'Commercial',
@@ -1079,7 +1094,18 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
                 longitude: sat.state.longitudeDeg,
                 altitudeKm: sat.state.altitudeKm
               },
-              telemetrySource: sat.telemetrySource
+              orbitalElements: {
+                epoch: sat.epochStr,
+                semiMajorAxisKm: sat.semiMajorAxisKm,
+                inclinationDeg: sat.inclinationDeg,
+                eccentricity: sat.eccentricity,
+                periodMinutes: sat.periodMinutes,
+                raanDeg: sat.raanDeg,
+                argPericenterDeg: sat.argPericenterDeg,
+                meanAnomalyDeg: sat.meanAnomalyDeg
+              },
+              telemetrySource: sat.telemetrySource,
+              trackingCapability: trackingCap
             };
 
             const bodyKey = craftDef ? craftDef.id : `norad-${sat.noradId}`;

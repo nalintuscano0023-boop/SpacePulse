@@ -125,9 +125,11 @@ export function normalizeSpacecraftObject(craft: SpacecraftObject): InspectableO
     lightTimeToEarthSec: craft.lightTimeToEarthSec,
     position: craft.position,
     geodetic: craft.geodetic,
+    orbitalElements: craft.orbitalElements,
     noradId: craft.noradId,
     jplId: craft.jplId,
     telemetrySource: craft.telemetrySource,
+    trackingCapability: craft.trackingCapability,
     rawSpacecraft: craft
   };
 }
@@ -242,9 +244,33 @@ export async function resolveInspectableObject(
         sourceName: isSun ? 'IAU Standard Solar Ephemeris' : isMoon ? 'NASA JPL Horizons / Lunar Mean Orbit' : 'VSOP87 / NASA JPL Planetary Ephemeris',
         sourceUrl: 'https://ssd.jpl.nasa.gov/',
         timestamp: simDate.toISOString(),
-        status: 'CALCULATED',
+        status: isEarth || isSun ? 'CURRENT' : 'CALCULATED',
         statusNote: 'Keplerian state vectors propagated from authoritative epoch coordinates',
         calculationMethod: 'Analytical VSOP87 Keplerian planetary theory'
+      },
+      trackingCapability: {
+        objectId: normalizedId,
+        objectName: titleCaseName,
+        objectType: meta.category,
+        orbitalRegime: isMoon ? 'LUNAR_ORBIT' : 'HELIOCENTRIC',
+        supportedTrackingMethod: 'KEPLERIAN_EPHEMERIS',
+        source: isSun ? 'IAU Standard Solar Ephemeris' : isMoon ? 'NASA JPL Horizons / Lunar Mean Orbit' : 'VSOP87 / NASA JPL Planetary Ephemeris',
+        sourceUrl: 'https://ssd.jpl.nasa.gov/',
+        hasCurrentGpData: false,
+        propagationSupport: !isSun,
+        lastSuccessfulUpdate: simDate.toISOString(),
+        dataTimestamp: simDate.toISOString(),
+        status: isEarth || isSun ? 'CURRENT' : 'CALCULATED',
+        statusLabel: isEarth || isSun ? 'CURRENT' : 'CALCULATED',
+        statusDescription: isSun 
+          ? 'Solar System origin coordinate (0,0,0)' 
+          : isEarth 
+          ? 'Geocentric baseline reference origin' 
+          : 'Keplerian state vectors calculated from VSOP87 analytical theory',
+        canFocusOnMap: true,
+        canTrackVectors: !isSun,
+        focusReason: `Focus ${titleCaseName} on 3D Space Map`,
+        trackReason: isSun ? 'Origin coordinate frame' : `Compute heliocentric vectors and orbital distance in Analysis`
       }
     };
   }

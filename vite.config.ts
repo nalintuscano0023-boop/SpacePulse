@@ -4,6 +4,15 @@ import { defineConfig } from 'vite';
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  server: {
+    proxy: {
+      '/api/celestrak': {
+        target: 'https://celestrak.org',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/celestrak/, '')
+      }
+    }
+  },
   build: {
     chunkSizeWarningLimit: 1200,
     rollupOptions: {

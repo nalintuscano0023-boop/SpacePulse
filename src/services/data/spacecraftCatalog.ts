@@ -3,6 +3,7 @@ import { calculateAdityaL1Ephemeris } from '../calculations/lagrange';
 import { calculateDistanceKm, calculateLightTimeSeconds, MOON_MEAN_DISTANCE_KM } from '../calculations/physics';
 import { calculatePlanetEphemeris } from '../calculations/kepler';
 import { CelestrakService } from '../api/celestrakService';
+import { resolveTrackingCapability } from './trackingCapability';
 
 export interface SpacecraftDefinition {
   id: string;
@@ -312,10 +313,11 @@ export const SPACECRAFT_REGISTRY: SpacecraftDefinition[] = [
 export async function resolveSpacecraftState(def: SpacecraftDefinition, date: Date = new Date()): Promise<SpacecraftObject> {
   const earthEphem = calculatePlanetEphemeris('earth', date);
 
-  // 1. If it's Aditya-L1
+  // 1. If it's Aditya-L1 (Lagrangian Halo L1)
   if (def.id === 'aditya-l1') {
     const l1 = calculateAdityaL1Ephemeris(date);
     const lightTime = calculateLightTimeSeconds(l1.distanceFromEarthKm);
+    const trackingCap = resolveTrackingCapability('aditya-l1', def.name, null, date);
 
     return {
       ...def,
@@ -331,7 +333,8 @@ export async function resolveSpacecraftState(def: SpacecraftDefinition, date: Da
         status: 'CALCULATED',
         statusNote: 'Heliocentric coordinates calculated from Sun-Earth L1 Lagrange physics and insertion epoch',
         calculationMethod: 'Three-body Sun-Earth L1 Halo model'
-      }
+      },
+      trackingCapability: trackingCap
     };
   }
 
@@ -339,6 +342,7 @@ export async function resolveSpacecraftState(def: SpacecraftDefinition, date: Da
   // "If the current browser-accessible data sources cannot provide a reliable Voyager 1 ephemeris:
   // do NOT place Voyager 1 at a fake location. Instead, display POSITION DATA UNAVAILABLE / EPHEMERIS SOURCE UNAVAILABLE"
   if (def.id === 'voyager-1' || def.id === 'voyager-2') {
+    const trackingCap = resolveTrackingCapability(def.id, def.name, null, date);
     return {
       ...def,
       distanceFromEarthKm: undefined,
@@ -350,32 +354,78 @@ export async function resolveSpacecraftState(def: SpacecraftDefinition, date: Da
         sourceName: 'NASA JPL Deep Space Network',
         sourceUrl: 'https://voyager.jpl.nasa.gov/',
         timestamp: date.toISOString(),
-        status: 'UNAVAILABLE',
-        statusNote: 'Reliable browser-accessible positional data is currently unavailable for this object.',
-        calculationMethod: 'Ephemeris source unavailable for direct browser verification'
-      }
+        status: 'DATA_UNAVAILABLE',
+        statusNote: 'Reliable browser-accessible positional ephemeris is currently unavailable for direct vector propagation.',
+        calculationMethod: 'Direct browser ephemeris propagation unavailable'
+      },
+      trackingCapability: trackingCap
     };
   }
 
-  // 3. If it's Chandrayaan-2 orbiter / Chandrayaan-1 / Chandrayaan-3
+  // 3. Chandrayaan missions
   if (def.id.startsWith('chandrayaan')) {
-    const distEarth = MOON_MEAN_DISTANCE_KM + (def.id === 'chandrayaan-2-orbiter' ? 100 : 0);
-    const lightTime = calculateLightTimeSeconds(distEarth);
-    const vel = def.id === 'chandrayaan-2-orbiter' ? 1.63 : (def.isOperational ? 0 : 0); // ~1.63 km/s in 100 km lunar orbit
+    const trackingCap = resolveTrackingCapability(def.id, def.name, null, date);
 
+    if (def.id === 'chandrayaan-2-orbiter') {
+      const distEarth = MOON_MEAN_DISTANCE_KM + 100;
+      const lightTime = calculateLightTimeSeconds(distEarth);
+      const vel = 1.63; // ~1.63 km/s in 100 km circular lunar orbit
+
+      return {
+        ...def,
+        distanceFromEarthKm: distEarth,
+        distanceFromSunKm: earthEphem.distanceFromSunKm,
+        velocityKmS: vel,
+        lightTimeToEarthSec: lightTime,
+        telemetrySource: {
+          sourceName: 'ISRO Lunar Mission Ephemeris / ISSDC',
+          sourceUrl: 'https://www.issdc.gov.in/',
+          timestamp: date.toISOString(),
+          status: 'LAST_AVAILABLE',
+          statusNote: 'Latest supported ephemeris available: 100 km polar lunar orbit baseline (ISRO ISSDC)'
+        },
+        trackingCapability: trackingCap
+      };
+    }
+
+    if (def.id === 'chandrayaan-3-surface') {
+      const distEarth = MOON_MEAN_DISTANCE_KM;
+      const lightTime = calculateLightTimeSeconds(distEarth);
+
+      return {
+        ...def,
+        distanceFromEarthKm: distEarth,
+        distanceFromSunKm: earthEphem.distanceFromSunKm,
+        velocityKmS: 0,
+        lightTimeToEarthSec: lightTime,
+        telemetrySource: {
+          sourceName: 'ISRO ISSDC PRADAN Records',
+          sourceUrl: 'https://pradan.issdc.gov.in/',
+          timestamp: date.toISOString(),
+          status: 'HISTORICAL',
+          statusNote: 'Primary mission accomplished. Verified landing site: Shiv Shakti Point (69.373° S, 32.319° E)'
+        },
+        trackingCapability: trackingCap
+      };
+    }
+
+    // Chandrayaan-1
+    const distEarth = MOON_MEAN_DISTANCE_KM;
+    const lightTime = calculateLightTimeSeconds(distEarth);
     return {
       ...def,
       distanceFromEarthKm: distEarth,
       distanceFromSunKm: earthEphem.distanceFromSunKm,
-      velocityKmS: vel,
+      velocityKmS: 0,
       lightTimeToEarthSec: lightTime,
       telemetrySource: {
-        sourceName: 'ISRO Lunar Mission Ephemeris / ISSDC',
+        sourceName: 'ISRO / NASA Planetary Data System Archive',
         sourceUrl: 'https://www.issdc.gov.in/',
         timestamp: date.toISOString(),
-        status: def.isOperational ? 'CALCULATED' : 'LAST_AVAILABLE',
-        statusNote: def.isOperational ? 'Orbital velocity & selenocentric parameters from ISRO flight operations' : 'Mission historical coordinates verified from ISSDC PRADAN records'
-      }
+        status: 'HISTORICAL',
+        statusNote: 'Mission completed in August 2009. Historic discovery of lunar water molecules.'
+      },
+      trackingCapability: trackingCap
     };
   }
 
@@ -386,6 +436,15 @@ export async function resolveSpacecraftState(def: SpacecraftDefinition, date: Da
       if (satTrack && satTrack.state) {
         const state = satTrack.state;
         const lightTime = calculateLightTimeSeconds(state.distanceFromEarthSurfaceKm);
+        const trackingCap = resolveTrackingCapability(def.id, def.name, {
+          noradId: def.noradId,
+          isLiveGp: satTrack.isLiveGp,
+          epochDate: satTrack.epochDate,
+          epochStr: satTrack.epochStr,
+          orbitClass: satTrack.orbitClass,
+          timestamp: satTrack.telemetrySource.timestamp,
+          hasValidState: true
+        }, date);
 
         return {
           ...def,
@@ -404,7 +463,18 @@ export async function resolveSpacecraftState(def: SpacecraftDefinition, date: Da
             longitude: state.longitudeDeg,
             altitudeKm: state.altitudeKm
           },
-          telemetrySource: satTrack.telemetrySource
+          orbitalElements: {
+            epoch: satTrack.epochStr,
+            semiMajorAxisKm: satTrack.semiMajorAxisKm,
+            inclinationDeg: satTrack.inclinationDeg,
+            eccentricity: satTrack.eccentricity,
+            periodMinutes: satTrack.periodMinutes,
+            raanDeg: satTrack.raanDeg,
+            argPericenterDeg: satTrack.argPericenterDeg,
+            meanAnomalyDeg: satTrack.meanAnomalyDeg
+          },
+          telemetrySource: satTrack.telemetrySource,
+          trackingCapability: trackingCap
         };
       }
     } catch {
@@ -413,13 +483,20 @@ export async function resolveSpacecraftState(def: SpacecraftDefinition, date: Da
   }
 
   // Fallback for unavailable satellite
+  const fallbackCap = resolveTrackingCapability(def.id, def.name, {
+    noradId: def.noradId || 0,
+    isLiveGp: false,
+    hasValidState: false
+  }, date);
+
   return {
     ...def,
     telemetrySource: {
-      sourceName: 'Telemetry Registry',
+      sourceName: 'CelesTrak GP Telemetry Registry',
       timestamp: date.toISOString(),
-      status: 'UNAVAILABLE',
+      status: 'DATA_UNAVAILABLE',
       statusNote: 'Orbital elements could not be verified or propagated at this timestamp.'
-    }
+    },
+    trackingCapability: fallbackCap
   };
 }

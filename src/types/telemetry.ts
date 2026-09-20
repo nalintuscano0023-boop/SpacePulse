@@ -1,7 +1,10 @@
 export type DataStatus = 
+  | 'CURRENT'
   | 'LIVE' 
   | 'CALCULATED' 
   | 'LAST_AVAILABLE' 
+  | 'HISTORICAL'
+  | 'DATA_UNAVAILABLE'
   | 'UNAVAILABLE' 
   | 'SOURCE_ERROR';
 

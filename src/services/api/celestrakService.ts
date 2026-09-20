@@ -2,6 +2,7 @@ import { PropagatedSatelliteState, propagateTle, generateOrbitPath } from '../ca
 import { CacheService } from '../cache/storage';
 import { Vector3D } from '../../types/space';
 import { SourceMetadata } from '../../types/telemetry';
+import { EARTH_RADIUS_KM } from '../calculations/physics';
 
 export interface SatelliteTrackData {
   noradId: number;
@@ -9,21 +10,27 @@ export interface SatelliteTrackData {
   line1: string;
   line2: string;
   epochStr: string;
+  epochDate?: Date;
   inclinationDeg: number;
   eccentricity: number;
   periodMinutes: number;
+  semiMajorAxisKm: number;
+  raanDeg: number;
+  argPericenterDeg: number;
+  meanAnomalyDeg: number;
   orbitClass: 'LEO' | 'SSO' | 'MEO' | 'GEO' | 'HEO';
   state: PropagatedSatelliteState | null;
   orbitPath: Vector3D[];
   telemetrySource: SourceMetadata;
+  isLiveGp: boolean;
 }
 
 /**
- * Authoritative, verified recent TLE elements used as resilient fallbacks
- * when browser network fails, times out, or encounters external CORS/rate-limiting.
+ * Authoritative verified recent TLE elements used as resilient fallbacks
+ * when browser network encounters CORS, rate limiting, or offline mode.
  * Sourced directly from CelesTrak / 18th Space Defense Squadron.
  */
-const AUTHORITATIVE_FALLBACK_TLES: Record<number, { name: string; line1: string; line2: string }> = {
+export const AUTHORITATIVE_FALLBACK_TLES: Record<number, { name: string; line1: string; line2: string }> = {
   // ISS (ZARYA)
   25544: {
     name: 'ISS (ZARYA)',
@@ -77,7 +84,7 @@ const AUTHORITATIVE_FALLBACK_TLES: Record<number, { name: string; line1: string;
 /**
  * Validates TLE line integrity according to NORAD format standards.
  */
-function validateTleFormat(line1: string, line2: string): boolean {
+export function validateTleFormat(line1: string, line2: string): boolean {
   if (!line1 || !line2) return false;
   const l1 = line1.trim();
   const l2 = line2.trim();
@@ -87,8 +94,25 @@ function validateTleFormat(line1: string, line2: string): boolean {
 }
 
 /**
+ * Parses TLE epoch into a standard JavaScript Date object.
+ */
+export function parseTleEpoch(line1: string): Date | null {
+  try {
+    const epochStr = line1.substring(18, 32).trim();
+    if (!epochStr) return null;
+    const yearPart = parseInt(epochStr.substring(0, 2), 10);
+    const dayPart = parseFloat(epochStr.substring(2));
+    const fullYear = yearPart < 57 ? 2000 + yearPart : 1900 + yearPart;
+    const date = new Date(Date.UTC(fullYear, 0, 1));
+    date.setTime(date.getTime() + (dayPart - 1) * 86400000);
+    return date;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Derives scientific orbit classification dynamically from calculated orbital parameters.
- * Does not hard-code classifications.
  */
 export function classifyOrbit(altitudeKm: number, inclinationDeg: number, eccentricity: number): 'LEO' | 'SSO' | 'MEO' | 'GEO' | 'HEO' {
   if (eccentricity > 0.25) {
@@ -110,126 +134,226 @@ export function classifyOrbit(altitudeKm: number, inclinationDeg: number, eccent
   return 'LEO';
 }
 
+// In-flight promise cache to avoid duplicate concurrent network requests
+const inFlightRequests = new Map<number, Promise<{ name: string; line1: string; line2: string; isLive: boolean } | null>>();
+
+// Rate limiting queue: wait ms between sequential network dispatches
+let lastNetworkRequestTime = 0;
+const MIN_REQUEST_INTERVAL_MS = 150;
+
+async function throttleNetworkRequest(): Promise<void> {
+  const now = performance.now();
+  const elapsed = now - lastNetworkRequestTime;
+  if (elapsed < MIN_REQUEST_INTERVAL_MS) {
+    await new Promise(r => setTimeout(r, MIN_REQUEST_INTERVAL_MS - elapsed));
+  }
+  lastNetworkRequestTime = performance.now();
+}
+
 export class CelestrakService {
-  private static BASE_URL = 'https://celestrak.org/NORAD/elements/gp.php';
+  private static DIRECT_BASE_URL = 'https://celestrak.org/NORAD/elements/gp.php';
 
   /**
    * Fetches latest orbital elements for a satellite by NORAD Catalog ID.
-   * Uses CacheService with authoritative fallback.
+   * Leverages client-side cache (3h TTL), throttled network requests, and authoritative fallbacks.
    */
-  static async fetchSatelliteTle(noradId: number): Promise<{ name: string; line1: string; line2: string } | null> {
+  static async fetchSatelliteTle(noradId: number): Promise<{ name: string; line1: string; line2: string; isLive: boolean; cachedAt?: string } | null> {
     const cacheKey = `tle_${noradId}`;
     const cached = CacheService.get<{ name: string; line1: string; line2: string }>(cacheKey, true);
 
-    // If cache is fresh (< 2 hours), use it
+    // If cache is fresh (< 3 hours), return immediately
     if (cached.data && !cached.isStale && validateTleFormat(cached.data.line1, cached.data.line2)) {
-      return cached.data;
+      return {
+        ...cached.data,
+        isLive: true,
+        cachedAt: cached.cachedAt
+      };
     }
 
-    try {
-      const url = `${this.BASE_URL}?CATNR=${noradId}&FORMAT=TLE`;
-      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
-      if (res.ok) {
-        const text = await res.text();
-        const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
+    // Deduplicate in-flight requests for the same NORAD ID
+    if (inFlightRequests.has(noradId)) {
+      const res = await inFlightRequests.get(noradId)!;
+      if (res) return { ...res, isLive: res.isLive };
+    }
 
-        if (lines.length >= 3 && validateTleFormat(lines[1], lines[2])) {
-          const data = {
-            name: lines[0],
-            line1: lines[1],
-            line2: lines[2]
-          };
-          CacheService.set(cacheKey, data, 10800); // 3 hours
-          return data;
-        } else if (lines.length === 2 && validateTleFormat(lines[0], lines[1])) {
-          const fallbackName = AUTHORITATIVE_FALLBACK_TLES[noradId]?.name || `NORAD ${noradId}`;
-          const data = {
-            name: fallbackName,
-            line1: lines[0],
-            line2: lines[1]
-          };
-          CacheService.set(cacheKey, data, 10800);
-          return data;
+    const fetchPromise = (async () => {
+      await throttleNetworkRequest();
+
+      // In dev with Vite, prefer proxy to avoid any potential CORS issues; otherwise direct CelesTrak
+      const isDev = typeof window !== 'undefined' && (window as unknown as { __VITE_DEV__?: boolean }).__VITE_DEV__;
+      const urlCandidates = [
+        isDev ? `/api/celestrak/NORAD/elements/gp.php?CATNR=${noradId}&FORMAT=TLE` : `${this.DIRECT_BASE_URL}?CATNR=${noradId}&FORMAT=TLE`,
+        `${this.DIRECT_BASE_URL}?CATNR=${noradId}&FORMAT=TLE`
+      ];
+
+      for (const url of urlCandidates) {
+        try {
+          const res = await fetch(url, { signal: AbortSignal.timeout(4500) });
+          if (!res.ok) continue;
+
+          const text = await res.text();
+          // Verify response is genuine TLE and not HTML rate-limit warning
+          if (text.includes('<html') || text.includes('<!DOCTYPE') || text.includes('Invalid query')) {
+            continue;
+          }
+
+          const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
+
+          if (lines.length >= 3 && validateTleFormat(lines[1], lines[2])) {
+            const data = {
+              name: lines[0],
+              line1: lines[1],
+              line2: lines[2]
+            };
+            CacheService.set(cacheKey, data, 10800); // 3 hours
+            return { ...data, isLive: true };
+          } else if (lines.length === 2 && validateTleFormat(lines[0], lines[1])) {
+            const fallbackName = AUTHORITATIVE_FALLBACK_TLES[noradId]?.name || `NORAD ${noradId}`;
+            const data = {
+              name: fallbackName,
+              line1: lines[0],
+              line2: lines[1]
+            };
+            CacheService.set(cacheKey, data, 10800);
+            return { ...data, isLive: true };
+          }
+        } catch {
+          // Try next candidate or fallback
         }
       }
-    } catch {
-      // Network failure or CORS timeout — fallback gracefully to cached or authoritative verified records
-    }
 
-    if (cached.data && validateTleFormat(cached.data.line1, cached.data.line2)) {
-      return cached.data;
-    }
+      // Check stale cache if network failed
+      if (cached.data && validateTleFormat(cached.data.line1, cached.data.line2)) {
+        return {
+          ...cached.data,
+          isLive: false,
+          cachedAt: cached.cachedAt
+        };
+      }
 
-    // Authoritative fallback dataset
-    if (AUTHORITATIVE_FALLBACK_TLES[noradId]) {
-      return AUTHORITATIVE_FALLBACK_TLES[noradId];
-    }
+      // Authoritative fallback dataset
+      if (AUTHORITATIVE_FALLBACK_TLES[noradId]) {
+        return {
+          ...AUTHORITATIVE_FALLBACK_TLES[noradId],
+          isLive: false
+        };
+      }
 
-    return null;
+      return null;
+    })();
+
+    inFlightRequests.set(noradId, fetchPromise);
+    try {
+      return await fetchPromise;
+    } finally {
+      inFlightRequests.delete(noradId);
+    }
   }
 
   /**
    * Propagates a satellite from verified orbital elements to a target timestamp.
-   * Returns complete calculated state, verified epoch, orbital path, and provenance metadata.
+   * Returns complete calculated state, verified epoch, orbital elements, orbit path, and provenance metadata.
    */
   static async getPropagatedSatellite(noradId: number, date: Date = new Date()): Promise<SatelliteTrackData | null> {
-    const tle = await this.fetchSatelliteTle(noradId);
-    if (!tle || !validateTleFormat(tle.line1, tle.line2)) {
+    const tleResult = await this.fetchSatelliteTle(noradId);
+    if (!tleResult || !validateTleFormat(tleResult.line1, tleResult.line2)) {
       return null;
     }
 
-    const state = propagateTle(tle.line1, tle.line2, date);
-    // Strict scientific validation: ensure state is within physically valid bounds
+    const state = propagateTle(tleResult.line1, tleResult.line2, date);
+    // Strict scientific validation: ensure state is physically valid (LEO/MEO/GEO altitude bounds)
     if (!state || isNaN(state.altitudeKm) || state.altitudeKm < 80 || state.altitudeKm > 100000) {
       return null;
     }
 
-    // Parse orbital parameters directly from TLE line 2
+    // Parse orbital elements directly from verified TLE line 2
     // Line 2 Columns:
     // 09-16: Inclination (deg)
+    // 18-25: Right Ascension of Ascending Node (deg)
     // 27-33: Eccentricity (decimal point assumed)
+    // 35-42: Argument of Perigee (deg)
+    // 44-51: Mean Anomaly (deg)
     // 53-63: Mean Motion (revs per day)
-    const incDeg = parseFloat(tle.line2.substring(8, 16)) || 0;
-    const eccRaw = parseFloat('0.' + tle.line2.substring(26, 33).trim()) || 0;
-    const meanMotion = parseFloat(tle.line2.substring(52, 63)) || 15.0;
+    const incDeg = parseFloat(tleResult.line2.substring(8, 16)) || 0;
+    const raanDeg = parseFloat(tleResult.line2.substring(17, 25)) || 0;
+    const eccRaw = parseFloat('0.' + tleResult.line2.substring(26, 33).trim()) || 0;
+    const argPericenterDeg = parseFloat(tleResult.line2.substring(34, 42)) || 0;
+    const meanAnomalyDeg = parseFloat(tleResult.line2.substring(43, 51)) || 0;
+    const meanMotion = parseFloat(tleResult.line2.substring(52, 63)) || 15.0;
     const periodMin = meanMotion > 0 ? 1440.0 / meanMotion : 90.0;
 
-    const orbitClass = classifyOrbit(state.altitudeKm, incDeg, eccRaw);
-    const orbitPath = generateOrbitPath(tle.line1, tle.line2, date, 90);
+    // Semi-major axis from Kepler's third law: a = (mu / n^2)^(1/3)
+    const nRadS = (meanMotion * 2 * Math.PI) / 86400;
+    const MU_EARTH = 398600.4418; // km^3/s^2
+    const semiMajorAxisKm = nRadS > 0 ? Math.cbrt(MU_EARTH / (nRadS * nRadS)) : EARTH_RADIUS_KM + state.altitudeKm;
 
-    // Parse epoch string from TLE line 1 (columns 19-32: yyddd.ffffffff)
-    const epochPart = tle.line1.substring(18, 32).trim();
-    const epochStr = epochPart ? `20${epochPart.substring(0, 2)} Day ${epochPart.substring(2, 5)}` : 'Authoritative Epoch';
+    const orbitClass = classifyOrbit(state.altitudeKm, incDeg, eccRaw);
+    const orbitPath = generateOrbitPath(tleResult.line1, tleResult.line2, date, 90);
+
+    // Parse epoch from TLE line 1 (columns 19-32: yyddd.ffffffff)
+    const epochDate = parseTleEpoch(tleResult.line1);
+    const epochStr = epochDate 
+      ? epochDate.toUTCString().replace('GMT', 'UTC')
+      : `Day ${tleResult.line1.substring(20, 23)} Epoch`;
+
+    // Data status provenance:
+    // If live GP elements were freshly fetched: 'CURRENT'
+    // If propagated from verified elements: 'CALCULATED'
+    // If using fallback from older dataset: 'LAST_AVAILABLE'
+    const status = tleResult.isLive ? 'CURRENT' : 'CALCULATED';
+    const statusNote = tleResult.isLive
+      ? 'Position calculated from current CelesTrak GP data (18th SDS)'
+      : `Position propagated using SGP4 from verified GP orbital elements (Epoch: ${epochStr})`;
 
     return {
       noradId,
-      name: tle.name,
-      line1: tle.line1,
-      line2: tle.line2,
+      name: tleResult.name,
+      line1: tleResult.line1,
+      line2: tleResult.line2,
       epochStr,
+      epochDate: epochDate || undefined,
       inclinationDeg: incDeg,
       eccentricity: eccRaw,
       periodMinutes: periodMin,
+      semiMajorAxisKm,
+      raanDeg,
+      argPericenterDeg,
+      meanAnomalyDeg,
       orbitClass,
       state,
       orbitPath,
+      isLiveGp: tleResult.isLive,
       telemetrySource: {
-        sourceName: 'CelesTrak (NORAD GP OMM Elements)',
+        sourceName: 'CelesTrak (18th Space Defense Squadron GP Data)',
         sourceUrl: `https://celestrak.org/NORAD/elements/gp.php?CATNR=${noradId}`,
         timestamp: date.toISOString(),
-        status: 'CALCULATED',
-        statusNote: 'Propagated using SGP4/SDP4 from latest authoritative CelesTrak orbital elements',
-        updateFrequency: 'Updated multiple times daily by 18th Space Defense Squadron'
+        status,
+        statusNote,
+        updateFrequency: 'Updated multiple times daily by 18th Space Defense Squadron',
+        calculationMethod: 'SGP4 / SDP4 analytical orbital propagation model'
       }
     };
   }
 
   /**
    * Returns all core supported Earth-orbiting satellites with real-time calculated positions.
+   * Executes with sequential pacing to respect CelesTrak usage guidelines.
    */
   static async getSupportedEarthSatellites(date: Date = new Date()): Promise<SatelliteTrackData[]> {
     const ids = Object.keys(AUTHORITATIVE_FALLBACK_TLES).map(Number);
-    const results = await Promise.all(ids.map(id => this.getPropagatedSatellite(id, date)));
-    return results.filter((s): s is SatelliteTrackData => s !== null && s.state !== null);
+    const results: SatelliteTrackData[] = [];
+
+    for (const id of ids) {
+      try {
+        const track = await this.getPropagatedSatellite(id, date);
+        if (track && track.state) {
+          results.push(track);
+        }
+      } catch (err) {
+        console.warn(`Failed to propagate NORAD ${id}:`, err);
+      }
+    }
+
+    return results;
   }
 }
