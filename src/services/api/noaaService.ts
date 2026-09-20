@@ -2,7 +2,7 @@ import { SpaceWeatherSummary, SpaceWeatherAlert, SolarWindData, KpIndexData, Goe
 import { CacheService } from '../cache/storage';
 
 export class NoaaService {
-  private static BASE_URL = 'https://services.swpc.noaa.gov';
+  private static BASE_URL = import.meta.env.VITE_NOAA_SWPC_URL || 'https://services.swpc.noaa.gov';
 
   static async fetchSpaceWeatherSummary(): Promise<SpaceWeatherSummary> {
     const cacheKey = 'noaa_swpc_summary';

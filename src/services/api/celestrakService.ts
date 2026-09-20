@@ -151,7 +151,7 @@ async function throttleNetworkRequest(): Promise<void> {
 }
 
 export class CelestrakService {
-  private static DIRECT_BASE_URL = 'https://celestrak.org/NORAD/elements/gp.php';
+  private static DIRECT_BASE_URL = `${import.meta.env.VITE_CELESTRAK_URL || 'https://celestrak.org'}/NORAD/elements/gp.php`;
 
   /**
    * Fetches latest orbital elements for a satellite by NORAD Catalog ID.
