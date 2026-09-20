@@ -453,10 +453,38 @@ h3 {
   letter-spacing: 0.03em;
   text-align: left;
   outline: none;
+  touch-action: manipulation;
+  user-select: none;
 }
 
 .inspector-accordion-header:hover {
   background: rgba(255, 255, 255, 0.02);
+}
+
+.inspector-accordion-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 200ms cubic-bezier(0.4, 0, 0.2, 1), visibility 200ms;
+  visibility: hidden;
+}
+
+.inspector-accordion-body.open {
+  grid-template-rows: 1fr;
+  visibility: visible;
+}
+
+.inspector-accordion-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.inspector-accordion-body .inspector-accordion-content {
+  opacity: 0;
+  transition: opacity 190ms ease;
+}
+
+.inspector-accordion-body.open .inspector-accordion-content {
+  opacity: 1;
 }
 
 .inspector-accordion-content {

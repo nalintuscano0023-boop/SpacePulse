@@ -137,6 +137,7 @@ function AppContent({
       {/* 5. Floating Object Inspector */}
       {selectedObject && isInspectorOpen && activeTab !== 'mission-control' && (
         <ObjectInspector
+          key={selectedObject.id}
           object={selectedObject}
           onClose={handleCloseInspector}
           onFocusOnMap={activeTab !== 'space-map' ? handleFocusOnMap : undefined}
