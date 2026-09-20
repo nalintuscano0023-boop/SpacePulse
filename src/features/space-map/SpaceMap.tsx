@@ -278,6 +278,10 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
   const sunDirLightRef = useRef<THREE.DirectionalLight | null>(null);
   const ambientLightRef = useRef<THREE.AmbientLight | null>(null);
 
+  // Sun corona animation refs
+  const sunMidHaloRef = useRef<THREE.Mesh | null>(null);
+  const sunOuterHaloRef = useRef<THREE.Mesh | null>(null);
+
   const targetCamPos = useRef<THREE.Vector3 | null>(null);
   const targetLookAt = useRef<THREE.Vector3 | null>(null);
   const handleObjectSelectionRef = useRef<(objectId: string, shouldInspect?: boolean) => void>(() => {});
@@ -301,19 +305,22 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
 
   const resetView = useCallback(() => {
     if (viewMode === 'EARTH_ORBIT') {
+      // Horizon-grazing perspective — low camera angle looking across the limb
       targetLookAt.current = new THREE.Vector3(-1.2, 0, 0);
-      targetCamPos.current = new THREE.Vector3(14, 11, 24);
+      targetCamPos.current = new THREE.Vector3(18, 10, 28);
     } else {
-      targetLookAt.current = new THREE.Vector3(0, 0, 0);
-      targetCamPos.current = new THREE.Vector3(16, 28, 68);
+      // Ecliptic-plane perspective — camera is at a shallow angle, not top-down
+      targetLookAt.current = new THREE.Vector3(0, -2, 0);
+      targetCamPos.current = new THREE.Vector3(18, 22, 72);
     }
   }, [viewMode]);
 
   const setCameraPreset = useCallback((preset: 'horizon' | 'polar' | 'equatorial' | 'default') => {
     if (viewMode === 'EARTH_ORBIT') {
       if (preset === 'horizon') {
+        // True limb/horizon view — grazing the Earth's edge
         targetLookAt.current = new THREE.Vector3(0, 0, 0);
-        targetCamPos.current = new THREE.Vector3(16, 5, 20);
+        targetCamPos.current = new THREE.Vector3(20, 4, 22);
       } else if (preset === 'polar') {
         targetLookAt.current = new THREE.Vector3(0, 0, 0);
         targetCamPos.current = new THREE.Vector3(0, 28, 2);
@@ -322,11 +329,11 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         targetCamPos.current = new THREE.Vector3(28, 2, 8);
       } else {
         targetLookAt.current = new THREE.Vector3(-1.2, 0, 0);
-        targetCamPos.current = new THREE.Vector3(14, 11, 24);
+        targetCamPos.current = new THREE.Vector3(18, 10, 28);
       }
     } else {
-      targetLookAt.current = new THREE.Vector3(0, 0, 0);
-      targetCamPos.current = new THREE.Vector3(16, 28, 68);
+      targetLookAt.current = new THREE.Vector3(0, -2, 0);
+      targetCamPos.current = new THREE.Vector3(18, 22, 72);
     }
   }, [viewMode]);
 
@@ -357,15 +364,17 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     const height = Math.max(container.clientHeight || 0, (window.innerHeight ? window.innerHeight - 130 : 650), 400);
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color('#010307');
+    // Near-perfect space black — maximizes starfield contrast
+    scene.background = new THREE.Color('#000204');
     sceneRef.current = scene;
 
-    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 20000);
-    // Smooth cinematic entry: begins further in deep space and sweeps into optimal 3D perspective
-    camera.position.set(24, 78, 148);
+    // FOV 55° — wider than 45° for immersive depth without distortion
+    const camera = new THREE.PerspectiveCamera(55, width / height, 0.05, 25000);
+    // Cinematic entry: camera starts far above the ecliptic and sweeps down into a shallow horizon angle
+    camera.position.set(40, 95, 185);
     cameraRef.current = camera;
-    targetLookAt.current = new THREE.Vector3(0, 0, 0);
-    targetCamPos.current = new THREE.Vector3(16, 28, 68);
+    targetLookAt.current = new THREE.Vector3(0, -2, 0);
+    targetCamPos.current = new THREE.Vector3(18, 22, 72);
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -383,7 +392,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
+    controls.dampingFactor = 0.04;  // Slightly smoother drag
     controls.minDistance = 4;
     controls.maxDistance = 2500;
     controlsRef.current = controls;
@@ -397,8 +406,8 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     scene.add(starfield);
 
     // 3. Dynamic Multi-Source Illuminating System
-    // Solar PointLight at (0, 0, 0) for Solar System View
-    const sunPointLight = new THREE.PointLight(0xfffaed, 3.8, 5000, 0.1);
+    // Solar PointLight at (0, 0, 0) for Solar System View — increased intensity for dramatic planet shading
+    const sunPointLight = new THREE.PointLight(0xfffaed, 4.5, 5000, 0.08);
     sunPointLight.position.set(0, 0, 0);
     scene.add(sunPointLight);
     sunPointLightRef.current = sunPointLight;
@@ -536,6 +545,16 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         cloudsMeshRef.current.rotation.y += 0.003;
       }
 
+      // Animate solar corona layers — slow counter-rotating motion for living star feel
+      if (sunMidHaloRef.current) {
+        sunMidHaloRef.current.rotation.y += 0.0008;
+        sunMidHaloRef.current.rotation.z += 0.0005;
+      }
+      if (sunOuterHaloRef.current) {
+        sunOuterHaloRef.current.rotation.y -= 0.0005;
+        sunOuterHaloRef.current.rotation.x += 0.0003;
+      }
+
       // Smooth camera interpolation
       if (targetCamPos.current && targetLookAt.current) {
         camera.position.lerp(targetCamPos.current, 0.06);
@@ -589,7 +608,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
 
     if (viewMode === 'SOLAR_SYSTEM') {
       // Configure lighting for Solar System View
-      if (sunPointLightRef.current) sunPointLightRef.current.intensity = 3.8;
+      if (sunPointLightRef.current) sunPointLightRef.current.intensity = 4.5;
       if (sunDirLightRef.current) sunDirLightRef.current.intensity = 0.0;
       if (ambientLightRef.current) {
         ambientLightRef.current.color.setHex(0xffffff);
@@ -600,15 +619,19 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
       // SOLAR SYSTEM OVERVIEW (Sun + 8 Planets + Moon + L1)
       // ----------------------------------------------------
       const planetDefs = [
-        { id: 'mercury', name: 'Mercury', color: '#94a3b8', radius: 0.9 },
-        { id: 'venus', name: 'Venus', color: '#fde68a', radius: 1.5 },
-        { id: 'earth', name: 'Earth', color: '#38bdf8', radius: 1.8, isEarth: true },
-        { id: 'mars', name: 'Mars', color: '#ef4444', radius: 1.2 },
-        { id: 'jupiter', name: 'Jupiter', color: '#f59e0b', radius: 3.6, isJupiter: true },
-        { id: 'saturn', name: 'Saturn', color: '#fef08a', radius: 3.0, hasRings: true },
-        { id: 'uranus', name: 'Uranus', color: '#67e8f9', radius: 2.2 },
-        { id: 'neptune', name: 'Neptune', color: '#6366f1', radius: 2.1 }
-      ];
+        { id: 'mercury', name: 'Mercury', color: '#94a3b8', radius: 1.1 },
+        { id: 'venus', name: 'Venus', color: '#fde68a', radius: 1.8, hasAtmo: true, atmoColor: 0xfde68a, atmoOpacity: 0.14 },
+        { id: 'earth', name: 'Earth', color: '#38bdf8', radius: 2.2, isEarth: true },
+        { id: 'mars', name: 'Mars', color: '#ef4444', radius: 1.5, hasAtmo: true, atmoColor: 0xef4444, atmoOpacity: 0.10 },
+        { id: 'jupiter', name: 'Jupiter', color: '#f59e0b', radius: 4.5, isJupiter: true },
+        { id: 'saturn', name: 'Saturn', color: '#fef08a', radius: 3.8, hasRings: true },
+        { id: 'uranus', name: 'Uranus', color: '#67e8f9', radius: 2.6 },
+        { id: 'neptune', name: 'Neptune', color: '#6366f1', radius: 2.5, hasAtmo: true, atmoColor: 0x6366f1, atmoOpacity: 0.13 }
+      ] as Array<{
+        id: string; name: string; color: string; radius: number;
+        isEarth?: boolean; isJupiter?: boolean; hasRings?: boolean;
+        hasAtmo?: boolean; atmoColor?: number; atmoOpacity?: number;
+      }>;
 
       // 1. Sun (Radiant self-illuminated star)
       const sunTex = getSunTexture();
@@ -622,36 +645,64 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
       const innerHaloMat = new THREE.MeshBasicMaterial({
         color: 0xfef08a,
         transparent: true,
-        opacity: 0.28,
+        opacity: 0.30,
         side: THREE.BackSide,
         blending: THREE.AdditiveBlending
       });
       const innerHalo = new THREE.Mesh(innerHaloGeo, innerHaloMat);
       sunMesh.add(innerHalo);
 
-      const midHaloGeo = new THREE.SphereGeometry(6.8, 32, 32);
+      // Mid corona — stored in ref for animation
+      const midHaloGeo = new THREE.SphereGeometry(7.2, 32, 32);
       const midHaloMat = new THREE.MeshBasicMaterial({
         color: 0xf59e0b,
         transparent: true,
-        opacity: 0.15,
+        opacity: 0.17,
         side: THREE.BackSide,
         blending: THREE.AdditiveBlending,
         depthWrite: false
       });
       const midHalo = new THREE.Mesh(midHaloGeo, midHaloMat);
       sunMesh.add(midHalo);
+      sunMidHaloRef.current = midHalo;
 
-      const outerHaloGeo = new THREE.SphereGeometry(9.4, 32, 32);
+      // Outer extended corona — stored in ref for animation
+      const outerHaloGeo = new THREE.SphereGeometry(10.8, 32, 32);
       const outerHaloMat = new THREE.MeshBasicMaterial({
         color: 0xd97706,
         transparent: true,
-        opacity: 0.07,
+        opacity: 0.09,
         side: THREE.BackSide,
         blending: THREE.AdditiveBlending,
         depthWrite: false
       });
       const outerHalo = new THREE.Mesh(outerHaloGeo, outerHaloMat);
       sunMesh.add(outerHalo);
+      sunOuterHaloRef.current = outerHalo;
+
+      // Distant volumetric glow sprite (always faces camera — billboard)
+      const glowCanvas = document.createElement('canvas');
+      glowCanvas.width = 128;
+      glowCanvas.height = 128;
+      const glowCtx = glowCanvas.getContext('2d')!;
+      const glowGrad = glowCtx.createRadialGradient(64, 64, 0, 64, 64, 64);
+      glowGrad.addColorStop(0, 'rgba(255, 253, 220, 0.95)');
+      glowGrad.addColorStop(0.15, 'rgba(255, 240, 170, 0.70)');
+      glowGrad.addColorStop(0.45, 'rgba(245, 158, 11, 0.28)');
+      glowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      glowCtx.fillStyle = glowGrad;
+      glowCtx.fillRect(0, 0, 128, 128);
+      const glowSpriteMat = new THREE.SpriteMaterial({
+        map: new THREE.CanvasTexture(glowCanvas),
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        opacity: 0.88
+      });
+      const glowSprite = new THREE.Sprite(glowSpriteMat);
+      glowSprite.scale.set(38, 38, 1);
+      sunMesh.add(glowSprite);
+
       scene.add(sunMesh);
 
       bodiesRef.current.set('sun', {
@@ -678,16 +729,16 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
           const posY = ephem.positionAU.z * factor;
 
           let mat: THREE.Material;
-          const geo = new THREE.SphereGeometry(p.radius, 32, 32);
+          const geo = new THREE.SphereGeometry(p.radius, 48, 48);
 
           if (p.isEarth) {
             const earthTex = getRealisticEarthDayTexture();
-            mat = new THREE.MeshStandardMaterial({ map: earthTex, roughness: 0.55, metalness: 0.1 });
+            mat = new THREE.MeshStandardMaterial({ map: earthTex, roughness: 0.50, metalness: 0.12 });
           } else if (p.isJupiter) {
             const jupTex = getJupiterTexture();
-            mat = new THREE.MeshStandardMaterial({ map: jupTex, roughness: 0.7 });
+            mat = new THREE.MeshStandardMaterial({ map: jupTex, roughness: 0.65, metalness: 0.05 });
           } else {
-            mat = new THREE.MeshStandardMaterial({ color: new THREE.Color(p.color), roughness: 0.65, metalness: 0.1 });
+            mat = new THREE.MeshStandardMaterial({ color: new THREE.Color(p.color), roughness: 0.55, metalness: 0.06 });
           }
 
           const mesh = new THREE.Mesh(geo, mat);
@@ -717,11 +768,70 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
             mesh.add(satRing);
           }
 
+          // Atmospheric halo for planets that have one
+          if (p.hasAtmo && p.atmoColor !== undefined && p.atmoOpacity !== undefined) {
+            const atmoGeo = new THREE.SphereGeometry(p.radius * 1.08, 32, 32);
+            const atmoMat = new THREE.MeshBasicMaterial({
+              color: p.atmoColor,
+              transparent: true,
+              opacity: p.atmoOpacity,
+              side: THREE.BackSide,
+              blending: THREE.AdditiveBlending,
+              depthWrite: false
+            });
+            const atmoMesh = new THREE.Mesh(atmoGeo, atmoMat);
+            mesh.add(atmoMesh);
+          }
+
+          // Saturn's iconic ring system
+          if (p.hasRings) {
+            const ringCanvas = document.createElement('canvas');
+            ringCanvas.width = 256;
+            ringCanvas.height = 1;
+            const rCtx = ringCanvas.getContext('2d')!;
+            const ringGrad = rCtx.createLinearGradient(0, 0, 256, 0);
+            ringGrad.addColorStop(0.0, 'rgba(0, 0, 0, 0)');
+            ringGrad.addColorStop(0.08, 'rgba(180, 150, 100, 0.18)');
+            ringGrad.addColorStop(0.20, 'rgba(220, 200, 155, 0.72)');  // B-ring (brightest)
+            ringGrad.addColorStop(0.35, 'rgba(200, 175, 130, 0.55)');  // A-ring
+            ringGrad.addColorStop(0.50, 'rgba(160, 135, 95, 0.38)');
+            ringGrad.addColorStop(0.65, 'rgba(130, 110, 75, 0.22)');
+            ringGrad.addColorStop(0.82, 'rgba(100, 85, 60, 0.10)');
+            ringGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
+            rCtx.fillStyle = ringGrad;
+            rCtx.fillRect(0, 0, 256, 1);
+            const ringTex = new THREE.CanvasTexture(ringCanvas);
+            // Inner radius = 1.25x planet radius, outer = 2.4x (B+A ring span)
+            const ringGeo = new THREE.RingGeometry(p.radius * 1.25, p.radius * 2.4, 80);
+            // Map the ring's UV so our gradient texture applies radially
+            const ringPos = ringGeo.attributes.position;
+            const ringUV = ringGeo.attributes.uv;
+            for (let rv = 0; rv < ringPos.count; rv++) {
+              const rx = ringPos.getX(rv);
+              const rz = ringPos.getZ(rv);
+              const ringR = Math.sqrt(rx * rx + rz * rz);
+              const ringU = (ringR - p.radius * 1.25) / (p.radius * 2.4 - p.radius * 1.25);
+              ringUV.setXY(rv, ringU, 0.5);
+            }
+            ringUV.needsUpdate = true;
+            const ringMat = new THREE.MeshBasicMaterial({
+              map: ringTex,
+              side: THREE.DoubleSide,
+              transparent: true,
+              depthWrite: false,
+              blending: THREE.NormalBlending
+            });
+            const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+            // Saturn's axial tilt ~26.7°
+            ringMesh.rotation.x = Math.PI / 2 - 0.467;
+            mesh.add(ringMesh);
+          }
+
           // Keplerian Orbit Path
           let orbitLine: THREE.Line | undefined;
           if (showOrbits) {
             const orbitPts: THREE.Vector3[] = [];
-            const samples = 96;
+            const samples = 128;  // Higher resolution for smoother ellipses
             for (let s = 0; s <= samples; s++) {
               const sampleDate = new Date(simDate.getTime() + (s / samples) * (p.id === 'mercury' ? 88 : p.id === 'earth' ? 365.25 : 687) * 86400000);
               const sEphem = calculatePlanetEphemeris(p.id, sampleDate);
@@ -731,7 +841,8 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
               orbitPts.push(new THREE.Vector3(sEphem.positionAU.x * sFactor, sEphem.positionAU.z * sFactor, sEphem.positionAU.y * sFactor));
             }
             const orbitGeo = new THREE.BufferGeometry().setFromPoints(orbitPts);
-            const orbitMat = new THREE.LineBasicMaterial({ color: new THREE.Color(p.color), transparent: true, opacity: 0.28 });
+            // Subtler opacity so the scene feels less diagram-like
+            const orbitMat = new THREE.LineBasicMaterial({ color: new THREE.Color(p.color), transparent: true, opacity: 0.22 });
             orbitLine = new THREE.Line(orbitGeo, orbitMat);
             scene.add(orbitLine);
           }
@@ -813,7 +924,8 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
       if (sunDirLightRef.current) sunDirLightRef.current.intensity = 3.2;
       if (ambientLightRef.current) {
         ambientLightRef.current.color.setHex(0x0c1527);
-        ambientLightRef.current.intensity = 0.24;
+        // Darker ambient makes night side of Earth more dramatic
+        ambientLightRef.current.intensity = 0.18;
       }
 
       const EARTH_R = 10.0;

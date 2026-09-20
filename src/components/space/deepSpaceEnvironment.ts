@@ -124,7 +124,7 @@ export function createMilkyWayDome(): THREE.Mesh {
     side: THREE.BackSide,
     depthWrite: false,
     transparent: true,
-    opacity: 0.88
+    opacity: 0.92  // Richer galactic backdrop for deeper immersion
   });
   const domeMesh = new THREE.Mesh(domeGeo, domeMat);
   // Orient galactic plane authentically
@@ -132,6 +132,7 @@ export function createMilkyWayDome(): THREE.Mesh {
   domeMesh.rotation.z = -0.25;
   return domeMesh;
 }
+
 
 /**
  * Multi-Tier High-Fidelity Deep Space Starfield
@@ -146,9 +147,9 @@ export function createRealisticStarfield(): THREE.Group {
   starfieldGroup.name = 'DeepSpace_Starfield';
 
   // -------------------------------------------------------------
-  // TIER 1: 10,000 Pinpoint Distant Micro-Stars
+  // TIER 1: 14,000 Pinpoint Distant Micro-Stars
   // -------------------------------------------------------------
-  const microCount = 10000;
+  const microCount = 14000;
   const microGeo = new THREE.BufferGeometry();
   const microPos = new Float32Array(microCount * 3);
   const microColors = new Float32Array(microCount * 3);
@@ -183,10 +184,10 @@ export function createRealisticStarfield(): THREE.Group {
   starfieldGroup.add(microStars);
 
   // -------------------------------------------------------------
-  // TIER 2: 3,500 Astronomical Spectral Classification Stars
+  // TIER 2: 4,500 Astronomical Spectral Classification Stars
   // Authentic B-V Colors: O/B (Blue), A (White), G (Solar Yellow), K (Orange), M (Red)
   // -------------------------------------------------------------
-  const spectralCount = 3500;
+  const spectralCount = 4500;
   const spectralGeo = new THREE.BufferGeometry();
   const spectralPos = new Float32Array(spectralCount * 3);
   const spectralColors = new Float32Array(spectralCount * 3);
@@ -267,7 +268,7 @@ export function createRealisticStarfield(): THREE.Group {
   guideGeo.setAttribute('color', new THREE.BufferAttribute(guideColors, 3));
 
   const guideMat = new THREE.PointsMaterial({
-    size: 3.2,
+    size: 3.8,  // Larger for prominent navigational stars
     vertexColors: true,
     transparent: true,
     opacity: 1.0,
