@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { calculatePlanetEphemeris } from '../../services/calculations/kepler';
 import { calculateAdityaL1Ephemeris } from '../../services/calculations/lagrange';
+import { calculateVoyagerInterstellarEphemeris } from '../../services/calculations/spacecraftPosition';
 import { CelestrakService, SatelliteTrackData } from '../../services/api/celestrakService';
 import { SPACECRAFT_REGISTRY, resolveSpacecraftState } from '../../services/data/spacecraftCatalog';
 import { resolveTrackingCapability } from '../../services/data/trackingCapability';
@@ -179,7 +180,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showSearchDropdown, setShowSearchDropdown] = useState<boolean>(false);
   const [viewing3DViewer, setViewing3DViewer] = useState<{ id: string; name: string } | null>(null);
-  const [voyagerNotice, setVoyagerNotice] = useState<boolean>(false);
 
   // 1. Cinematic 0-9s Arrival Sequence State
   const [isArrivalActive, setIsArrivalActive] = useState<boolean>(() => {
@@ -336,6 +336,8 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         viewDist = 7.0;
       } else if (body.id === 'aditya-l1') {
         viewDist = 4.5;
+      } else if (body.id === 'voyager-1' || body.id === 'voyager-2') {
+        viewDist = 5.0;
       }
 
       // Compute camera offset along current viewing angle with slight upward elevation
@@ -901,25 +903,91 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
           }
 
           const adityaDef = SPACECRAFT_REGISTRY.find(s => s.id === 'aditya-l1');
+          bodiesRef.current.set('aditya-l1', {
+            id: 'aditya-l1',
+            name: 'Aditya-L1',
+            type: 'spacecraft',
+            mesh: l1Mesh,
+            position: l1VisualPos,
+            realKm: l1.positionKm,
+            radiusKm: 2,
+            orbitLine: haloLine,
+            color: '#38bdf8'
+          });
+
           if (adityaDef) {
             resolveSpacecraftState(adityaDef, simDate).then(craftState => {
-              bodiesRef.current.set('aditya-l1', {
-                id: 'aditya-l1',
-                name: 'Aditya-L1',
-                type: 'spacecraft',
-                mesh: l1Mesh,
-                position: l1VisualPos,
-                realKm: l1.positionKm,
-                radiusKm: 2,
-                orbitLine: haloLine,
-                color: '#38bdf8',
-                craftData: craftState
-              });
+              const existing = bodiesRef.current.get('aditya-l1');
+              if (existing) existing.craftData = craftState;
             });
           }
         }
       } catch (e) {
         console.error('Aditya-L1 error:', e);
+      }
+
+      // 4. Interstellar Spacecraft: Voyager 1 & Voyager 2
+      const voyagerProbes: Array<'voyager-1' | 'voyager-2'> = ['voyager-1', 'voyager-2'];
+      for (const vId of voyagerProbes) {
+        try {
+          const vPos = calculateVoyagerInterstellarEphemeris(vId, simDate, scaleMode);
+          const vVisualPos = new THREE.Vector3(vPos.renderPosition.x, vPos.renderPosition.y, vPos.renderPosition.z);
+
+          const vMesh = getSpacecraft3DModel(vId, { scale: 0.55, isMapMode: true });
+          vMesh.position.copy(vVisualPos);
+          // Point high-gain antenna dish back toward inner Solar System / Earth
+          vMesh.lookAt(0, 0, 0);
+          vMesh.userData = { bodyId: vId };
+          vMesh.traverse(child => {
+            child.userData.bodyId = vId;
+          });
+          vMesh.visible = showSpacecraft;
+          scene.add(vMesh);
+
+          // Asymptotic interstellar escape trajectory line
+          let escapeLine: THREE.Line | undefined;
+          if (showOrbits) {
+            const linePts = [
+              vVisualPos.clone().multiplyScalar(0.4),
+              vVisualPos.clone()
+            ];
+            const escGeo = new THREE.BufferGeometry().setFromPoints(linePts);
+            const escMat = new THREE.LineDashedMaterial({
+              color: vId === 'voyager-1' ? 0xf59e0b : 0x10b981,
+              dashSize: 3,
+              gapSize: 2,
+              transparent: true,
+              opacity: 0.45
+            });
+            escapeLine = new THREE.Line(escGeo, escMat);
+            escapeLine.computeLineDistances();
+            scene.add(escapeLine);
+          }
+
+          const vDef = SPACECRAFT_REGISTRY.find(s => s.id === vId);
+          const craftName = vDef ? vDef.name : vId === 'voyager-1' ? 'Voyager 1' : 'Voyager 2';
+
+          bodiesRef.current.set(vId, {
+            id: vId,
+            name: craftName,
+            type: 'spacecraft',
+            mesh: vMesh,
+            position: vVisualPos,
+            realKm: { x: vPos.x, y: vPos.y, z: vPos.z },
+            radiusKm: 4,
+            orbitLine: escapeLine,
+            color: vId === 'voyager-1' ? '#f59e0b' : '#10b981'
+          });
+
+          if (vDef) {
+            resolveSpacecraftState(vDef, simDate).then(craftState => {
+              const existing = bodiesRef.current.get(vId);
+              if (existing) existing.craftData = craftState;
+            });
+          }
+        } catch (err) {
+          console.error(`Failed to place ${vId}:`, err);
+        }
       }
 
     } else {
@@ -1140,26 +1208,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
       }
     });
 
-    if (selectedBodyId === 'voyager-1' || selectedBodyId === 'voyager-2') {
-      setVoyagerNotice(true);
-      if (reticle) reticle.visible = false;
-      if (distLine) distLine.visible = false;
-
-      setHudData({
-        name: selectedBodyId === 'voyager-1' ? 'Voyager 1' : 'Voyager 2',
-        distEarthKm: 0,
-        distSunKm: 0,
-        lightTimeStr: 'N/A',
-        type: 'Deep Space Spacecraft',
-        status: 'UNAVAILABLE',
-        source: 'NASA JPL Deep Space Network',
-        isUnavailable: true
-      });
-      return;
-    } else {
-      setVoyagerNotice(false);
-    }
-
     const selected = selectedBodyId ? bodiesRef.current.get(selectedBodyId) : null;
     const earth = bodiesRef.current.get('earth');
 
@@ -1181,19 +1229,21 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
       const dz = selected.realKm.z - earth.realKm.z;
       const distEarthKm = Math.sqrt(dx * dx + dy * dy + dz * dz);
       const ltSec = calculateLightTimeSeconds(distEarthKm);
+      const distSunKm = selected.craftData?.distanceFromSunKm ||
+        Math.sqrt(selected.realKm.x * selected.realKm.x + selected.realKm.y * selected.realKm.y + selected.realKm.z * selected.realKm.z);
 
       setHudData({
         name: selected.name,
         catalogId: selected.satTrack ? `NORAD ${selected.satTrack.noradId}` : undefined,
         distEarthKm,
-        distSunKm: 149597870.7,
+        distSunKm,
         altitudeKm: selected.satTrack?.state?.altitudeKm,
         velocityKmS: selected.satTrack?.state?.velocityKmS || selected.craftData?.velocityKmS,
         lightTimeStr: formatLightTime(ltSec),
         type: selected.type,
-        orbitClass: selected.satTrack?.orbitClass || selected.craftData?.orbitType,
+        orbitClass: selected.satTrack?.orbitClass || selected.craftData?.orbitType || (selected.id.includes('voyager') ? 'Interstellar Trajectory' : undefined),
         status: selected.craftData?.telemetrySource.status || 'CALCULATED',
-        source: selected.craftData?.telemetrySource.sourceName || 'Astronomical Ephemeris Model'
+        source: selected.craftData?.telemetrySource.sourceName || (selected.id.includes('voyager') ? 'NASA JPL Deep Space Network / Interstellar Mission' : 'Astronomical Ephemeris Model')
       });
     } else if (selected && selected.id === 'earth') {
       if (distLine) distLine.visible = false;
@@ -1234,7 +1284,8 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
       { id: 'eos-06', name: 'EOS-06 (Oceansat-3)', type: 'satellite', category: 'Ocean Monitor (SSO)' },
       { id: 'noaa-19', name: 'NOAA-19 (POES)', type: 'satellite', category: 'Weather Satellite (SSO)' },
       { id: 'terra', name: 'Terra (EOS AM-1)', type: 'satellite', category: 'Earth Observing (SSO)' },
-      { id: 'voyager-1', name: 'Voyager 1', type: 'spacecraft', category: 'Deep Space (No Ephemeris)' }
+      { id: 'voyager-1', name: 'Voyager 1', type: 'spacecraft', category: 'Interstellar Probe (DSN)' },
+      { id: 'voyager-2', name: 'Voyager 2', type: 'spacecraft', category: 'Interstellar Probe (DSN)' }
     ];
   }, []);
 
@@ -1250,13 +1301,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
   const handleSearchResultSelect = (obj: typeof searchableList[0]) => {
     setSearchQuery('');
     setShowSearchDropdown(false);
-
-    if (obj.id === 'voyager-1' || obj.id === 'voyager-2') {
-      setSelectedBodyId(obj.id);
-      setVoyagerNotice(true);
-      handleObjectSelection(obj.id, false);
-      return;
-    }
 
     if (obj.type === 'satellite') {
       setSelectedBodyId(obj.id);
@@ -1631,11 +1675,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
                       <button
                         key={id}
                         onClick={() => {
-                          if (id === 'voyager-1') {
-                            setVoyagerNotice(true);
-                          } else {
-                            focusOnObject(id);
-                          }
+                          focusOnObject(id);
                           handleObjectSelection(id, false);
                         }}
                         className={`btn ${isSel ? 'btn-active' : 'btn-secondary'}`}
@@ -1945,70 +1985,8 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         </div>
       )}
 
-      {/* Voyager Ephemeris Notice */}
-      {voyagerNotice && !isOrbitalView && (
-        <div
-          className="glass-panel tech-corner"
-          style={{
-            position: 'absolute',
-            bottom: '24px',
-            left: '20px',
-            padding: '12px 16px',
-            borderRadius: 'var(--radius-sm)',
-            zIndex: 25,
-            maxWidth: '320px',
-            border: '1px solid rgba(245, 158, 11, 0.35)',
-            background: 'rgba(7, 17, 31, 0.94)'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: '#f59e0b', fontSize: '10px', fontWeight: 700, letterSpacing: '0.04em' }}>
-              <span style={{ fontSize: '7px' }}>●</span> POSITION DATA UNAVAILABLE
-            </div>
-            <button
-              onClick={() => setVoyagerNotice(false)}
-              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px' }}
-              title="Close"
-            >
-              <X size={13} />
-            </button>
-          </div>
-
-          <div style={{ fontSize: '14px', fontWeight: 700, color: '#ffffff' }}>
-            Voyager 1 (Interstellar Probe)
-          </div>
-          <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
-            Ephemeris: Source Unavailable
-          </div>
-
-          <div style={{
-            display: 'flex',
-            gap: '8px',
-            marginTop: '10px',
-            paddingTop: '8px',
-            borderTop: '1px solid var(--border-hairline)'
-          }}>
-            <button
-              onClick={() => setViewing3DViewer({ id: 'voyager-1', name: 'Voyager 1' })}
-              className="btn btn-primary"
-              style={{ flex: 1, fontSize: '11px', padding: '6px 10px' }}
-            >
-              <Eye size={13} />
-              <span>3D Architecture</span>
-            </button>
-            <button
-              onClick={() => setVoyagerNotice(false)}
-              className="btn btn-secondary"
-              style={{ fontSize: '11px', padding: '6px 10px' }}
-            >
-              Dismiss
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Target Acquisition HUD Reticle (Bottom Left) */}
-      {!voyagerNotice && !isOrbitalView && hudData && (
+      {!isOrbitalView && hudData && (
         <div
           className="glass-panel tech-corner space-map-hud"
           style={{

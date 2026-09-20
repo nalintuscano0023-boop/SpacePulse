@@ -4,6 +4,7 @@ import { calculateDistanceKm, calculateLightTimeSeconds, MOON_MEAN_DISTANCE_KM }
 import { calculatePlanetEphemeris } from '../calculations/kepler';
 import { CelestrakService } from '../api/celestrakService';
 import { resolveTrackingCapability } from './trackingCapability';
+import { calculateVoyagerInterstellarEphemeris } from '../calculations/spacecraftPosition';
 
 export interface SpacecraftDefinition {
   id: string;
@@ -338,25 +339,25 @@ export async function resolveSpacecraftState(def: SpacecraftDefinition, date: Da
     };
   }
 
-  // 2. If it's Voyager 1 or 2: DO NOT FABRICATE COORDINATES
-  // "If the current browser-accessible data sources cannot provide a reliable Voyager 1 ephemeris:
-  // do NOT place Voyager 1 at a fake location. Instead, display POSITION DATA UNAVAILABLE / EPHEMERIS SOURCE UNAVAILABLE"
+  // 2. Voyager 1 & 2: Interstellar hyperbolic ephemeris propagation from NASA JPL DSN baseline
   if (def.id === 'voyager-1' || def.id === 'voyager-2') {
     const trackingCap = resolveTrackingCapability(def.id, def.name, null, date);
+    const ephem = calculateVoyagerInterstellarEphemeris(def.id, date);
+
     return {
       ...def,
-      distanceFromEarthKm: undefined,
-      distanceFromSunKm: undefined,
-      velocityKmS: undefined,
-      lightTimeToEarthSec: undefined,
-      position: undefined,
+      distanceFromEarthKm: ephem.physicalDistanceFromEarthKm,
+      distanceFromSunKm: ephem.physicalDistanceFromSunKm,
+      velocityKmS: ephem.velocityKmS,
+      lightTimeToEarthSec: ephem.lightTimeToEarthSec,
+      position: { x: ephem.x, y: ephem.y, z: ephem.z },
       telemetrySource: {
-        sourceName: 'NASA JPL Deep Space Network',
-        sourceUrl: 'https://voyager.jpl.nasa.gov/',
-        timestamp: date.toISOString(),
-        status: 'DATA_UNAVAILABLE',
-        statusNote: 'Reliable browser-accessible positional ephemeris is currently unavailable for direct vector propagation.',
-        calculationMethod: 'Direct browser ephemeris propagation unavailable'
+        sourceName: 'NASA JPL Deep Space Network / Interstellar Mission',
+        sourceUrl: 'https://voyager.jpl.nasa.gov/mission/status/',
+        timestamp: ephem.sourceTimestamp,
+        status: 'CALCULATED',
+        statusNote: 'Heliocentric coordinates and light time propagated from NASA JPL DSN interstellar trajectory baseline',
+        calculationMethod: 'Hyperbolic interstellar asymptotic vector propagation'
       },
       trackingCapability: trackingCap
     };

@@ -172,12 +172,12 @@ const SPACECRAFT_CAPABILITY_REGISTRY: Record<string, BaseSpacecraftCapabilityDef
     source: 'NASA JPL Deep Space Network',
     sourceUrl: 'https://voyager.jpl.nasa.gov/',
     jplId: '-31',
-    canFocusOnMap: false,
-    canTrackVectors: false,
-    focusReason: '3D map positioning unavailable: Voyager 1 is > 163 AU from Sun beyond solar system coordinate map',
-    trackReason: 'No browser-accessible verified ephemeris is currently available for direct browser propagation',
-    defaultStatus: 'DATA_UNAVAILABLE',
-    statusContext: 'No supported public ephemeris is currently available for direct browser propagation'
+    canFocusOnMap: true,
+    canTrackVectors: true,
+    focusReason: 'Focus Voyager 1 in 3D Space Map (Interstellar trajectory at ~164 AU)',
+    trackReason: 'Track Voyager 1 interstellar escape vectors (~17.0 km/s relative to Sun)',
+    defaultStatus: 'CALCULATED',
+    statusContext: 'State vector propagated from NASA JPL DSN interstellar ephemeris baseline'
   },
   'voyager-2': {
     id: 'voyager-2',
@@ -188,12 +188,12 @@ const SPACECRAFT_CAPABILITY_REGISTRY: Record<string, BaseSpacecraftCapabilityDef
     source: 'NASA JPL Deep Space Network',
     sourceUrl: 'https://voyager.jpl.nasa.gov/',
     jplId: '-32',
-    canFocusOnMap: false,
-    canTrackVectors: false,
-    focusReason: '3D map positioning unavailable: Voyager 2 is > 137 AU from Sun beyond solar system coordinate map',
-    trackReason: 'No browser-accessible verified ephemeris is currently available for direct browser propagation',
-    defaultStatus: 'DATA_UNAVAILABLE',
-    statusContext: 'No supported public ephemeris is currently available for direct browser propagation'
+    canFocusOnMap: true,
+    canTrackVectors: true,
+    focusReason: 'Focus Voyager 2 in 3D Space Map (Interstellar trajectory at ~138 AU)',
+    trackReason: 'Track Voyager 2 interstellar escape vectors (~15.4 km/s relative to Sun)',
+    defaultStatus: 'CALCULATED',
+    statusContext: 'State vector propagated from NASA JPL DSN interstellar ephemeris baseline'
   },
   'chandrayaan-2-orbiter': {
     id: 'chandrayaan-2-orbiter',
