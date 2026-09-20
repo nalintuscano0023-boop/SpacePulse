@@ -100,7 +100,7 @@ When reliable data is unavailable, the interface clearly communicates the limita
 - Vite
 - Three.js
 - React Three Fiber
-- Tailwind CSS
+- Vanilla CSS Design System
 - Modern CSS
 - Web APIs
 - Public Space Data APIs
