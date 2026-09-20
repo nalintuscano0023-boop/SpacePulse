@@ -91,20 +91,20 @@ export function getMilkyWayTexture(): THREE.CanvasTexture {
     }
   }
 
-  // 2e. Subtle Deep Space Nebulosity (Carina, Orion, Cygnus faint emission clouds)
+  // 2e. Subtle Deep Space Starlight Halo (Extremely faint, natural starlight)
   const drawEmissionNebula = (nx: number, ny: number, rx: number, ry: number, colorRgba: string) => {
     const nebGrad = ctx.createRadialGradient(nx, ny, 0, nx, ny, Math.max(rx, ry));
     nebGrad.addColorStop(0, colorRgba);
-    nebGrad.addColorStop(0.5, colorRgba.replace(/[\d\.]+\)$/, '0.08)'));
+    nebGrad.addColorStop(0.6, colorRgba.replace(/[\d\.]+\)$/, '0.02)'));
     nebGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = nebGrad;
     ctx.beginPath();
     ctx.ellipse(nx, ny, rx, ry, Math.random() * 0.5, 0, Math.PI * 2);
     ctx.fill();
   };
-  drawEmissionNebula(650, 420, 110, 75, 'rgba(56, 189, 248, 0.16)');  // Cygnus blue rift
-  drawEmissionNebula(1520, 680, 130, 85, 'rgba(244, 63, 94, 0.14)');  // Carina magenta emission
-  drawEmissionNebula(420, 520, 90, 60, 'rgba(168, 85, 247, 0.12)');  // Orion faint molecular cloud
+  drawEmissionNebula(650, 420, 110, 75, 'rgba(45, 65, 95, 0.06)');
+  drawEmissionNebula(1520, 680, 130, 85, 'rgba(55, 45, 75, 0.05)');
+  drawEmissionNebula(420, 520, 90, 60, 'rgba(35, 45, 70, 0.04)');
 
   cachedMilkyWayTexture = new THREE.CanvasTexture(canvas);
   cachedMilkyWayTexture.wrapS = THREE.RepeatWrapping;
@@ -124,7 +124,7 @@ export function createMilkyWayDome(): THREE.Mesh {
     side: THREE.BackSide,
     depthWrite: false,
     transparent: true,
-    opacity: 0.92  // Richer galactic backdrop for deeper immersion
+    opacity: 0.35  // Subtle, restrained astronomical depth
   });
   const domeMesh = new THREE.Mesh(domeGeo, domeMat);
   // Orient galactic plane authentically

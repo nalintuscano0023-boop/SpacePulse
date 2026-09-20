@@ -7,18 +7,19 @@ import {
   Clock, 
   RotateCcw, 
   ChevronRight,
+  ChevronLeft,
   Crosshair,
   Search,
   Eye,
   Globe,
   AlertTriangle,
   Compass,
-  Radio,
   Sliders,
-  Check,
   RefreshCw,
   Info,
-  X
+  X,
+  Sparkles,
+  Maximize2
 } from 'lucide-react';
 import { calculatePlanetEphemeris } from '../../services/calculations/kepler';
 import { calculateAdityaL1Ephemeris } from '../../services/calculations/lagrange';
@@ -29,23 +30,22 @@ import type { InspectableObject, SpacecraftObject } from '../../types/space';
 import { resolveInspectableObject, normalizeSpacecraftObject } from '../../services/data/objectResolver';
 import { formatDistanceKm } from '../../utils/formatters';
 import { calculateLightTimeSeconds, formatLightTime } from '../../services/calculations/physics';
-import { StatusBadge } from '../../components/common/StatusBadge';
 import { 
   createRealisticEarthShaderMaterial, 
   createRealisticAtmosphereMesh, 
-  createRealisticCloudMesh, 
-  getRealisticEarthDayTexture 
+  createRealisticCloudMesh 
 } from '../../components/space/earthRealistic';
 import { getSpacecraft3DModel } from '../../components/space/spacecraftModelRegistry';
+import { createRealisticStarfield } from '../../components/space/deepSpaceEnvironment';
 import { 
-  createMilkyWayDome, 
-  createRealisticStarfield 
-} from '../../components/space/deepSpaceEnvironment';
-import { 
-  createDetailedSatelliteModel, 
   createScientificReticle, 
   createDirectionalOrbitLine 
 } from '../../components/space/spacecraftVisuals';
+import { 
+  createRealisticSun, 
+  createRealisticPlanet, 
+  PLANET_VISUAL_CONFIGS 
+} from '../../components/space/planetRealistic';
 import { Spacecraft3DViewer } from '../../components/inspector/Spacecraft3DViewer';
 
 interface SpaceMapProps {
@@ -55,12 +55,15 @@ interface SpaceMapProps {
 }
 
 type ViewMode = 'SOLAR_SYSTEM' | 'EARTH_ORBIT';
+type ScaleMode = 'EXPLORATION' | 'SCIENTIFIC';
 
 interface VisualBody {
   id: string;
   name: string;
   type: 'star' | 'planet' | 'moon' | 'spacecraft' | 'satellite';
   mesh: THREE.Object3D;
+  planetMesh?: THREE.Mesh;
+  cloudsMesh?: THREE.Mesh;
   position: THREE.Vector3;
   realKm: { x: number; y: number; z: number };
   radiusKm: number;
@@ -70,137 +73,69 @@ interface VisualBody {
   satTrack?: SatelliteTrackData;
 }
 
-// Procedural Planet Textures (Cached so they are generated once)
-let cachedSunTex: THREE.CanvasTexture | null = null;
-let cachedEarthTex: THREE.CanvasTexture | null = null;
-let cachedCloudsTex: THREE.CanvasTexture | null = null;
-let cachedJupiterTex: THREE.CanvasTexture | null = null;
+interface FlyToAnimation {
+  startPos: THREE.Vector3;
+  targetPos: THREE.Vector3;
+  startLookAt: THREE.Vector3;
+  targetLookAt: THREE.Vector3;
+  startTime: number;
+  durationMs: number;
+}
 
-function getSunTexture(): THREE.CanvasTexture {
-  if (cachedSunTex) return cachedSunTex;
-  const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 256;
-  const ctx = canvas.getContext('2d')!;
+// True astronomical orbital periods (in Earth days) for full 360° Keplerian sampling
+const ORBITAL_PERIODS_DAYS: Record<string, number> = {
+  mercury: 87.97,
+  venus: 224.70,
+  earth: 365.25,
+  mars: 686.98,
+  jupiter: 4332.59,  // ~11.86 Earth years
+  saturn: 10759.22,  // ~29.46 Earth years
+  uranus: 30685.40,  // ~84.0 Earth years
+  neptune: 60189.00  // ~164.8 Earth years
+};
 
-  const grad = ctx.createLinearGradient(0, 0, 512, 256);
-  grad.addColorStop(0, '#fffbeb');
-  grad.addColorStop(0.3, '#fef08a');
-  grad.addColorStop(0.7, '#f59e0b');
-  grad.addColorStop(1, '#d97706');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, 512, 256);
+// Authentic sidereal rotation rates (radians per animation frame)
+const PLANET_ROTATION_SPEEDS: Record<string, number> = {
+  mercury: 0.0004,
+  venus: -0.0003, // Retrograde rotation
+  earth: 0.0028,
+  mars: 0.0027,
+  jupiter: 0.0068, // Rapid rotation of gas giant
+  saturn: 0.0064,
+  uranus: -0.0042, // Retrograde & tilted on side
+  neptune: 0.0045
+};
 
-  for (let i = 0; i < 300; i++) {
-    const x = Math.random() * 512;
-    const y = Math.random() * 256;
-    const r = 2 + Math.random() * 6;
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255, 255, 255, 0.25)' : 'rgba(180, 83, 9, 0.25)';
-    ctx.fill();
+/**
+ * Computes visual distance in scene units from true heliocentric distance in AU
+ */
+function computeVisualDistance(rAU: number, mode: ScaleMode): number {
+  if (mode === 'SCIENTIFIC') {
+    // True proportional scale: 1 AU = 22.0 scene units
+    return Math.max(0.1, rAU * 22.0);
   }
-
-  cachedSunTex = new THREE.CanvasTexture(canvas);
-  return cachedSunTex;
+  // Exploration Scale: Continuous non-linear power-law compression
+  // Preserves exact ordering, true heliocentric angles, and eccentricity variations
+  // r_vis = 16.5 * (r_AU)^0.52 + 4.5
+  return Math.max(4.8, 16.5 * Math.pow(Math.max(0.01, rAU), 0.52) + 4.5);
 }
 
-function getEarthTexture(): THREE.CanvasTexture {
-  if (cachedEarthTex) return cachedEarthTex;
-  const canvas = document.createElement('canvas');
-  canvas.width = 1024;
-  canvas.height = 512;
-  const ctx = canvas.getContext('2d')!;
-
-  // Ocean
-  ctx.fillStyle = '#0f3a68';
-  ctx.fillRect(0, 0, 1024, 512);
-
-  // Continents
-  ctx.fillStyle = '#1e3a1e';
-  const drawLand = (x: number, y: number, w: number, h: number) => {
-    ctx.beginPath();
-    ctx.ellipse(x * 2, y * 2, w * 2, h * 2, Math.random() * 0.4, 0, Math.PI * 2);
-    ctx.fill();
-  };
-  drawLand(280, 100, 70, 50);
-  drawLand(260, 140, 45, 60);
-  drawLand(320, 120, 50, 40);
-  drawLand(120, 95, 45, 50);
-  drawLand(150, 160, 35, 65);
-  drawLand(390, 180, 30, 25);
-
-  // Ice caps
-  ctx.fillStyle = '#f1f5f9';
-  ctx.fillRect(0, 0, 1024, 25);
-  ctx.fillRect(0, 487, 1024, 25);
-
-  cachedEarthTex = new THREE.CanvasTexture(canvas);
-  return cachedEarthTex;
-}
-
-function getCloudsTexture(): THREE.CanvasTexture {
-  if (cachedCloudsTex) return cachedCloudsTex;
-  const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 256;
-  const ctx = canvas.getContext('2d')!;
-  ctx.clearRect(0, 0, 512, 256);
-
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-  for (let i = 0; i < 60; i++) {
-    const x = Math.random() * 512;
-    const y = 30 + Math.random() * 196;
-    ctx.beginPath();
-    ctx.ellipse(x, y, 20 + Math.random() * 45, 8 + Math.random() * 16, 0.15, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  cachedCloudsTex = new THREE.CanvasTexture(canvas);
-  return cachedCloudsTex;
-}
-
-function getJupiterTexture(): THREE.CanvasTexture {
-  if (cachedJupiterTex) return cachedJupiterTex;
-  const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 256;
-  const ctx = canvas.getContext('2d')!;
-
-  const colors = ['#fde68a', '#d97706', '#fef3c7', '#b45309', '#fef08a', '#92400e', '#fef3c7'];
-  const bandHeight = 256 / colors.length;
-  colors.forEach((c, idx) => {
-    ctx.fillStyle = c;
-    ctx.fillRect(0, idx * bandHeight, 512, bandHeight);
-  });
-
-  // Red Spot
-  ctx.fillStyle = '#dc2626';
-  ctx.beginPath();
-  ctx.ellipse(320, 165, 30, 16, 0.1, 0, Math.PI * 2);
-  ctx.fill();
-
-  cachedJupiterTex = new THREE.CanvasTexture(canvas);
-  return cachedJupiterTex;
-}
-
-// Visual spacing: guarantees all planets are clearly outside the Sun and beautifully visible
-function mapPlanetDistanceToVisual(planetId: string, rAU: number): number {
-  // Base distances chosen for visual clarity while preserving astronomical order
-  const scaleMap: Record<string, number> = {
-    mercury: 12.0,
-    venus: 17.5,
-    earth: 24.0,
-    mars: 31.0,
-    jupiter: 44.0,
-    saturn: 58.0,
-    uranus: 72.0,
-    neptune: 86.0
-  };
-
-  const base = scaleMap[planetId] || 25.0;
-  // Apply subtle eccentricity modulation based on actual AU
-  return base * (1 + (rAU - 1.0) * 0.04);
+/**
+ * Transforms heliocentric ecliptic J2000 coordinates (in AU) to Three.js scene coordinates
+ * Ecliptic X -> Three.js X
+ * Ecliptic Z (Latitude / Ecliptic Normal) -> Three.js Y (Up)
+ * Ecliptic Y (In-Plane 90°) -> Three.js Z
+ */
+function eclipticToSceneCoords(posAU: { x: number; y: number; z: number }, mode: ScaleMode): THREE.Vector3 {
+  const rAU = Math.sqrt(posAU.x * posAU.x + posAU.y * posAU.y + posAU.z * posAU.z);
+  const visualR = computeVisualDistance(rAU, mode);
+  const factor = rAU > 0 ? visualR / rAU : 1.0;
+  
+  return new THREE.Vector3(
+    posAU.x * factor,
+    posAU.z * factor,
+    posAU.y * factor
+  );
 }
 
 // Satellite distance mapping around Earth in Earth-Orbit mode
@@ -227,6 +162,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
   
   // View Modes & Active State
   const [viewMode, setViewMode] = useState<ViewMode>('SOLAR_SYSTEM');
+  const [scaleMode, setScaleMode] = useState<ScaleMode>('EXPLORATION');
   const [selectedBodyId, setSelectedBodyId] = useState<string | null>(selectedObjectId || null);
   const [simDate, setSimDate] = useState<Date>(new Date());
   
@@ -246,6 +182,16 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
   const [showSearchDropdown, setShowSearchDropdown] = useState<boolean>(false);
   const [viewing3DViewer, setViewing3DViewer] = useState<{ id: string; name: string } | null>(null);
   const [voyagerNotice, setVoyagerNotice] = useState<boolean>(false);
+
+  // First-Time Observatory Guided Walkthrough State (1 to 5, 0 = inactive)
+  const [walkthroughPhase, setWalkthroughPhase] = useState<number>(() => {
+    try {
+      const completed = localStorage.getItem('spacepulse_solarsystem_walkthrough_completed');
+      return completed === 'true' ? 0 : 1;
+    } catch {
+      return 0;
+    }
+  });
 
   // HUD Telemetry State
   const [hudData, setHudData] = useState<{
@@ -279,12 +225,8 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
   const sunDirLightRef = useRef<THREE.DirectionalLight | null>(null);
   const ambientLightRef = useRef<THREE.AmbientLight | null>(null);
 
-  // Sun corona animation refs
-  const sunMidHaloRef = useRef<THREE.Mesh | null>(null);
-  const sunOuterHaloRef = useRef<THREE.Mesh | null>(null);
-
-  const targetCamPos = useRef<THREE.Vector3 | null>(null);
-  const targetLookAt = useRef<THREE.Vector3 | null>(null);
+  // Smooth Fly-To Camera Flight Reference
+  const flyToAnimRef = useRef<FlyToAnimation | null>(null);
   const handleObjectSelectionRef = useRef<(objectId: string, shouldInspect?: boolean) => void>(() => {});
 
   // Synchronize selection from parent prop
@@ -300,46 +242,111 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     }
   }, [selectedObjectId]);
 
-  // Camera Framing Utility
-  const frameCamera = useCallback((targetPos: THREE.Vector3, distance: number, lookAt = new THREE.Vector3(0, 0, 0)) => {
+  // Smooth Fly-To Interpolator Function
+  const flyToTarget = useCallback((targetPos: THREE.Vector3, targetLook: THREE.Vector3, durationMs: number = 1300) => {
     if (!cameraRef.current || !controlsRef.current) return;
-    targetLookAt.current = lookAt.clone();
-    targetCamPos.current = targetPos.clone().add(new THREE.Vector3(0, distance * 0.45, distance * 0.75));
+    flyToAnimRef.current = {
+      startPos: cameraRef.current.position.clone(),
+      targetPos: targetPos.clone(),
+      startLookAt: controlsRef.current.target.clone(),
+      targetLookAt: targetLook.clone(),
+      startTime: performance.now(),
+      durationMs
+    };
   }, []);
 
   const resetView = useCallback(() => {
     if (viewMode === 'EARTH_ORBIT') {
-      // Horizon-grazing perspective — low camera angle looking across the limb
-      targetLookAt.current = new THREE.Vector3(-1.2, 0, 0);
-      targetCamPos.current = new THREE.Vector3(18, 10, 28);
+      flyToTarget(new THREE.Vector3(18, 10, 28), new THREE.Vector3(-1.2, 0, 0), 1000);
     } else {
-      // Ecliptic-plane perspective — camera is at a shallow angle, not top-down
-      targetLookAt.current = new THREE.Vector3(0, -2, 0);
-      targetCamPos.current = new THREE.Vector3(18, 22, 72);
+      if (scaleMode === 'SCIENTIFIC') {
+        flyToTarget(new THREE.Vector3(60, 110, 260), new THREE.Vector3(0, -1, 0), 1100);
+      } else {
+        // Ecliptic observatory viewpoint: shallow ~22° angle across the planetary plane
+        flyToTarget(new THREE.Vector3(26, 30, 85), new THREE.Vector3(0, -1, 0), 1000);
+      }
     }
-  }, [viewMode]);
+  }, [viewMode, scaleMode, flyToTarget]);
 
+  // Focus on specific object with smooth ease-in-out flight
+  const focusOnObject = useCallback((id: string) => {
+    const body = bodiesRef.current.get(id);
+    if (!body || !cameraRef.current || !controlsRef.current) return;
+
+    if (viewMode === 'EARTH_ORBIT') {
+      if (body.id === 'earth') {
+        flyToTarget(new THREE.Vector3(14, 11, 24), new THREE.Vector3(-1.2, 0, 0), 1200);
+      } else {
+        const targetLook = body.position.clone();
+        const zoomDist = selectedBodyId === id ? 1.8 : 3.8;
+        const offset = body.position.clone().normalize().multiplyScalar(zoomDist).add(new THREE.Vector3(1.0, 1.0, 1.6));
+        flyToTarget(body.position.clone().add(offset), targetLook, 1200);
+      }
+    } else {
+      const targetLook = body.position.clone();
+      let viewDist = 12.0;
+
+      if (body.id === 'sun') {
+        viewDist = 26.0;
+      } else if (body.id === 'jupiter' || body.id === 'saturn') {
+        viewDist = 16.0;
+      } else if (body.id === 'uranus' || body.id === 'neptune') {
+        viewDist = 12.0;
+      } else if (body.id === 'earth' || body.id === 'venus') {
+        viewDist = 9.0;
+      } else if (body.id === 'mars' || body.id === 'mercury') {
+        viewDist = 7.0;
+      } else if (body.id === 'aditya-l1') {
+        viewDist = 4.5;
+      }
+
+      // Compute camera offset along current viewing angle with slight upward elevation
+      const currentDir = cameraRef.current.position.clone().sub(targetLook).normalize();
+      // Ensure elevation so rings and illuminated hemispheres are discernible
+      if (currentDir.y < 0.25) currentDir.y = 0.35;
+      currentDir.normalize();
+
+      const targetCam = targetLook.clone().add(currentDir.multiplyScalar(viewDist));
+      flyToTarget(targetCam, targetLook, 1300);
+    }
+  }, [viewMode, selectedBodyId, flyToTarget]);
+
+  // Unified object selection and inspection handler
+  const handleObjectSelection = useCallback(async (objectId: string, shouldInspect: boolean = false) => {
+    setSelectedBodyId(objectId);
+    const body = bodiesRef.current.get(objectId);
+    let resolved: InspectableObject | null = null;
+    if (body?.craftData) {
+      resolved = normalizeSpacecraftObject(body.craftData);
+    } else {
+      resolved = await resolveInspectableObject(objectId, simDate);
+    }
+    if (resolved) {
+      if (shouldInspect && onInspectObject) {
+        onInspectObject(resolved);
+      } else if (onSelectObject) {
+        onSelectObject(resolved);
+      }
+    }
+  }, [simDate, onInspectObject, onSelectObject]);
+  handleObjectSelectionRef.current = handleObjectSelection;
+
+  // Camera Presets for Earth Orbit
   const setCameraPreset = useCallback((preset: 'horizon' | 'polar' | 'equatorial' | 'default') => {
     if (viewMode === 'EARTH_ORBIT') {
       if (preset === 'horizon') {
-        // True limb/horizon view — grazing the Earth's edge
-        targetLookAt.current = new THREE.Vector3(0, 0, 0);
-        targetCamPos.current = new THREE.Vector3(20, 4, 22);
+        flyToTarget(new THREE.Vector3(20, 4, 22), new THREE.Vector3(0, 0, 0), 1000);
       } else if (preset === 'polar') {
-        targetLookAt.current = new THREE.Vector3(0, 0, 0);
-        targetCamPos.current = new THREE.Vector3(0, 28, 2);
+        flyToTarget(new THREE.Vector3(0, 28, 2), new THREE.Vector3(0, 0, 0), 1000);
       } else if (preset === 'equatorial') {
-        targetLookAt.current = new THREE.Vector3(0, 0, 0);
-        targetCamPos.current = new THREE.Vector3(28, 2, 8);
+        flyToTarget(new THREE.Vector3(28, 2, 8), new THREE.Vector3(0, 0, 0), 1000);
       } else {
-        targetLookAt.current = new THREE.Vector3(-1.2, 0, 0);
-        targetCamPos.current = new THREE.Vector3(18, 10, 28);
+        flyToTarget(new THREE.Vector3(18, 10, 28), new THREE.Vector3(-1.2, 0, 0), 1000);
       }
     } else {
-      targetLookAt.current = new THREE.Vector3(0, -2, 0);
-      targetCamPos.current = new THREE.Vector3(18, 22, 72);
+      resetView();
     }
-  }, [viewMode]);
+  }, [viewMode, flyToTarget, resetView]);
 
   // =========================================================================
   // 1. INITIALIZE THREE.JS SCENE & RENDERER (Runs Once)
@@ -363,22 +370,18 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
       return;
     }
 
-    // Initial safe dimensions
     const width = Math.max(container.clientWidth || 0, window.innerWidth || 800, 320);
     const height = Math.max(container.clientHeight || 0, (window.innerHeight ? window.innerHeight - 130 : 650), 400);
 
     const scene = new THREE.Scene();
-    // Near-perfect space black — maximizes starfield contrast
+    // Deep cosmic space black - pure vacuum
     scene.background = new THREE.Color('#000204');
     sceneRef.current = scene;
 
-    // FOV 55° — wider than 45° for immersive depth without distortion
-    const camera = new THREE.PerspectiveCamera(55, width / height, 0.05, 25000);
-    // Cinematic entry: camera starts far above the ecliptic and sweeps down into a shallow horizon angle
-    camera.position.set(40, 95, 185);
+    // Perspective Camera: 50° FOV gives natural depth perception without fish-eye distortion
+    const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 35000);
+    camera.position.set(26, 30, 85);
     cameraRef.current = camera;
-    targetLookAt.current = new THREE.Vector3(0, -2, 0);
-    targetCamPos.current = new THREE.Vector3(18, 22, 72);
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -388,7 +391,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.35;
+    renderer.toneMappingExposure = 1.30;
     rendererRef.current = renderer;
 
     container.innerHTML = '';
@@ -396,44 +399,37 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    controls.dampingFactor = 0.04;  // Slightly smoother drag
-    controls.minDistance = 4;
-    controls.maxDistance = 2500;
+    controls.dampingFactor = 0.05; // Smooth spatial damping
+    controls.minDistance = 2.5;
+    controls.maxDistance = 5000;
+    controls.target.set(0, -1, 0);
     controlsRef.current = controls;
 
-    // 1. Milky Way Panoramic Celestial Dome
-    const milkyWayDome = createMilkyWayDome();
-    scene.add(milkyWayDome);
-
-    // 2. Multi-Tier Deep Space Starfield (10,000+ stars with spectral classifications)
+    // Multi-Tier Deep Space Starfield (10,000+ stars with authentic B-V spectral classes)
+    // Completely separate from planetary geometry - NO giant translucent dome!
     const starfield = createRealisticStarfield();
     scene.add(starfield);
 
-    // 3. Dynamic Multi-Source Illuminating System
-    // Solar PointLight at (0, 0, 0) for Solar System View — increased intensity for dramatic planet shading
-    const sunPointLight = new THREE.PointLight(0xfffaed, 4.5, 5000, 0.08);
+    // Dynamic Multi-Source Illuminating System
+    // Solar PointLight at (0, 0, 0) - will be populated by createRealisticSun
+    const sunPointLight = new THREE.PointLight(0xfffaec, 4.2, 8000, 0.06);
     sunPointLight.position.set(0, 0, 0);
     scene.add(sunPointLight);
     sunPointLightRef.current = sunPointLight;
 
     // Directional Sunlight for Earth-Orbit Tracking View (aligned with terminator)
     const earthSunDir = new THREE.Vector3(1.2, 0.35, 0.85).normalize();
-    const sunDirLight = new THREE.DirectionalLight(0xfffaed, 0.0);
+    const sunDirLight = new THREE.DirectionalLight(0xfffaec, 0.0);
     sunDirLight.position.copy(earthSunDir.clone().multiplyScalar(250));
     scene.add(sunDirLight);
     sunDirLightRef.current = sunDirLight;
 
-    // Astronomical Ambient Illumination
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.55);
+    // Restrained Astronomical Ambient Illumination
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.22);
     scene.add(ambientLight);
     ambientLightRef.current = ambientLight;
 
-    // Secondary subtle fill headlight
-    const headLight = new THREE.DirectionalLight(0x38bdf8, 0.35);
-    headLight.position.set(0, 100, 100);
-    scene.add(headLight);
-
-    // Dynamic Distance Ranging Vector
+    // Distance Ranging Vector
     const distGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0)]);
     const distMat = new THREE.LineDashedMaterial({ color: 0x38bdf8, dashSize: 2, gapSize: 1.5, transparent: true, opacity: 0.55 });
     const distanceLine = new THREE.Line(distGeo, distMat);
@@ -447,7 +443,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     scene.add(reticle);
     reticleRef.current = reticle;
 
-    // Robust Resize Observer for Dynamic Viewport Sizing
+    // Resize Observer for Dynamic Viewport Sizing
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const w = entry.contentRect.width || container.clientWidth || 300;
@@ -516,12 +512,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         if (hit && hit.userData.bodyId) {
           const bodyId = hit.userData.bodyId;
 
-          // If user clicked Earth in Solar System view, smoothly enter Earth-Orbit view!
-          if (bodyId === 'earth' && viewMode === 'SOLAR_SYSTEM') {
-            setViewMode('EARTH_ORBIT');
-            return;
-          }
-
+          // If user clicked Earth in Solar System view, smoothly fly to Earth first
           focusOnObject(bodyId);
           handleObjectSelectionRef.current(bodyId, false);
         }
@@ -535,49 +526,52 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     const animate = () => {
       animIdRef.current = requestAnimationFrame(animate);
 
-      // Rotate planet/earth meshes
-      bodiesRef.current.forEach(body => {
-        if (body.type === 'planet' || body.id === 'earth') {
-          body.mesh.rotation.y += 0.002;
+      // 1. Smooth Camera Fly-To Interpolation
+      if (flyToAnimRef.current) {
+        const anim = flyToAnimRef.current;
+        const now = performance.now();
+        const elapsed = now - anim.startTime;
+        const progress = Math.min(1.0, elapsed / anim.durationMs);
+
+        // Smooth cubic ease-in-out
+        const ease = progress < 0.5 
+          ? 4 * progress * progress * progress 
+          : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+        camera.position.lerpVectors(anim.startPos, anim.targetPos, ease);
+        controls.target.lerpVectors(anim.startLookAt, anim.targetLookAt, ease);
+        controls.update();
+
+        if (progress >= 1.0) {
+          flyToAnimRef.current = null;
         }
+      } else {
+        controls.update();
+      }
+
+      // 2. Rotate Planets at Believable Speeds
+      bodiesRef.current.forEach(body => {
+        const speed = PLANET_ROTATION_SPEEDS[body.id] || 0.002;
+        if (body.planetMesh) {
+          body.planetMesh.rotation.y += speed;
+        } else if (body.type === 'planet' || body.id === 'earth') {
+          body.mesh.rotation.y += speed;
+        }
+
+        if (body.cloudsMesh) {
+          body.cloudsMesh.rotation.y += speed + 0.0006;
+        }
+
         if (body.type === 'satellite') {
           body.mesh.rotation.y += 0.004;
         }
       });
 
-      if (cloudsMeshRef.current) {
-        cloudsMeshRef.current.rotation.y += 0.003;
-      }
-
-      // Animate solar corona layers — slow counter-rotating motion for living star feel
-      if (sunMidHaloRef.current) {
-        sunMidHaloRef.current.rotation.y += 0.0008;
-        sunMidHaloRef.current.rotation.z += 0.0005;
-      }
-      if (sunOuterHaloRef.current) {
-        sunOuterHaloRef.current.rotation.y -= 0.0005;
-        sunOuterHaloRef.current.rotation.x += 0.0003;
-      }
-
-      // Smooth camera interpolation
-      if (targetCamPos.current && targetLookAt.current) {
-        camera.position.lerp(targetCamPos.current, 0.06);
-        controls.target.lerp(targetLookAt.current, 0.06);
-
-        if (camera.position.distanceTo(targetCamPos.current) < 0.2) {
-          targetCamPos.current = null;
-          targetLookAt.current = null;
-        }
-      }
-
-      // Animate and billboard target acquisition reticle
+      // 3. Keep Selection Reticle aligned and subtly pulsing
       if (reticleRef.current && reticleRef.current.visible) {
-        reticleRef.current.quaternion.copy(camera.quaternion);
-        const arc = reticleRef.current.getObjectByName('InnerScanningArc');
-        if (arc) arc.rotation.z += 0.02;
+        reticleRef.current.rotation.z += 0.008;
       }
 
-      controls.update();
       renderer.render(scene, camera);
     };
 
@@ -590,14 +584,11 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
       renderer.domElement.removeEventListener('mousemove', onPointerMove);
       renderer.domElement.removeEventListener('click', onPointerClick);
       renderer.dispose();
-      if (container.contains(renderer.domElement)) {
-        container.removeChild(renderer.domElement);
-      }
     };
   }, []);
 
   // =========================================================================
-  // 2. BUILD BASE ASTRONOMICAL SCENE (Renders immediately without external APIs)
+  // 2. BUILD BASE ASTRONOMICAL SCENE (Solar System or Earth Orbit)
   // =========================================================================
   useEffect(() => {
     const scene = sceneRef.current;
@@ -612,274 +603,130 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
 
     if (viewMode === 'SOLAR_SYSTEM') {
       // Configure lighting for Solar System View
-      if (sunPointLightRef.current) sunPointLightRef.current.intensity = 4.5;
+      if (sunPointLightRef.current) sunPointLightRef.current.intensity = 4.2;
       if (sunDirLightRef.current) sunDirLightRef.current.intensity = 0.0;
       if (ambientLightRef.current) {
         ambientLightRef.current.color.setHex(0xffffff);
-        ambientLightRef.current.intensity = 0.55;
+        ambientLightRef.current.intensity = 0.22;
       }
 
       // ----------------------------------------------------
-      // SOLAR SYSTEM OVERVIEW (Sun + 8 Planets + Moon + L1)
+      // 1. Sun (Authentic Self-Illuminated Star)
       // ----------------------------------------------------
-      const planetDefs = [
-        { id: 'mercury', name: 'Mercury', color: '#94a3b8', radius: 1.1 },
-        { id: 'venus', name: 'Venus', color: '#fde68a', radius: 1.8, hasAtmo: true, atmoColor: 0xfde68a, atmoOpacity: 0.14 },
-        { id: 'earth', name: 'Earth', color: '#38bdf8', radius: 2.2, isEarth: true },
-        { id: 'mars', name: 'Mars', color: '#ef4444', radius: 1.5, hasAtmo: true, atmoColor: 0xef4444, atmoOpacity: 0.10 },
-        { id: 'jupiter', name: 'Jupiter', color: '#f59e0b', radius: 4.5, isJupiter: true },
-        { id: 'saturn', name: 'Saturn', color: '#fef08a', radius: 3.8, hasRings: true },
-        { id: 'uranus', name: 'Uranus', color: '#67e8f9', radius: 2.6 },
-        { id: 'neptune', name: 'Neptune', color: '#6366f1', radius: 2.5, hasAtmo: true, atmoColor: 0x6366f1, atmoOpacity: 0.13 }
-      ] as Array<{
-        id: string; name: string; color: string; radius: number;
-        isEarth?: boolean; isJupiter?: boolean; hasRings?: boolean;
-        hasAtmo?: boolean; atmoColor?: number; atmoOpacity?: number;
-      }>;
-
-      // 1. Sun (Radiant self-illuminated star)
-      const sunTex = getSunTexture();
-      const sunGeo = new THREE.SphereGeometry(4.5, 36, 36);
-      const sunMat = new THREE.MeshBasicMaterial({ map: sunTex });
-      const sunMesh = new THREE.Mesh(sunGeo, sunMat);
-      sunMesh.userData = { bodyId: 'sun' };
-
-      // Multi-layer Coronal Photosphere & Atmospheric Glow (Photosphere + Inner Warm Corona + Outer Soft Atmospheric Halo)
-      const innerHaloGeo = new THREE.SphereGeometry(5.2, 32, 32);
-      const innerHaloMat = new THREE.MeshBasicMaterial({
-        color: 0xfef08a,
-        transparent: true,
-        opacity: 0.30,
-        side: THREE.BackSide,
-        blending: THREE.AdditiveBlending
-      });
-      const innerHalo = new THREE.Mesh(innerHaloGeo, innerHaloMat);
-      sunMesh.add(innerHalo);
-
-      // Mid corona — stored in ref for animation
-      const midHaloGeo = new THREE.SphereGeometry(7.2, 32, 32);
-      const midHaloMat = new THREE.MeshBasicMaterial({
-        color: 0xf59e0b,
-        transparent: true,
-        opacity: 0.17,
-        side: THREE.BackSide,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false
-      });
-      const midHalo = new THREE.Mesh(midHaloGeo, midHaloMat);
-      sunMesh.add(midHalo);
-      sunMidHaloRef.current = midHalo;
-
-      // Outer extended corona — stored in ref for animation
-      const outerHaloGeo = new THREE.SphereGeometry(10.8, 32, 32);
-      const outerHaloMat = new THREE.MeshBasicMaterial({
-        color: 0xd97706,
-        transparent: true,
-        opacity: 0.09,
-        side: THREE.BackSide,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false
-      });
-      const outerHalo = new THREE.Mesh(outerHaloGeo, outerHaloMat);
-      sunMesh.add(outerHalo);
-      sunOuterHaloRef.current = outerHalo;
-
-      // Distant volumetric glow sprite (always faces camera — billboard)
-      const glowCanvas = document.createElement('canvas');
-      glowCanvas.width = 128;
-      glowCanvas.height = 128;
-      const glowCtx = glowCanvas.getContext('2d')!;
-      const glowGrad = glowCtx.createRadialGradient(64, 64, 0, 64, 64, 64);
-      glowGrad.addColorStop(0, 'rgba(255, 253, 220, 0.95)');
-      glowGrad.addColorStop(0.15, 'rgba(255, 240, 170, 0.70)');
-      glowGrad.addColorStop(0.45, 'rgba(245, 158, 11, 0.28)');
-      glowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      glowCtx.fillStyle = glowGrad;
-      glowCtx.fillRect(0, 0, 128, 128);
-      const glowSpriteMat = new THREE.SpriteMaterial({
-        map: new THREE.CanvasTexture(glowCanvas),
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        opacity: 0.88
-      });
-      const glowSprite = new THREE.Sprite(glowSpriteMat);
-      glowSprite.scale.set(38, 38, 1);
-      sunMesh.add(glowSprite);
-
-      scene.add(sunMesh);
+      const sunSystem = createRealisticSun(4.5);
+      scene.add(sunSystem.mesh);
 
       bodiesRef.current.set('sun', {
         id: 'sun',
         name: 'Sun (Sol)',
         type: 'star',
-        mesh: sunMesh,
+        mesh: sunSystem.mesh,
         position: new THREE.Vector3(0, 0, 0),
         realKm: { x: 0, y: 0, z: 0 },
         radiusKm: 696340,
         color: '#f59e0b'
       });
 
-      // 2. Planets
-      planetDefs.forEach(p => {
+      // ----------------------------------------------------
+      // 2. All 8 Major Planets (Mercury to Neptune)
+      // ----------------------------------------------------
+      const planetKeys = ['mercury', 'venus', 'earth', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune'];
+
+      planetKeys.forEach(pId => {
         try {
-          const ephem = calculatePlanetEphemeris(p.id, simDate);
-          const rAU = Math.sqrt(ephem.positionAU.x * ephem.positionAU.x + ephem.positionAU.y * ephem.positionAU.y + ephem.positionAU.z * ephem.positionAU.z);
-          const visualDist = mapPlanetDistanceToVisual(p.id, rAU);
-          const factor = rAU > 0 ? visualDist / rAU : 1;
+          const config = PLANET_VISUAL_CONFIGS[pId];
+          if (!config) return;
 
-          const posX = ephem.positionAU.x * factor;
-          const posZ = ephem.positionAU.y * factor;
-          const posY = ephem.positionAU.z * factor;
+          const ephem = calculatePlanetEphemeris(pId, simDate);
+          const scenePos = eclipticToSceneCoords(ephem.positionAU, scaleMode);
 
-          let mat: THREE.Material;
-          const geo = new THREE.SphereGeometry(p.radius, 48, 48);
+          // Scaled visual radius based on scale mode
+          const visualRadius = scaleMode === 'SCIENTIFIC'
+            ? Math.max(0.4, config.baseRadius * 0.42)
+            : config.baseRadius;
 
-          if (p.isEarth) {
-            const earthTex = getRealisticEarthDayTexture();
-            mat = new THREE.MeshStandardMaterial({ map: earthTex, roughness: 0.50, metalness: 0.12 });
-          } else if (p.isJupiter) {
-            const jupTex = getJupiterTexture();
-            mat = new THREE.MeshStandardMaterial({ map: jupTex, roughness: 0.65, metalness: 0.05 });
-          } else {
-            mat = new THREE.MeshStandardMaterial({ color: new THREE.Color(p.color), roughness: 0.55, metalness: 0.06 });
-          }
+          const planetObj = createRealisticPlanet(pId, visualRadius);
+          planetObj.group.position.copy(scenePos);
+          planetObj.group.visible = showPlanets;
+          scene.add(planetObj.group);
 
-          const mesh = new THREE.Mesh(geo, mat);
-          mesh.position.set(posX, posY, posZ);
-          mesh.userData = { bodyId: p.id };
-          mesh.visible = showPlanets;
-
-          // Earth Cloud Layer & Satellite Constellation Indicator
-          if (p.isEarth) {
-            const cloudsMesh = createRealisticCloudMesh(p.radius);
-            mesh.add(cloudsMesh);
-            cloudsMeshRef.current = cloudsMesh;
-
-            // Moon orbiting Earth at scaled distance
-            const moonGeo = new THREE.SphereGeometry(0.5, 16, 16);
-            const moonMat = new THREE.MeshStandardMaterial({ color: 0xcfd8dc, roughness: 0.8 });
+          // If Earth, add the Moon orbiting Earth
+          if (pId === 'earth') {
+            const moonGeo = new THREE.SphereGeometry(visualRadius * 0.27, 24, 24);
+            const moonMat = new THREE.MeshStandardMaterial({ color: 0xcfd8dc, roughness: 0.9 });
             const moonMesh = new THREE.Mesh(moonGeo, moonMat);
-            moonMesh.position.set(3.8, 0.5, 2.0);
+            moonMesh.position.set(visualRadius * 2.8, 0.4, visualRadius * 1.5);
             moonMesh.userData = { bodyId: 'moon' };
-            mesh.add(moonMesh);
+            planetObj.group.add(moonMesh);
 
             // Satellite Constellation Ring Badge
-            const satRingGeo = new THREE.RingGeometry(p.radius * 1.3, p.radius * 1.45, 32);
-            const satRingMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.4 });
+            const satRingGeo = new THREE.RingGeometry(visualRadius * 1.25, visualRadius * 1.38, 36);
+            const satRingMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.35 });
             const satRing = new THREE.Mesh(satRingGeo, satRingMat);
             satRing.rotation.x = Math.PI / 2.3;
-            mesh.add(satRing);
+            planetObj.group.add(satRing);
+
+            cloudsMeshRef.current = planetObj.cloudsMesh || null;
           }
 
-          // Atmospheric halo for planets that have one
-          if (p.hasAtmo && p.atmoColor !== undefined && p.atmoOpacity !== undefined) {
-            const atmoGeo = new THREE.SphereGeometry(p.radius * 1.08, 32, 32);
-            const atmoMat = new THREE.MeshBasicMaterial({
-              color: p.atmoColor,
-              transparent: true,
-              opacity: p.atmoOpacity,
-              side: THREE.BackSide,
-              blending: THREE.AdditiveBlending,
-              depthWrite: false
-            });
-            const atmoMesh = new THREE.Mesh(atmoGeo, atmoMat);
-            mesh.add(atmoMesh);
-          }
-
-          // Saturn's iconic ring system
-          if (p.hasRings) {
-            const ringCanvas = document.createElement('canvas');
-            ringCanvas.width = 256;
-            ringCanvas.height = 1;
-            const rCtx = ringCanvas.getContext('2d')!;
-            const ringGrad = rCtx.createLinearGradient(0, 0, 256, 0);
-            ringGrad.addColorStop(0.0, 'rgba(0, 0, 0, 0)');
-            ringGrad.addColorStop(0.08, 'rgba(180, 150, 100, 0.18)');
-            ringGrad.addColorStop(0.20, 'rgba(220, 200, 155, 0.72)');  // B-ring (brightest)
-            ringGrad.addColorStop(0.35, 'rgba(200, 175, 130, 0.55)');  // A-ring
-            ringGrad.addColorStop(0.50, 'rgba(160, 135, 95, 0.38)');
-            ringGrad.addColorStop(0.65, 'rgba(130, 110, 75, 0.22)');
-            ringGrad.addColorStop(0.82, 'rgba(100, 85, 60, 0.10)');
-            ringGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
-            rCtx.fillStyle = ringGrad;
-            rCtx.fillRect(0, 0, 256, 1);
-            const ringTex = new THREE.CanvasTexture(ringCanvas);
-            // Inner radius = 1.25x planet radius, outer = 2.4x (B+A ring span)
-            const ringGeo = new THREE.RingGeometry(p.radius * 1.25, p.radius * 2.4, 80);
-            // Map the ring's UV so our gradient texture applies radially
-            const ringPos = ringGeo.attributes.position;
-            const ringUV = ringGeo.attributes.uv;
-            for (let rv = 0; rv < ringPos.count; rv++) {
-              const rx = ringPos.getX(rv);
-              const rz = ringPos.getZ(rv);
-              const ringR = Math.sqrt(rx * rx + rz * rz);
-              const ringU = (ringR - p.radius * 1.25) / (p.radius * 2.4 - p.radius * 1.25);
-              ringUV.setXY(rv, ringU, 0.5);
-            }
-            ringUV.needsUpdate = true;
-            const ringMat = new THREE.MeshBasicMaterial({
-              map: ringTex,
-              side: THREE.DoubleSide,
-              transparent: true,
-              depthWrite: false,
-              blending: THREE.NormalBlending
-            });
-            const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-            // Saturn's axial tilt ~26.7°
-            ringMesh.rotation.x = Math.PI / 2 - 0.467;
-            mesh.add(ringMesh);
-          }
-
-          // Keplerian Orbit Path
+          // Keplerian Elliptical Orbit Path sampled across true orbital period
           let orbitLine: THREE.Line | undefined;
           if (showOrbits) {
             const orbitPts: THREE.Vector3[] = [];
-            const samples = 128;  // Higher resolution for smoother ellipses
+            const samples = 180;
+            const periodDays = ORBITAL_PERIODS_DAYS[pId] || 365.25;
+            const tStart = simDate.getTime();
+
             for (let s = 0; s <= samples; s++) {
-              const sampleDate = new Date(simDate.getTime() + (s / samples) * (p.id === 'mercury' ? 88 : p.id === 'earth' ? 365.25 : 687) * 86400000);
-              const sEphem = calculatePlanetEphemeris(p.id, sampleDate);
-              const srAU = Math.sqrt(sEphem.positionAU.x * sEphem.positionAU.x + sEphem.positionAU.y * sEphem.positionAU.y + sEphem.positionAU.z * sEphem.positionAU.z);
-              const sVisDist = mapPlanetDistanceToVisual(p.id, srAU);
-              const sFactor = srAU > 0 ? sVisDist / srAU : 1;
-              orbitPts.push(new THREE.Vector3(sEphem.positionAU.x * sFactor, sEphem.positionAU.z * sFactor, sEphem.positionAU.y * sFactor));
+              const sampleDate = new Date(tStart + (s / samples) * periodDays * 86400000);
+              const sEphem = calculatePlanetEphemeris(pId, sampleDate);
+              const ptScene = eclipticToSceneCoords(sEphem.positionAU, scaleMode);
+              orbitPts.push(ptScene);
             }
+
             const orbitGeo = new THREE.BufferGeometry().setFromPoints(orbitPts);
-            // Subtler opacity so the scene feels less diagram-like
-            const orbitMat = new THREE.LineBasicMaterial({ color: new THREE.Color(p.color), transparent: true, opacity: 0.22 });
+            const orbitMat = new THREE.LineBasicMaterial({
+              color: new THREE.Color(config.color),
+              transparent: true,
+              opacity: selectedBodyId === pId ? 0.85 : 0.20
+            });
             orbitLine = new THREE.Line(orbitGeo, orbitMat);
             scene.add(orbitLine);
           }
 
-          scene.add(mesh);
-          bodiesRef.current.set(p.id, {
-            id: p.id,
-            name: p.name,
+          bodiesRef.current.set(pId, {
+            id: pId,
+            name: config.name,
             type: 'planet',
-            mesh,
-            position: new THREE.Vector3(posX, posY, posZ),
+            mesh: planetObj.group,
+            planetMesh: planetObj.planetMesh,
+            cloudsMesh: planetObj.cloudsMesh,
+            position: scenePos,
             realKm: ephem.positionKm,
-            radiusKm: p.radius * 2000,
+            radiusKm: config.radiusKm,
             orbitLine,
-            color: p.color
+            color: config.color
           });
+
         } catch (e) {
-          console.error('Planet ephemeris error:', p.id, e);
+          console.error('Failed to calculate ephemeris for:', pId, e);
         }
       });
 
+      // ----------------------------------------------------
       // 3. Aditya-L1 Solar Observatory at Sun-Earth L1
+      // ----------------------------------------------------
       try {
         const l1 = calculateAdityaL1Ephemeris(simDate);
         const earthBody = bodiesRef.current.get('earth');
         if (earthBody) {
           const dirToSun = new THREE.Vector3().subVectors(new THREE.Vector3(0, 0, 0), earthBody.position).normalize();
-          const l1VisualPos = earthBody.position.clone().add(dirToSun.multiplyScalar(3.2));
+          const l1VisualOffset = scaleMode === 'SCIENTIFIC' ? 0.8 : 3.2;
+          const l1VisualPos = earthBody.position.clone().add(dirToSun.multiplyScalar(l1VisualOffset));
 
-          // Authentic Aditya-L1 Solar Observatory 3D model
           const l1Mesh = getSpacecraft3DModel('aditya-l1', { scale: 0.45, isMapMode: true });
           l1Mesh.position.copy(l1VisualPos);
-          l1Mesh.lookAt(0, 0, 0); // Point optical instruments toward the Sun
+          l1Mesh.lookAt(0, 0, 0); // Point instruments toward the Sun
           l1Mesh.userData = { bodyId: 'aditya-l1' };
           l1Mesh.visible = showSpacecraft;
           scene.add(l1Mesh);
@@ -923,26 +770,24 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
       // ----------------------------------------------------
       // EARTH ORBIT TRACKING MODE (Earth Centered + Moon)
       // ----------------------------------------------------
-      // Configure realistic directional lighting and dark cosmic ambient
       if (sunPointLightRef.current) sunPointLightRef.current.intensity = 0.0;
       if (sunDirLightRef.current) sunDirLightRef.current.intensity = 3.2;
       if (ambientLightRef.current) {
         ambientLightRef.current.color.setHex(0x0c1527);
-        // Darker ambient makes night side of Earth more dramatic
         ambientLightRef.current.intensity = 0.18;
       }
 
       const EARTH_R = 10.0;
       const sunDir = new THREE.Vector3(1.2, 0.35, 0.85).normalize();
 
-      // 1. Realistic Day/Night Earth Shader with city lights and specular ocean reflections
+      // 1. Realistic Day/Night Earth Shader with specular oceans & city lights
       const earthGeo = new THREE.SphereGeometry(EARTH_R, 64, 64);
       const earthMat = createRealisticEarthShaderMaterial(sunDir);
       const earthMesh = new THREE.Mesh(earthGeo, earthMat);
       earthMesh.userData = { bodyId: 'earth' };
       scene.add(earthMesh);
 
-      // 2. Realistic Cloud Layer rotating slightly above surface
+      // 2. Realistic Cloud Layer rotating above surface
       const cloudsMesh = createRealisticCloudMesh(EARTH_R);
       earthMesh.add(cloudsMesh);
       cloudsMeshRef.current = cloudsMesh;
@@ -962,7 +807,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         color: '#38bdf8'
       });
 
-      // 2. Moon at scaled visual distance (~45 units)
+      // 4. Moon at scaled visual distance (~45 units)
       const moonDist = 45.0;
       const moonGeo = new THREE.SphereGeometry(1.6, 24, 24);
       const moonMat = new THREE.MeshStandardMaterial({ color: 0xcfd8dc, roughness: 0.9 });
@@ -996,7 +841,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         color: '#cfd8dc'
       });
 
-      // 3. Asynchronously Load Real Satellites from CelesTrak
+      // 5. Asynchronously Load Verified Satellites from CelesTrak
       setIsFetchingSatellites(true);
       CelestrakService.getSupportedEarthSatellites(simDate)
         .then(satellites => {
@@ -1023,24 +868,21 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
             const satColor = orbitColors[sat.orbitClass] || 0x38bdf8;
             const isStation = sat.noradId === 25544 || sat.noradId === 48274;
 
-            // Level 2: Spacecraft-Specific Authentic PBR 3D Model from Registry
             const satMesh = getSpacecraft3DModel(String(sat.noradId), {
               scale: isStation ? 0.38 : 0.28,
               isMapMode: true
             });
             satMesh.position.copy(satPos);
-            satMesh.lookAt(0, 0, 0); // Nadir pointing towards Earth center
+            satMesh.lookAt(0, 0, 0);
             satMesh.userData = { bodyId: `norad-${sat.noradId}`, noradId: sat.noradId };
             satMesh.visible = showSatellites;
             scene.add(satMesh);
 
-            // Level 1: Scientific beacon marker
             const markerGeo = new THREE.SphereGeometry(0.18, 12, 12);
             const markerMat = new THREE.MeshBasicMaterial({ color: satColor });
             const markerMesh = new THREE.Mesh(markerGeo, markerMat);
             satMesh.add(markerMesh);
 
-            // Directional orbit path with motion gradient
             let orbitLine: THREE.Line | undefined;
             if (showOrbits && sat.orbitPath.length > 2) {
               const pathPts = sat.orbitPath.map(pt => {
@@ -1130,68 +972,23 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         });
     }
 
-  }, [viewMode, simDate, showPlanets, showOrbits, showSpacecraft, showSatellites]);
-
-  // Focus on specific object
-  const focusOnObject = useCallback((id: string) => {
-    const body = bodiesRef.current.get(id);
-    if (!body) return;
-
-    if (viewMode === 'EARTH_ORBIT') {
-      if (body.id === 'earth') {
-        targetLookAt.current = new THREE.Vector3(-1.2, 0, 0);
-        targetCamPos.current = new THREE.Vector3(14, 11, 24);
-      } else {
-        targetLookAt.current = body.position.clone();
-        // If already selected, zoom closer for inspection
-        const zoomDist = selectedBodyId === id ? 1.8 : 3.8;
-        const offset = body.position.clone().normalize().multiplyScalar(zoomDist).add(new THREE.Vector3(1.0, 1.0, 1.6));
-        targetCamPos.current = body.position.clone().add(offset);
-      }
-    } else {
-      const offset = body.id === 'sun'
-        ? new THREE.Vector3(25, 18, 32)
-        : new THREE.Vector3(12, 8, 16);
-      targetLookAt.current = body.position.clone();
-      targetCamPos.current = body.position.clone().add(offset);
-    }
-  }, [viewMode, selectedBodyId]);
-
-  // Unified object selection and inspection handler
-  const handleObjectSelection = useCallback(async (objectId: string, shouldInspect: boolean = false) => {
-    setSelectedBodyId(objectId);
-    const body = bodiesRef.current.get(objectId);
-    let resolved: InspectableObject | null = null;
-    if (body?.craftData) {
-      resolved = normalizeSpacecraftObject(body.craftData);
-    } else {
-      resolved = await resolveInspectableObject(objectId, simDate);
-    }
-    if (resolved) {
-      if (shouldInspect && onInspectObject) {
-        onInspectObject(resolved);
-      } else if (onSelectObject) {
-        onSelectObject(resolved);
-      }
-    }
-  }, [simDate, onInspectObject, onSelectObject]);
-  handleObjectSelectionRef.current = handleObjectSelection;
+  }, [viewMode, scaleMode, simDate, showPlanets, showOrbits, showSpacecraft, showSatellites]);
 
   // Update HUD & Selection Reticle when selection changes
   useEffect(() => {
     const reticle = reticleRef.current;
     const distLine = distLineRef.current;
 
-    // Dynamic Orbit Line Emphasis: Selected orbit prominent, other orbits quieter
+    // Orbit Line Emphasis: Selected orbit prominent, other orbits quieter
     bodiesRef.current.forEach((body) => {
       if (body.orbitLine && body.orbitLine.material) {
         const mat = body.orbitLine.material as THREE.LineBasicMaterial;
         if (!selectedBodyId) {
-          mat.opacity = 0.28;
+          mat.opacity = 0.20;
         } else if (body.id === selectedBodyId) {
-          mat.opacity = 0.88;
+          mat.opacity = 0.85;
         } else {
-          mat.opacity = 0.10;
+          mat.opacity = 0.08;
         }
       }
     });
@@ -1221,7 +1018,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
 
     if (selected && reticle) {
       reticle.position.copy(selected.position);
-      reticle.scale.set(selected.type === 'planet' ? 2.5 : 1.2, selected.type === 'planet' ? 2.5 : 1.2, 1);
+      reticle.scale.set(selected.type === 'planet' ? 2.2 : 1.1, selected.type === 'planet' ? 2.2 : 1.1, 1);
       reticle.visible = true;
     } else if (reticle) {
       reticle.visible = false;
@@ -1260,13 +1057,50 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         lightTimeStr: '0.0 ms',
         type: 'planet',
         status: 'CALCULATED',
-        source: 'VSOP87 Planetary Ephemeris'
+        source: 'NASA JPL Standish Keplerian Model'
       });
     } else if (!selected) {
       if (distLine) distLine.visible = false;
       setHudData(null);
     }
   }, [selectedBodyId, viewMode, simDate]);
+
+  // Guided Walkthrough Phase Transitions
+  const handleWalkthroughStep = useCallback((step: number) => {
+    setWalkthroughPhase(step);
+    if (step === 0) {
+      try {
+        localStorage.setItem('spacepulse_solarsystem_walkthrough_completed', 'true');
+      } catch (e) {
+        console.warn('LocalStorage error:', e);
+      }
+      resetView();
+      return;
+    }
+
+    if (step === 1) {
+      // Phase 1: Deep Space Arrival
+      flyToTarget(new THREE.Vector3(0, 190, 440), new THREE.Vector3(0, 0, 0), 1600);
+    } else if (step === 2) {
+      // Phase 2: Heliocentric Architecture Reveal
+      flyToTarget(new THREE.Vector3(26, 32, 90), new THREE.Vector3(0, -1, 0), 1600);
+    } else if (step === 3) {
+      // Phase 3: Spatial Controls & Navigation
+      flyToTarget(new THREE.Vector3(18, 22, 65), new THREE.Vector3(0, -1, 0), 1400);
+    } else if (step === 4) {
+      // Phase 4: Target Acquisition Demonstration (Earth)
+      const earthBody = bodiesRef.current.get('earth');
+      if (earthBody) {
+        setSelectedBodyId('earth');
+        const offset = new THREE.Vector3(5.5, 3.8, 7.5);
+        flyToTarget(earthBody.position.clone().add(offset), earthBody.position.clone(), 1600);
+        handleObjectSelectionRef.current('earth', false);
+      }
+    } else if (step === 5) {
+      // Phase 5: Return to Full Observatory Overview
+      flyToTarget(new THREE.Vector3(28, 30, 85), new THREE.Vector3(0, -1, 0), 1500);
+    }
+  }, [flyToTarget, resetView]);
 
   // Search Objects Registry
   const searchableList = useMemo(() => {
@@ -1379,7 +1213,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         <div style={{
           position: 'absolute',
           inset: 0,
-          background: '#03050a',
+          background: '#010307',
           zIndex: 30,
           display: 'flex',
           flexDirection: 'column',
@@ -1389,7 +1223,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         }}>
           <RefreshCw size={24} className="radar-sweep" style={{ color: 'var(--accent-cyan)' }} />
           <div style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', letterSpacing: '0.08em' }}>
-            INITIALIZING SPACE MAP // THREE.JS OBSERVATORY
+            INITIALIZING SPACE OBSERVATORY // THREE.JS HELIOCENTRIC ENGINE
           </div>
         </div>
       )}
@@ -1420,7 +1254,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
             fontFamily: 'var(--font-mono)',
             color: 'var(--accent-cyan)',
             letterSpacing: '0.04em',
-            background: 'rgba(3, 7, 18, 0.85)',
+            background: 'rgba(3, 7, 18, 0.88)',
             border: '1px solid rgba(56, 189, 248, 0.2)',
             padding: '4px 12px',
             borderRadius: 'var(--radius-full)',
@@ -1432,9 +1266,15 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
           }}>
             <span>{viewMode === 'EARTH_ORBIT' ? 'GEOCENTRIC REFERENCE (ECI TEME J2000)' : 'HELIOCENTRIC REFERENCE (ECLIPTIC J2000)'}</span>
             <span>•</span>
-            <span>DATA: CALCULATED (CELESTRAK SGP4 & KEPLER)</span>
+            <span>DATA: CALCULATED (NASA JPL J2000 & CELESTRAK SGP4)</span>
             <span>•</span>
-            <span style={{ color: 'var(--text-muted)' }}>OBJECT MARKERS VISUALLY ENLARGED</span>
+            <span style={{ color: scaleMode === 'SCIENTIFIC' ? '#34d399' : 'var(--text-muted)' }}>
+              {viewMode === 'EARTH_ORBIT' 
+                ? 'SATELLITE MARKERS ENLARGED'
+                : scaleMode === 'SCIENTIFIC' 
+                  ? 'TRUE PROPORTIONAL SCALE (AU)' 
+                  : 'EXPLORATION SCALE — COMPRESSED'}
+            </span>
           </div>
 
           <div style={{
@@ -1443,14 +1283,14 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
             gap: '6px',
             fontSize: '10px',
             color: 'var(--text-secondary)',
-            background: 'rgba(3, 7, 18, 0.85)',
+            background: 'rgba(3, 7, 18, 0.88)',
             border: '1px solid var(--border-hairline)',
             padding: '4px 10px',
             borderRadius: 'var(--radius-full)',
             pointerEvents: 'auto'
           }}>
             <Info size={11} style={{ color: 'var(--accent-cyan)' }} />
-            <span>Click any object to acquire telemetry • Drag to rotate orbit • Scroll to zoom</span>
+            <span>Click any planet or satellite to acquire telemetry • Drag to orbit • Scroll to zoom</span>
           </div>
         </div>
 
@@ -1461,7 +1301,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
           gap: '12px',
           flexWrap: 'wrap'
         }}>
-          {/* Left: View Mode Toggle, Quick Selectors, Search */}
+          {/* Left: View Mode Toggle, Scale Mode Switcher, Quick Selectors, Search */}
           <div id="space-map-controls-panel" style={{ display: 'flex', alignItems: 'center', gap: '8px', pointerEvents: 'auto', flexWrap: 'wrap' }}>
             {/* Mode Switcher */}
             <div className="glass-panel" style={{ display: 'flex', padding: '3px', borderRadius: 'var(--radius-xs)', gap: '3px', background: 'rgba(5, 12, 24, 0.88)' }}>
@@ -1518,9 +1358,59 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
               </button>
             </div>
 
-            {/* Mode-Specific Quick Selectors */}
+            {/* Scale Mode Switcher (Visible in Solar System Mode) */}
+            {viewMode === 'SOLAR_SYSTEM' && (
+              <div className="glass-panel" style={{ display: 'flex', padding: '3px', borderRadius: 'var(--radius-xs)', gap: '3px', background: 'rgba(5, 12, 24, 0.88)' }}>
+                <button
+                  onClick={() => setScaleMode('EXPLORATION')}
+                  style={{
+                    padding: '5px 10px',
+                    borderRadius: 'var(--radius-xs)',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    background: scaleMode === 'EXPLORATION' ? 'rgba(56, 189, 248, 0.20)' : 'transparent',
+                    color: scaleMode === 'EXPLORATION' ? '#ffffff' : 'var(--text-secondary)',
+                    border: scaleMode === 'EXPLORATION' ? '1px solid rgba(56, 189, 248, 0.45)' : '1px solid transparent',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px'
+                  }}
+                  title="Orbital distances compressed for human exploration; planets visually enlarged"
+                >
+                  <Sliders size={12} />
+                  <span>Exploration</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setScaleMode('SCIENTIFIC');
+                    flyToTarget(new THREE.Vector3(60, 110, 260), new THREE.Vector3(0, -1, 0), 1200);
+                  }}
+                  style={{
+                    padding: '5px 10px',
+                    borderRadius: 'var(--radius-xs)',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    background: scaleMode === 'SCIENTIFIC' ? 'rgba(52, 211, 153, 0.20)' : 'transparent',
+                    color: scaleMode === 'SCIENTIFIC' ? '#ffffff' : 'var(--text-secondary)',
+                    border: scaleMode === 'SCIENTIFIC' ? '1px solid rgba(52, 211, 153, 0.45)' : '1px solid transparent',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px'
+                  }}
+                  title="Orbital distances follow true astronomical proportions (1 AU = 22 units); planets realistically tiny"
+                >
+                  <Maximize2 size={12} />
+                  <span>Scientific</span>
+                </button>
+              </div>
+            )}
+
+            {/* Quick Selectors */}
             {viewMode === 'EARTH_ORBIT' ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
                 {['iss', 'css-tiangong', 'hubble', 'astrosat', 'cartosat-3', 'eos-06'].map(satId => {
                   const isSel = selectedBodyId === satId;
                   const nameMap: Record<string, string> = {
@@ -1539,7 +1429,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
                         handleObjectSelection(satId, false);
                       }}
                       className={`btn ${isSel ? 'btn-active' : 'btn-secondary'}`}
-                      style={{ fontSize: '11px', padding: '5px 10px' }}
+                      style={{ fontSize: '11px', padding: '5px 9px' }}
                     >
                       {nameMap[satId] || satId}
                     </button>
@@ -1547,7 +1437,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
                 })}
               </div>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
                 {['sun', 'earth', 'mars', 'jupiter', 'aditya-l1', 'voyager-1'].map(id => {
                   const isSel = selectedBodyId === id;
                   return (
@@ -1562,7 +1452,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
                         handleObjectSelection(id, false);
                       }}
                       className={`btn ${isSel ? 'btn-active' : 'btn-secondary'}`}
-                      style={{ fontSize: '11px', padding: '5px 10px' }}
+                      style={{ fontSize: '11px', padding: '5px 9px' }}
                     >
                       {id === 'aditya-l1' ? 'Aditya-L1' : id === 'voyager-1' ? 'Voyager 1' : id.charAt(0).toUpperCase() + id.slice(1)}
                     </button>
@@ -1577,16 +1467,16 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                background: 'var(--surface-panel)',
+                background: 'rgba(5, 12, 24, 0.88)',
                 border: '1px solid var(--border-hairline)',
                 borderRadius: 'var(--radius-xs)',
                 padding: '5px 10px',
-                width: '210px'
+                width: '200px'
               }}>
                 <Search size={13} style={{ color: 'var(--text-muted)' }} />
                 <input
                   type="text"
-                  placeholder="Search satellite or planet..."
+                  placeholder="Search body or probe..."
                   value={searchQuery}
                   onFocus={() => setShowSearchDropdown(true)}
                   onChange={(e) => {
@@ -1618,7 +1508,8 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
                     maxHeight: '220px',
                     overflowY: 'auto',
                     zIndex: 50,
-                    padding: '4px'
+                    padding: '4px',
+                    background: 'rgba(5, 12, 24, 0.96)'
                   }}
                 >
                   {searchResults.map(res => (
@@ -1646,7 +1537,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
             </div>
           </div>
 
-          {/* Right: Camera Presets, Layer Toggles & Camera Reset */}
+          {/* Right: Walkthrough Tour, Camera Presets, Layer Toggles & Reset */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', pointerEvents: 'auto' }}>
             {viewMode === 'EARTH_ORBIT' && isFetchingSatellites && (
               <div style={{
@@ -1661,13 +1552,13 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
                 color: 'var(--accent-cyan)'
               }}>
                 <RefreshCw size={11} className="radar-sweep" />
-                <span>RETRIEVING VERIFIED ORBITAL DATA</span>
+                <span>RETRIEVING ORBITAL DATA</span>
               </div>
             )}
 
             {/* Camera Presets (Earth Orbit) */}
             {viewMode === 'EARTH_ORBIT' && (
-              <div className="glass-panel" style={{ display: 'flex', padding: '2px', borderRadius: 'var(--radius-xs)', gap: '2px' }}>
+              <div className="glass-panel" style={{ display: 'flex', padding: '2px', borderRadius: 'var(--radius-xs)', gap: '2px', background: 'rgba(5, 12, 24, 0.88)' }}>
                 <button
                   onClick={() => setCameraPreset('default')}
                   className="btn btn-secondary"
@@ -1703,10 +1594,23 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
               </div>
             )}
 
+            {/* Tour / Walkthrough Replay Button */}
+            {viewMode === 'SOLAR_SYSTEM' && (
+              <button
+                onClick={() => handleWalkthroughStep(1)}
+                className="btn btn-secondary"
+                title="Start Guided Observatory Tour"
+                style={{ fontSize: '11px', padding: '6px 10px', gap: '5px' }}
+              >
+                <Sparkles size={13} style={{ color: 'var(--accent-cyan)' }} />
+                <span>Tour</span>
+              </button>
+            )}
+
             <button
               onClick={() => setShowOrbits(!showOrbits)}
               className={`btn ${showOrbits ? 'btn-active' : 'btn-secondary'}`}
-              title="Toggle Orbital Paths"
+              title="Toggle Keplerian Orbital Paths"
               style={{ fontSize: '11px', padding: '6px 10px' }}
             >
               <Layers size={13} />
@@ -1716,7 +1620,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
             <button
               onClick={resetView}
               className="btn btn-secondary"
-              title="Reset Framing"
+              title="Reset Observatory Framing"
               style={{ fontSize: '11px', padding: '6px 10px' }}
             >
               <RotateCcw size={13} />
@@ -1726,6 +1630,119 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         </div>
       </div>
 
+      {/* Guided Walkthrough Floating Modal (Phases 1 to 5) */}
+      {walkthroughPhase > 0 && (
+        <div
+          className="glass-panel tech-corner"
+          style={{
+            position: 'absolute',
+            top: '80px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: '460px',
+            maxWidth: 'calc(100vw - 32px)',
+            padding: '16px 20px',
+            borderRadius: 'var(--radius-sm)',
+            zIndex: 40,
+            background: 'rgba(5, 12, 24, 0.94)',
+            border: '1px solid rgba(56, 189, 248, 0.45)',
+            boxShadow: '0 12px 40px rgba(0, 0, 0, 0.75)',
+            animation: 'fadeIn 0.25s ease'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontFamily: 'var(--font-mono)',
+              fontSize: '10px',
+              fontWeight: 700,
+              color: 'var(--accent-cyan)',
+              letterSpacing: '0.08em'
+            }}>
+              <Compass size={13} className="radar-sweep" />
+              <span>{walkthroughPhase === 1 ? 'PHASE 01 // ARRIVAL' :
+                     walkthroughPhase === 2 ? 'PHASE 02 // SYSTEM REVEAL' :
+                     walkthroughPhase === 3 ? 'PHASE 03 // OBSERVATORY CONTROLS' :
+                     walkthroughPhase === 4 ? 'PHASE 04 // TARGET ACQUISITION (EARTH)' :
+                     'PHASE 05 // SYSTEM READY'}</span>
+            </div>
+
+            <button
+              onClick={() => handleWalkthroughStep(0)}
+              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px' }}
+              title="Skip Walkthrough"
+            >
+              <X size={14} />
+            </button>
+          </div>
+
+          <div style={{ fontSize: '15px', fontWeight: 700, color: '#ffffff', marginBottom: '6px' }}>
+            {walkthroughPhase === 1 && 'Approaching the Heliocentric System'}
+            {walkthroughPhase === 2 && 'Keplerian Architecture & True Geometry'}
+            {walkthroughPhase === 3 && 'Spatial Exploration & Time Scrubbing'}
+            {walkthroughPhase === 4 && 'Target Tracking & Planetary Telemetry'}
+            {walkthroughPhase === 5 && 'Observatory Ready For Exploration'}
+          </div>
+
+          <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.55, margin: '0 0 14px 0' }}>
+            {walkthroughPhase === 1 && 'Entering deep heliocentric observation domain. Notice the distant multi-tier star canopy with authentic B-V spectral classifications.'}
+            {walkthroughPhase === 2 && 'Planetary positions and orbital ellipses are propagated from verified NASA JPL J2000 secular elements with inverse-square solar illumination.'}
+            {walkthroughPhase === 3 && 'Left-click and drag to orbit in 360°, scroll to zoom, and toggle between Exploration and Scientific scales. Use the timeline to simulate orbital movement.'}
+            {walkthroughPhase === 4 && 'Selecting any celestial body smoothly tracks the target, revealing calculated distances, light-time delays, velocity vectors, and atmospheric features.'}
+            {walkthroughPhase === 5 && 'The observatory is now under your control. Switch between Exploration Scale and Scientific Scale anytime, or explore Earth Orbit Tracking.'}
+          </p>
+
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingTop: '10px',
+            borderTop: '1px solid var(--border-hairline)'
+          }}>
+            <button
+              onClick={() => handleWalkthroughStep(0)}
+              className="btn btn-secondary"
+              style={{ fontSize: '11px', padding: '5px 12px' }}
+            >
+              Skip Tour
+            </button>
+
+            <div style={{ display: 'flex', gap: '6px' }}>
+              {walkthroughPhase > 1 && (
+                <button
+                  onClick={() => handleWalkthroughStep(walkthroughPhase - 1)}
+                  className="btn btn-secondary"
+                  style={{ fontSize: '11px', padding: '5px 10px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                >
+                  <ChevronLeft size={12} />
+                  <span>Back</span>
+                </button>
+              )}
+
+              {walkthroughPhase < 5 ? (
+                <button
+                  onClick={() => handleWalkthroughStep(walkthroughPhase + 1)}
+                  className="btn btn-primary"
+                  style={{ fontSize: '11px', padding: '5px 14px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                >
+                  <span>Next</span>
+                  <ChevronRight size={12} />
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleWalkthroughStep(0)}
+                  className="btn btn-primary"
+                  style={{ fontSize: '11px', padding: '5px 16px' }}
+                >
+                  Start Exploring
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Hover Tooltip */}
       {hoveredBody && (
@@ -1754,7 +1771,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         </div>
       )}
 
-      {/* Voyager Ephemeris Notice - Compact Status Indicator */}
+      {/* Voyager Ephemeris Notice - Contextual Status */}
       {voyagerNotice && (
         <div
           className="glass-panel tech-corner"
@@ -1913,7 +1930,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
             {hudData.orbitClass && <span>{hudData.orbitClass}</span>}
           </div>
 
-          {/* Compact Telemetry Metrics in a single horizontal strip */}
+          {/* Telemetry Metrics in a single strip */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -1958,7 +1975,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
             justifyContent: 'space-between'
           }}>
             <span>SRC: {hudData.source.substring(0, 22)}</span>
-            <span style={{ color: 'var(--accent-cyan)' }}>SGP4 PROPAGATED</span>
+            <span style={{ color: 'var(--accent-cyan)' }}>KEPLERIAN PROPAGATED</span>
           </div>
         </div>
       )}
@@ -1971,7 +1988,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
           bottom: '12px',
           left: '50%',
           transform: 'translateX(-50%)',
-          background: 'rgba(3, 5, 10, 0.85)',
+          background: 'rgba(3, 5, 10, 0.88)',
           backdropFilter: 'blur(8px)',
           padding: '5px 14px',
           borderRadius: 'var(--radius-full)',
@@ -1980,12 +1997,20 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
           color: 'var(--text-muted)',
           textAlign: 'center',
           pointerEvents: 'none',
-          maxWidth: 'min(480px, calc(100vw - 32px))',
+          maxWidth: 'min(580px, calc(100vw - 32px))',
           zIndex: 15,
           boxShadow: '0 4px 16px rgba(0, 0, 0, 0.6)'
         }}
       >
-        <span style={{ color: 'var(--accent-cyan)' }}>ASTRONOMICAL SCALE NOTE:</span> Object markers are visually enlarged for exploration. Positions propagated from verified orbital data.
+        {scaleMode === 'SCIENTIFIC' ? (
+          <span>
+            <strong style={{ color: '#34d399' }}>SCIENTIFIC SCALE:</strong> True proportional interplanetary distances (1 AU = 22 scene units).
+          </span>
+        ) : (
+          <span>
+            <strong style={{ color: 'var(--accent-cyan)' }}>EXPLORATION SCALE — DISTANCES VISUALLY COMPRESSED:</strong> Continuous power-law mapping preserves exact Keplerian ordering and true angular positions.
+          </span>
+        )}
       </div>
 
       {/* Time Scrubber (Bottom Right) */}
@@ -2000,14 +2025,18 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
           zIndex: 15,
           display: 'flex',
           alignItems: 'center',
-          gap: '10px'
+          gap: '10px',
+          background: 'rgba(5, 12, 24, 0.92)'
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <Clock size={13} style={{ color: 'var(--accent-cyan)' }} />
-          <span className="mono" style={{ fontSize: '11px', fontWeight: 600 }}>
-            {simDate.toISOString().split('T')[0]}
-          </span>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: '8px', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>CALCULATED FOR</span>
+            <span className="mono" style={{ fontSize: '11px', fontWeight: 600, color: '#ffffff' }}>
+              {simDate.toISOString().split('T')[0]}
+            </span>
+          </div>
         </div>
 
         <div style={{ display: 'flex', gap: '4px' }}>
