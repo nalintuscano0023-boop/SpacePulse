@@ -42,16 +42,18 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isDrawerOpen]);
 
-  const navItems: { id: TabType; label: string; icon: React.ReactNode; tooltip: string; subtitle: string }[] = [
+  const navItems: { id: TabType; channel: string; label: string; icon: React.ReactNode; tooltip: string; subtitle: string }[] = [
     { 
       id: 'mission-control', 
+      channel: '01',
       label: 'Mission Control', 
       icon: <Activity size={15} />, 
-      tooltip: 'Mission Control: Platform overview and telemetry status',
+      tooltip: 'Mission Control: Global telemetry and fleet overview',
       subtitle: 'Global telemetry & fleet overview'
     },
     { 
       id: 'spacecraft', 
+      channel: '02',
       label: 'Spacecraft', 
       icon: <Satellite size={15} />, 
       tooltip: 'Spacecraft: Monitored active fleet, satellites, and 3D models',
@@ -59,6 +61,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
     },
     { 
       id: 'space-map', 
+      channel: '03',
       label: 'Space Map', 
       icon: <Orbit size={15} />, 
       tooltip: 'Space Map: 3D interactive orbits and real-time celestial visualization',
@@ -66,6 +69,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
     },
     { 
       id: 'analysis', 
+      channel: '04',
       label: 'Analysis', 
       icon: <Compass size={15} />, 
       tooltip: 'Analysis: Keplerian orbital mechanics, relative velocities, and light delay',
@@ -73,6 +77,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
     },
     { 
       id: 'missions', 
+      channel: '05',
       label: 'Missions & Data', 
       icon: <Database size={15} />, 
       tooltip: 'Missions & Data: Verified agency dossiers and planetary science archives',
@@ -251,6 +256,14 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
                   <span style={{ color: isActive ? 'var(--accent-cyan)' : 'inherit', display: 'flex', alignItems: 'center' }}>
                     {item.icon}
                   </span>
+                  <span style={{
+                    fontSize: '10px',
+                    fontFamily: 'var(--font-mono)',
+                    color: isActive ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                    letterSpacing: '0.04em'
+                  }}>
+                    {item.channel}
+                  </span>
                   <span>{item.label}</span>
                 </button>
               );
@@ -258,7 +271,29 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
           </nav>
 
           {/* Right Status & Clock & Mobile Hamburger Button */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            {/* Live Data Connection Beacon */}
+            <div 
+              className="navbar-status-beacon"
+              style={{
+                display: 'none',
+                alignItems: 'center',
+                gap: '6px',
+                background: 'rgba(16, 185, 129, 0.08)',
+                border: '1px solid rgba(16, 185, 129, 0.22)',
+                padding: '4px 8px',
+                borderRadius: 'var(--radius-xs)',
+                fontSize: '10px',
+                fontFamily: 'var(--font-mono)',
+                color: 'var(--status-live)',
+                letterSpacing: '0.04em'
+              }}
+              title="Verified public data streams: NOAA SWPC • CelesTrak SGP4 • NASA JPL Horizons"
+            >
+              <span className="pulse-live-dot" style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--status-live)' }} />
+              <span>FEEDS: ACTIVE</span>
+            </div>
+
             {/* UTC Clock */}
             <div 
               className="navbar-clock"
@@ -268,7 +303,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
                 gap: '5px',
                 background: 'rgba(255, 255, 255, 0.02)',
                 border: '1px solid var(--border-hairline)',
-                padding: '4px 7px',
+                padding: '4px 8px',
                 borderRadius: 'var(--radius-xs)',
                 fontSize: '11px',
                 fontFamily: 'var(--font-mono)',
@@ -457,6 +492,9 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, onSelectTab }) => {
         @media (min-width: 860px) {
           .desktop-navbar {
             display: flex !important;
+          }
+          .navbar-status-beacon {
+            display: inline-flex !important;
           }
         }
         @media (max-width: 859px) {

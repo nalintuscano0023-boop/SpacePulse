@@ -31,6 +31,7 @@ import { CelestrakService, SatelliteTrackData } from '../../services/api/celestr
 import { SPACECRAFT_REGISTRY, resolveSpacecraftState } from '../../services/data/spacecraftCatalog';
 import { resolveTrackingCapability } from '../../services/data/trackingCapability';
 import type { InspectableObject, SpacecraftObject } from '../../types/space';
+import type { DataStatus } from '../../types/telemetry';
 import { resolveInspectableObject, normalizeSpacecraftObject } from '../../services/data/objectResolver';
 import { formatDistanceKm } from '../../utils/formatters';
 import { calculateLightTimeSeconds, formatLightTime } from '../../services/calculations/physics';
@@ -54,6 +55,7 @@ import {
   PLANET_VISUAL_CONFIGS 
 } from '../../components/space/planetRealistic';
 import { Spacecraft3DViewer } from '../../components/inspector/Spacecraft3DViewer';
+import { StatusBadge } from '../../components/common/StatusBadge';
 
 interface SpaceMapProps {
   onSelectObject?: (obj: InspectableObject) => void;
@@ -214,7 +216,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     lightTimeStr: string;
     type: string;
     orbitClass?: string;
-    status: string;
+    status: DataStatus;
     source: string;
     isUnavailable?: boolean;
   } | null>(null);
@@ -1332,7 +1334,9 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         type: selected.type,
         orbitClass: selected.satTrack?.orbitClass || selected.craftData?.orbitType || (selected.id.includes('voyager') ? 'Interstellar Trajectory' : undefined),
         status: selected.craftData?.telemetrySource.status || 'CALCULATED',
-        source: selected.craftData?.telemetrySource.sourceName || (selected.id.includes('voyager') ? 'NASA JPL Deep Space Network / Interstellar Mission' : 'Astronomical Ephemeris Model')
+        source: selected.satTrack 
+          ? 'CelesTrak SGP4 Propagator' 
+          : selected.craftData?.telemetrySource.sourceName || (selected.id.includes('voyager') ? 'NASA JPL Deep Space Network / Interstellar Mission' : 'Astronomical Ephemeris Model')
       });
     } else if (selected && selected.id === 'earth') {
       if (distLine) distLine.visible = false;
@@ -2545,7 +2549,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
             <div style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '5px',
+              gap: '6px',
               fontSize: '10px',
               fontFamily: 'var(--font-mono)',
               color: 'var(--accent-cyan)',
@@ -2554,6 +2558,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
             }}>
               <Crosshair size={12} className="radar-sweep" />
               <span>OBJECT ACQUIRED</span>
+              <StatusBadge status={hudData.status} compact />
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -2662,7 +2667,9 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
             justifyContent: 'space-between'
           }}>
             <span>SRC: {hudData.source.substring(0, 22)}</span>
-            <span style={{ color: 'var(--accent-cyan)' }}>KEPLERIAN PROPAGATED</span>
+            <span style={{ color: 'var(--accent-cyan)' }}>
+              {viewMode === 'EARTH_ORBIT' ? 'SGP4 PROPAGATED' : 'KEPLERIAN PROPAGATED'}
+            </span>
           </div>
         </div>
       )}

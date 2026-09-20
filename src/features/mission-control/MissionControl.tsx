@@ -939,6 +939,32 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                 }}>
                   {craft.description}
                 </p>
+
+                {/* Telemetry Source Provenance & Quick Track Action */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginTop: '10px',
+                  paddingTop: '8px',
+                  borderTop: '1px solid var(--border-hairline)',
+                  fontSize: '10px',
+                  color: 'var(--text-muted)',
+                  gap: '8px'
+                }}>
+                  <span className="mono" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '170px' }} title={craft.telemetrySource.sourceName}>
+                    {craft.telemetrySource.sourceName}
+                  </span>
+                  <button
+                    onClick={() => onFocusOnMap ? onFocusOnMap(craft.id) : onNavigateTab('space-map')}
+                    className="btn btn-secondary"
+                    style={{ padding: '3px 8px', fontSize: '10px', minHeight: '26px', gap: '3px' }}
+                    title={`Track ${craft.name} on 3D Space Map`}
+                  >
+                    <span>Track</span>
+                    <ChevronRight size={11} />
+                  </button>
+                </div>
               </div>
             </div>
           ))}

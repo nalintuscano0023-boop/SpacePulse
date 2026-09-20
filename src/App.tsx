@@ -8,6 +8,7 @@ import { ScientificAnalysis, type AnalysisType } from './features/analysis/Scien
 import { MissionsExplorer } from './features/missions/MissionsExplorer';
 import { ObjectInspector } from './components/inspector/ObjectInspector';
 import { ExploreTheSpace } from './features/explore-space/ExploreTheSpace';
+import { OpeningExperience } from './components/common/OpeningExperience';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import type { InspectableObject, SpacecraftObject } from './types/space';
 import { resolveInspectableObject, normalizeSpacecraftObject } from './services/data/objectResolver';
@@ -231,24 +232,43 @@ export function App() {
   const [isExploringSpace, setIsExploringSpace] = useState(false);
   const [analyzedObjectId, setAnalyzedObjectId] = useState<string | undefined>(undefined);
   const [analysisMode, setAnalysisMode] = useState<AnalysisType | undefined>(undefined);
+  const [showIntro, setShowIntro] = useState(() => {
+    try {
+      return !sessionStorage.getItem('spacepulse_intro_seen');
+    } catch {
+      return false;
+    }
+  });
+
+  const handleIntroComplete = () => {
+    setShowIntro(false);
+    try {
+      sessionStorage.setItem('spacepulse_intro_seen', 'true');
+    } catch {
+      // Ignore
+    }
+  };
 
   return (
-    <AppContent
-      activeTab={activeTab}
-      setActiveTab={setActiveTab}
-      selectedObject={selectedObject}
-      setSelectedObject={setSelectedObject}
-      isInspectorOpen={isInspectorOpen}
-      setIsInspectorOpen={setIsInspectorOpen}
-      focusedObjectId={focusedObjectId}
-      setFocusedObjectId={setFocusedObjectId}
-      isExploringSpace={isExploringSpace}
-      setIsExploringSpace={setIsExploringSpace}
-      analyzedObjectId={analyzedObjectId}
-      setAnalyzedObjectId={setAnalyzedObjectId}
-      analysisMode={analysisMode}
-      setAnalysisMode={setAnalysisMode}
-    />
+    <>
+      {showIntro && <OpeningExperience onComplete={handleIntroComplete} />}
+      <AppContent
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        selectedObject={selectedObject}
+        setSelectedObject={setSelectedObject}
+        isInspectorOpen={isInspectorOpen}
+        setIsInspectorOpen={setIsInspectorOpen}
+        focusedObjectId={focusedObjectId}
+        setFocusedObjectId={setFocusedObjectId}
+        isExploringSpace={isExploringSpace}
+        setIsExploringSpace={setIsExploringSpace}
+        analyzedObjectId={analyzedObjectId}
+        setAnalyzedObjectId={setAnalyzedObjectId}
+        analysisMode={analysisMode}
+        setAnalysisMode={setAnalysisMode}
+      />
+    </>
   );
 }
 

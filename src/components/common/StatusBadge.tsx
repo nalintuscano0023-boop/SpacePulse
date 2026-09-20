@@ -13,60 +13,67 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, metadata, comp
       case 'CURRENT':
       case 'LIVE':
         return {
-          label: 'CURRENT',
+          label: 'LIVE',
           symbol: '●',
           color: 'var(--status-live)',
           bg: 'var(--status-live-bg)',
-          border: 'var(--status-live-border)'
+          border: 'var(--status-live-border)',
+          pulse: true
         };
       case 'CALCULATED':
         return {
           label: 'CALCULATED',
-          symbol: '●',
+          symbol: '◇',
           color: 'var(--status-calculated)',
           bg: 'var(--status-calculated-bg)',
-          border: 'var(--status-calculated-border)'
+          border: 'var(--status-calculated-border)',
+          pulse: false
         };
       case 'LAST_AVAILABLE':
         return {
           label: 'LAST AVAILABLE',
-          symbol: '●',
+          symbol: '◐',
           color: 'var(--status-last)',
           bg: 'var(--status-last-bg)',
-          border: 'var(--status-last-border)'
+          border: 'var(--status-last-border)',
+          pulse: false
         };
       case 'HISTORICAL':
         return {
           label: 'HISTORICAL',
-          symbol: '●',
+          symbol: '○',
           color: 'var(--status-historical)',
           bg: 'var(--status-historical-bg)',
-          border: 'var(--status-historical-border)'
+          border: 'var(--status-historical-border)',
+          pulse: false
         };
       case 'DATA_UNAVAILABLE':
       case 'UNAVAILABLE':
         return {
           label: 'DATA UNAVAILABLE',
-          symbol: '○',
+          symbol: '—',
           color: 'var(--status-unavailable)',
           bg: 'var(--status-unavailable-bg)',
-          border: 'var(--status-unavailable-border)'
+          border: 'var(--status-unavailable-border)',
+          pulse: false
         };
       case 'SOURCE_ERROR':
         return {
           label: 'SOURCE ERROR',
-          symbol: '●',
+          symbol: '⚠',
           color: 'var(--status-error)',
           bg: 'var(--status-error-bg)',
-          border: 'var(--status-error-border)'
+          border: 'var(--status-error-border)',
+          pulse: false
         };
       default:
         return {
           label: 'DATA UNAVAILABLE',
-          symbol: '○',
+          symbol: '—',
           color: 'var(--status-unavailable)',
           bg: 'var(--status-unavailable-bg)',
-          border: 'var(--status-unavailable-border)'
+          border: 'var(--status-unavailable-border)',
+          pulse: false
         };
     }
   };
@@ -93,7 +100,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, metadata, comp
       }}
       title={metadata ? `${metadata.sourceName} • ${metadata.statusNote || ''}` : config.label}
     >
-      <span style={{ fontSize: '10px', lineHeight: 1 }}>{config.symbol}</span>
+      <span className={config.pulse ? 'pulse-live-dot' : undefined} style={{ fontSize: '10px', lineHeight: 1 }}>{config.symbol}</span>
       <span>{config.label}</span>
     </div>
   );

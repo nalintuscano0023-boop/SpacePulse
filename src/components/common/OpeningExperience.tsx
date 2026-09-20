@@ -7,25 +7,31 @@ interface OpeningExperienceProps {
 
 export const OpeningExperience: React.FC<OpeningExperienceProps> = ({ onComplete }) => {
   const [phase, setPhase] = useState<'intro' | 'fadeout'>('intro');
-  const [dataStatusText, setDataStatusText] = useState('ESTABLISHING TELEMETRY UPLINK...');
+  const [stepIndex, setStepIndex] = useState(0);
+
+  const calibrationSteps = [
+    'INITIALIZING VISUALIZATION ENGINE',
+    'CONNECTING AVAILABLE DATA SOURCES (NOAA SWPC • CELESTRAK • NASA JPL)',
+    'CALIBRATING J2000 CELESTIAL REFERENCE FRAME'
+  ];
 
   useEffect(() => {
-    const t1 = setTimeout(() => {
-      setDataStatusText('RETRIEVING VERIFIED DATA: NOAA SWPC • CELESTRAK • NASA JPL');
-    }, 600);
+    const t1 = setTimeout(() => setStepIndex(1), 500);
+    const t2 = setTimeout(() => setStepIndex(2), 1100);
+    const t3 = setTimeout(() => setPhase('fadeout'), 1700);
+    const t4 = setTimeout(() => onComplete(), 2150);
 
-    const t2 = setTimeout(() => {
-      setPhase('fadeout');
-    }, 1600);
-
-    const t3 = setTimeout(() => {
+    const handleKeyDown = () => {
       onComplete();
-    }, 2100);
+    };
+    window.addEventListener('keydown', handleKeyDown);
 
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
       clearTimeout(t3);
+      clearTimeout(t4);
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, [onComplete]);
 
@@ -104,7 +110,7 @@ export const OpeningExperience: React.FC<OpeningExperienceProps> = ({ onComplete
           textTransform: 'uppercase',
           marginBottom: '16px'
         }}>
-          Space Intelligence & Observation Platform
+          SPACE INTELLIGENCE PLATFORM
         </div>
 
         <p style={{
@@ -114,7 +120,7 @@ export const OpeningExperience: React.FC<OpeningExperienceProps> = ({ onComplete
           marginBottom: '28px',
           maxWidth: '480px'
         }}>
-          Explore the universe through verified, real-world space telemetry.
+          Real-time astronomical intelligence and 3D celestial mechanics.
         </p>
 
         {/* Live Loading Ticker */}
@@ -144,7 +150,7 @@ export const OpeningExperience: React.FC<OpeningExperienceProps> = ({ onComplete
             display: 'inline-block',
             flexShrink: 0
           }} />
-          <span style={{ wordBreak: 'break-word' }}>{dataStatusText}</span>
+          <span style={{ wordBreak: 'break-word' }}>{calibrationSteps[stepIndex]}</span>
         </div>
 
         {/* Skip action hint */}
@@ -157,7 +163,7 @@ export const OpeningExperience: React.FC<OpeningExperienceProps> = ({ onComplete
           gap: '4px',
           opacity: 0.7
         }}>
-          <span>Click anywhere to enter console</span>
+          <span>Press any key or click to enter</span>
           <ArrowRight size={11} />
         </div>
       </div>
