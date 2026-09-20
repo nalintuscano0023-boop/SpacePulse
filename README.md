@@ -183,10 +183,6 @@ SpacePulse follows these principles:
 
 Project creator and developer.
 
-### Error 404 Legends
-
-Collaborative development team.
-
 ---
 
 ## 📜 License
