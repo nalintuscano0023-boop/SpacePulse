@@ -19,7 +19,10 @@ import {
   Info,
   X,
   Sparkles,
-  Maximize2
+  Maximize2,
+  Play,
+  Pause,
+  Minimize2
 } from 'lucide-react';
 import { calculatePlanetEphemeris } from '../../services/calculations/kepler';
 import { calculateAdityaL1Ephemeris } from '../../services/calculations/lagrange';
@@ -36,7 +39,10 @@ import {
   createRealisticCloudMesh 
 } from '../../components/space/earthRealistic';
 import { getSpacecraft3DModel } from '../../components/space/spacecraftModelRegistry';
-import { createRealisticStarfield } from '../../components/space/deepSpaceEnvironment';
+import { 
+  createRealisticStarfield, 
+  createEarthAtmosphericMeteorSystem 
+} from '../../components/space/deepSpaceEnvironment';
 import { 
   createScientificReticle, 
   createDirectionalOrbitLine 
@@ -56,6 +62,7 @@ interface SpaceMapProps {
 
 type ViewMode = 'SOLAR_SYSTEM' | 'EARTH_ORBIT';
 type ScaleMode = 'EXPLORATION' | 'SCIENTIFIC';
+type CameraComposition = 'ECLIPTIC_3_4' | 'WIDE_HELIOCENTRIC' | 'SUNRISE_HORIZON' | 'SATURN_RING_PLANE';
 
 interface VisualBody {
   id: string;
@@ -111,20 +118,15 @@ const PLANET_ROTATION_SPEEDS: Record<string, number> = {
  */
 function computeVisualDistance(rAU: number, mode: ScaleMode): number {
   if (mode === 'SCIENTIFIC') {
-    // True proportional scale: 1 AU = 22.0 scene units
     return Math.max(0.1, rAU * 22.0);
   }
   // Exploration Scale: Continuous non-linear power-law compression
   // Preserves exact ordering, true heliocentric angles, and eccentricity variations
-  // r_vis = 16.5 * (r_AU)^0.52 + 4.5
   return Math.max(4.8, 16.5 * Math.pow(Math.max(0.01, rAU), 0.52) + 4.5);
 }
 
 /**
  * Transforms heliocentric ecliptic J2000 coordinates (in AU) to Three.js scene coordinates
- * Ecliptic X -> Three.js X
- * Ecliptic Z (Latitude / Ecliptic Normal) -> Three.js Y (Up)
- * Ecliptic Y (In-Plane 90°) -> Three.js Z
  */
 function eclipticToSceneCoords(posAU: { x: number; y: number; z: number }, mode: ScaleMode): THREE.Vector3 {
   const rAU = Math.sqrt(posAU.x * posAU.x + posAU.y * posAU.y + posAU.z * posAU.z);
@@ -142,14 +144,11 @@ function eclipticToSceneCoords(posAU: { x: number; y: number; z: number }, mode:
 function mapSatelliteVisualRadius(altKm: number): number {
   const EARTH_VISUAL_R = 10.0;
   if (altKm < 2000) {
-    // LEO (200km - 2000km): mapped between 11.5 and 14.5
     return EARTH_VISUAL_R + 1.4 + (Math.max(120, altKm) / 2000.0) * 3.0;
   }
   if (altKm < 35000) {
-    // MEO (2000km - 35000km): mapped between 14.5 and 22.0
     return 14.5 + ((altKm - 2000.0) / 33000.0) * 7.5;
   }
-  // GEO (~35786km): mapped ~22.5 to 24.5
   return 22.5 + Math.min(3.0, ((altKm - 35000.0) / 2000.0) * 1.5);
 }
 
@@ -176,22 +175,31 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
   const [webGLFailed, setWebGLFailed] = useState<boolean>(false);
   const [isFetchingSatellites, setIsFetchingSatellites] = useState<boolean>(false);
-  const [satelliteCount, setSatelliteCount] = useState<number>(0);
   const [hoveredBody, setHoveredBody] = useState<{ name: string; altKm?: number; x: number; y: number } | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showSearchDropdown, setShowSearchDropdown] = useState<boolean>(false);
   const [viewing3DViewer, setViewing3DViewer] = useState<{ id: string; name: string } | null>(null);
   const [voyagerNotice, setVoyagerNotice] = useState<boolean>(false);
 
-  // First-Time Observatory Guided Walkthrough State (1 to 5, 0 = inactive)
-  const [walkthroughPhase, setWalkthroughPhase] = useState<number>(() => {
+  // 1. Cinematic 0-9s Arrival Sequence State
+  const [isArrivalActive, setIsArrivalActive] = useState<boolean>(() => {
     try {
-      const completed = localStorage.getItem('spacepulse_solarsystem_walkthrough_completed');
-      return completed === 'true' ? 0 : 1;
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reducedMotion) return false;
+      const completed = localStorage.getItem('spacepulse_cinematic_arrival_completed');
+      return completed !== 'true';
     } catch {
-      return 0;
+      return false;
     }
   });
+  const [arrivalSeconds, setArrivalSeconds] = useState<number>(0);
+
+  // 2. "Orbital View" Spacewalk Camera Mode State
+  const [isOrbitalView, setIsOrbitalView] = useState<boolean>(false);
+
+  // 3. 7-Step Spacepulse Space Tour State (1 to 7, 0 = inactive)
+  const [tourStep, setTourStep] = useState<number>(0);
+  const [tourPaused, setTourPaused] = useState<boolean>(false);
 
   // HUD Telemetry State
   const [hudData, setHudData] = useState<{
@@ -219,6 +227,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
   const reticleRef = useRef<THREE.Group | null>(null);
   const distLineRef = useRef<THREE.Line | null>(null);
   const animIdRef = useRef<number>(0);
+  const meteorSystemRef = useRef<ReturnType<typeof createEarthAtmosphericMeteorSystem> | null>(null);
 
   // Lighting References for Dynamic Celestial Illuminance
   const sunPointLightRef = useRef<THREE.PointLight | null>(null);
@@ -243,7 +252,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
   }, [selectedObjectId]);
 
   // Smooth Fly-To Interpolator Function
-  const flyToTarget = useCallback((targetPos: THREE.Vector3, targetLook: THREE.Vector3, durationMs: number = 1300) => {
+  const flyToTarget = useCallback((targetPos: THREE.Vector3, targetLook: THREE.Vector3, durationMs: number = 1350) => {
     if (!cameraRef.current || !controlsRef.current) return;
     flyToAnimRef.current = {
       startPos: cameraRef.current.position.clone(),
@@ -255,6 +264,36 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     };
   }, []);
 
+  // Preset Camera Compositions
+  const applyCameraComposition = useCallback((comp: CameraComposition) => {
+    if (!cameraRef.current) return;
+    if (comp === 'ECLIPTIC_3_4') {
+      // Carefully composed 3/4 diagonal depth: Sun slightly off-center, inner/outer depth
+      flyToTarget(new THREE.Vector3(38, 28, 78), new THREE.Vector3(-4, -1, 3), 1300);
+    } else if (comp === 'WIDE_HELIOCENTRIC') {
+      // Full system overview with large negative space
+      flyToTarget(new THREE.Vector3(12, 110, 240), new THREE.Vector3(0, -1, 0), 1400);
+    } else if (comp === 'SUNRISE_HORIZON') {
+      // Cinematic sunrise composition looking past Earth towards the radiant Sun
+      const earth = bodiesRef.current.get('earth');
+      if (earth) {
+        const earthPos = earth.position;
+        const camPos = earthPos.clone().add(new THREE.Vector3(8.5, 3.2, 11.0));
+        flyToTarget(camPos, new THREE.Vector3(0, 0, 0), 1400);
+      } else {
+        flyToTarget(new THREE.Vector3(20, 6, 24), new THREE.Vector3(0, 0, 0), 1200);
+      }
+    } else if (comp === 'SATURN_RING_PLANE') {
+      // Grazing shallow elevation across Saturn's ring system
+      const saturn = bodiesRef.current.get('saturn');
+      if (saturn) {
+        const sPos = saturn.position;
+        const camPos = sPos.clone().add(new THREE.Vector3(12.0, 3.8, 14.5));
+        flyToTarget(camPos, sPos, 1400);
+      }
+    }
+  }, [flyToTarget]);
+
   const resetView = useCallback(() => {
     if (viewMode === 'EARTH_ORBIT') {
       flyToTarget(new THREE.Vector3(18, 10, 28), new THREE.Vector3(-1.2, 0, 0), 1000);
@@ -262,11 +301,10 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
       if (scaleMode === 'SCIENTIFIC') {
         flyToTarget(new THREE.Vector3(60, 110, 260), new THREE.Vector3(0, -1, 0), 1100);
       } else {
-        // Ecliptic observatory viewpoint: shallow ~22° angle across the planetary plane
-        flyToTarget(new THREE.Vector3(26, 30, 85), new THREE.Vector3(0, -1, 0), 1000);
+        applyCameraComposition('ECLIPTIC_3_4');
       }
     }
-  }, [viewMode, scaleMode, flyToTarget]);
+  }, [viewMode, scaleMode, flyToTarget, applyCameraComposition]);
 
   // Focus on specific object with smooth ease-in-out flight
   const focusOnObject = useCallback((id: string) => {
@@ -302,7 +340,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
 
       // Compute camera offset along current viewing angle with slight upward elevation
       const currentDir = cameraRef.current.position.clone().sub(targetLook).normalize();
-      // Ensure elevation so rings and illuminated hemispheres are discernible
       if (currentDir.y < 0.25) currentDir.y = 0.35;
       currentDir.normalize();
 
@@ -331,22 +368,83 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
   }, [simDate, onInspectObject, onSelectObject]);
   handleObjectSelectionRef.current = handleObjectSelection;
 
-  // Camera Presets for Earth Orbit
-  const setCameraPreset = useCallback((preset: 'horizon' | 'polar' | 'equatorial' | 'default') => {
-    if (viewMode === 'EARTH_ORBIT') {
-      if (preset === 'horizon') {
-        flyToTarget(new THREE.Vector3(20, 4, 22), new THREE.Vector3(0, 0, 0), 1000);
-      } else if (preset === 'polar') {
-        flyToTarget(new THREE.Vector3(0, 28, 2), new THREE.Vector3(0, 0, 0), 1000);
-      } else if (preset === 'equatorial') {
-        flyToTarget(new THREE.Vector3(28, 2, 8), new THREE.Vector3(0, 0, 0), 1000);
-      } else {
-        flyToTarget(new THREE.Vector3(18, 10, 28), new THREE.Vector3(-1.2, 0, 0), 1000);
-      }
-    } else {
-      resetView();
+  // Skip Cinematic Arrival
+  const skipArrival = useCallback(() => {
+    setIsArrivalActive(false);
+    try {
+      localStorage.setItem('spacepulse_cinematic_arrival_completed', 'true');
+    } catch (e) {
+      console.warn('LocalStorage error:', e);
     }
-  }, [viewMode, flyToTarget, resetView]);
+    applyCameraComposition('ECLIPTIC_3_4');
+  }, [applyCameraComposition]);
+
+  // 7-Step Space Tour Transitions
+  const handleTourStep = useCallback((step: number) => {
+    setTourStep(step);
+    if (step === 0) {
+      resetView();
+      return;
+    }
+
+    if (step === 1) {
+      // Step 1: Entering deep space
+      flyToTarget(new THREE.Vector3(0, 240, 580), new THREE.Vector3(0, 0, 0), 1600);
+    } else if (step === 2) {
+      // Step 2: Approaching the Solar System (Sun ignition)
+      flyToTarget(new THREE.Vector3(38, 28, 78), new THREE.Vector3(-4, -1, 3), 1600);
+    } else if (step === 3) {
+      // Step 3: The inner worlds (Mercury, Venus, Earth, Mars)
+      const earth = bodiesRef.current.get('earth');
+      if (earth) {
+        setSelectedBodyId('earth');
+        handleObjectSelectionRef.current('earth', false);
+        flyToTarget(earth.position.clone().add(new THREE.Vector3(6.5, 3.8, 8.5)), earth.position.clone(), 1600);
+      }
+    } else if (step === 4) {
+      // Step 4: The outer worlds (Jupiter and Saturn's rings)
+      const saturn = bodiesRef.current.get('saturn');
+      if (saturn) {
+        setSelectedBodyId('saturn');
+        handleObjectSelectionRef.current('saturn', false);
+        flyToTarget(saturn.position.clone().add(new THREE.Vector3(14.0, 4.5, 16.0)), saturn.position.clone(), 1700);
+      }
+    } else if (step === 5) {
+      // Step 5: Beyond the giants (Uranus and Neptune)
+      const neptune = bodiesRef.current.get('neptune');
+      if (neptune) {
+        setSelectedBodyId('neptune');
+        handleObjectSelectionRef.current('neptune', false);
+        flyToTarget(neptune.position.clone().add(new THREE.Vector3(12.0, 3.5, 14.0)), neptune.position.clone(), 1700);
+      }
+    } else if (step === 6) {
+      // Step 6: Human exploration (Aditya-L1, satellites, human presence)
+      const aditya = bodiesRef.current.get('aditya-l1');
+      if (aditya) {
+        setSelectedBodyId('aditya-l1');
+        handleObjectSelectionRef.current('aditya-l1', false);
+        flyToTarget(aditya.position.clone().add(new THREE.Vector3(4.5, 2.0, 5.5)), aditya.position.clone(), 1600);
+      }
+    } else if (step === 7) {
+      // Step 7: Return to full observatory overview
+      setSelectedBodyId(null);
+      setHudData(null);
+      applyCameraComposition('ECLIPTIC_3_4');
+    }
+  }, [flyToTarget, resetView, applyCameraComposition]);
+
+  // Auto-advance tour if not paused
+  useEffect(() => {
+    if (tourStep === 0 || tourPaused) return;
+    const timer = setTimeout(() => {
+      if (tourStep < 7) {
+        handleTourStep(tourStep + 1);
+      } else {
+        handleTourStep(0);
+      }
+    }, 6500);
+    return () => clearTimeout(timer);
+  }, [tourStep, tourPaused, handleTourStep]);
 
   // =========================================================================
   // 1. INITIALIZE THREE.JS SCENE & RENDERER (Runs Once)
@@ -355,7 +453,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     const container = mountRef.current;
     if (!container) return;
 
-    // WebGL Capability Check
     let hasWebGL = true;
     try {
       const testCanvas = document.createElement('canvas');
@@ -374,13 +471,21 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     const height = Math.max(container.clientHeight || 0, (window.innerHeight ? window.innerHeight - 130 : 650), 400);
 
     const scene = new THREE.Scene();
-    // Deep cosmic space black - pure vacuum
     scene.background = new THREE.Color('#000204');
     sceneRef.current = scene;
 
-    // Perspective Camera: 50° FOV gives natural depth perception without fish-eye distortion
+    // Perspective Camera: 50° FOV gives natural depth perception
     const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 35000);
-    camera.position.set(26, 30, 85);
+    
+    // Starting camera coordinates:
+    // If arrival is active, start in deep black space; otherwise use cinematic 3/4 composition
+    if (isArrivalActive) {
+      camera.position.set(0, 320, 780);
+      camera.lookAt(0, 0, 0);
+    } else {
+      camera.position.set(38, 28, 78);
+      camera.lookAt(-4, -1, 3);
+    }
     cameraRef.current = camera;
 
     const renderer = new THREE.WebGLRenderer({
@@ -399,32 +504,33 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    controls.dampingFactor = 0.05; // Smooth spatial damping
+    controls.dampingFactor = 0.05;
     controls.minDistance = 2.5;
     controls.maxDistance = 5000;
-    controls.target.set(0, -1, 0);
+    controls.target.set(-4, -1, 3);
     controlsRef.current = controls;
 
-    // Multi-Tier Deep Space Starfield (10,000+ stars with authentic B-V spectral classes)
-    // Completely separate from planetary geometry - NO giant translucent dome!
+    // 4-Tier Deep Space Starfield with Volumetric Milky Way Band
     const starfield = createRealisticStarfield();
     scene.add(starfield);
 
+    // Earth Upper-Atmosphere Meteor System
+    const meteorSystem = createEarthAtmosphericMeteorSystem();
+    scene.add(meteorSystem.group);
+    meteorSystemRef.current = meteorSystem;
+
     // Dynamic Multi-Source Illuminating System
-    // Solar PointLight at (0, 0, 0) - will be populated by createRealisticSun
     const sunPointLight = new THREE.PointLight(0xfffaec, 4.2, 8000, 0.06);
     sunPointLight.position.set(0, 0, 0);
     scene.add(sunPointLight);
     sunPointLightRef.current = sunPointLight;
 
-    // Directional Sunlight for Earth-Orbit Tracking View (aligned with terminator)
     const earthSunDir = new THREE.Vector3(1.2, 0.35, 0.85).normalize();
     const sunDirLight = new THREE.DirectionalLight(0xfffaec, 0.0);
     sunDirLight.position.copy(earthSunDir.clone().multiplyScalar(250));
     scene.add(sunDirLight);
     sunDirLightRef.current = sunDirLight;
 
-    // Restrained Astronomical Ambient Illumination
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.22);
     scene.add(ambientLight);
     ambientLightRef.current = ambientLight;
@@ -443,7 +549,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     scene.add(reticle);
     reticleRef.current = reticle;
 
-    // Resize Observer for Dynamic Viewport Sizing
+    // Resize Observer
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const w = entry.contentRect.width || container.clientWidth || 300;
@@ -457,7 +563,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     });
     resizeObserver.observe(container);
 
-    // Raycaster for Hover & Click Interactions
+    // Raycaster for Hover & Click
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
 
@@ -511,8 +617,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         }
         if (hit && hit.userData.bodyId) {
           const bodyId = hit.userData.bodyId;
-
-          // If user clicked Earth in Solar System view, smoothly fly to Earth first
           focusOnObject(bodyId);
           handleObjectSelectionRef.current(bodyId, false);
         }
@@ -523,17 +627,65 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     renderer.domElement.addEventListener('click', onPointerClick);
 
     // Animation Loop
+    let lastTime = performance.now();
+    let arrivalElapsedSec = 0;
+
     const animate = () => {
       animIdRef.current = requestAnimationFrame(animate);
+      const now = performance.now();
+      const deltaSec = Math.min(0.1, (now - lastTime) / 1000);
+      lastTime = now;
 
-      // 1. Smooth Camera Fly-To Interpolation
-      if (flyToAnimRef.current) {
+      // 1. Cinematic Arrival Sequence Progression
+      if (isArrivalActive) {
+        arrivalElapsedSec += deltaSec;
+        setArrivalSeconds(arrivalElapsedSec);
+
+        if (arrivalElapsedSec <= 2.0) {
+          // 0-2s: Deep black space, camera holds
+        } else if (arrivalElapsedSec <= 4.0) {
+          // 2-4s: Slow forward drift
+          camera.position.z -= deltaSec * 35;
+        } else if (arrivalElapsedSec <= 6.0) {
+          // 4-6s: Sun illuminates, camera sweeps down
+          const t6 = (arrivalElapsedSec - 4.0) / 2.0;
+          camera.position.y = THREE.MathUtils.lerp(320, 110, t6);
+          camera.position.z = THREE.MathUtils.lerp(710, 220, t6);
+          camera.lookAt(0, 0, 0);
+        } else if (arrivalElapsedSec <= 9.0) {
+          // 6-9s: Glides smoothly into normal 3/4 composition
+          const t9 = (arrivalElapsedSec - 6.0) / 3.0;
+          const ease = t9 < 0.5 ? 4 * t9 * t9 * t9 : 1 - Math.pow(-2 * t9 + 2, 3) / 2;
+          camera.position.lerpVectors(new THREE.Vector3(25, 110, 220), new THREE.Vector3(38, 28, 78), ease);
+          controls.target.lerpVectors(new THREE.Vector3(0, 0, 0), new THREE.Vector3(-4, -1, 3), ease);
+          controls.update();
+        } else {
+          // 9+s: Settle
+          setIsArrivalActive(false);
+          try {
+            localStorage.setItem('spacepulse_cinematic_arrival_completed', 'true');
+          } catch {}
+          applyCameraComposition('ECLIPTIC_3_4');
+        }
+      }
+
+      // 2. "Orbital View" Spacewalk Camera Drift Mode
+      else if (isOrbitalView) {
+        const t = now * 0.00018;
+        const driftRadius = 135.0;
+        camera.position.x = Math.cos(t) * driftRadius;
+        camera.position.z = Math.sin(t) * driftRadius;
+        camera.position.y = 28.0 + Math.sin(t * 1.5) * 14.0;
+        controls.target.set(-2, -1, 2);
+        controls.update();
+      }
+
+      // 3. Smooth Camera Fly-To Interpolation
+      else if (flyToAnimRef.current) {
         const anim = flyToAnimRef.current;
-        const now = performance.now();
         const elapsed = now - anim.startTime;
         const progress = Math.min(1.0, elapsed / anim.durationMs);
 
-        // Smooth cubic ease-in-out
         const ease = progress < 0.5 
           ? 4 * progress * progress * progress 
           : 1 - Math.pow(-2 * progress + 2, 3) / 2;
@@ -549,7 +701,18 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         controls.update();
       }
 
-      // 2. Rotate Planets at Believable Speeds
+      // 4. Update Earth Atmospheric Meteors
+      if (meteorSystemRef.current) {
+        const earth = bodiesRef.current.get('earth');
+        const earthPos = earth ? earth.position : new THREE.Vector3(0, 0, 0);
+        meteorSystemRef.current.update(
+          deltaSec, 
+          earthPos, 
+          viewMode === 'EARTH_ORBIT' || selectedBodyId === 'earth'
+        );
+      }
+
+      // 5. Rotate Planets at Believable Speeds
       bodiesRef.current.forEach(body => {
         const speed = PLANET_ROTATION_SPEEDS[body.id] || 0.002;
         if (body.planetMesh) {
@@ -567,7 +730,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         }
       });
 
-      // 3. Keep Selection Reticle aligned and subtly pulsing
+      // 6. Selection Reticle subtle rotation
       if (reticleRef.current && reticleRef.current.visible) {
         reticleRef.current.rotation.z += 0.008;
       }
@@ -583,6 +746,9 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
       resizeObserver.disconnect();
       renderer.domElement.removeEventListener('mousemove', onPointerMove);
       renderer.domElement.removeEventListener('click', onPointerClick);
+      if (meteorSystemRef.current) {
+        meteorSystemRef.current.dispose();
+      }
       renderer.dispose();
     };
   }, []);
@@ -594,7 +760,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     const scene = sceneRef.current;
     if (!scene) return;
 
-    // Clear previous dynamic bodies & orbit lines
     bodiesRef.current.forEach(body => {
       scene.remove(body.mesh);
       if (body.orbitLine) scene.remove(body.orbitLine);
@@ -602,7 +767,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     bodiesRef.current.clear();
 
     if (viewMode === 'SOLAR_SYSTEM') {
-      // Configure lighting for Solar System View
       if (sunPointLightRef.current) sunPointLightRef.current.intensity = 4.2;
       if (sunDirLightRef.current) sunDirLightRef.current.intensity = 0.0;
       if (ambientLightRef.current) {
@@ -610,9 +774,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         ambientLightRef.current.intensity = 0.22;
       }
 
-      // ----------------------------------------------------
       // 1. Sun (Authentic Self-Illuminated Star)
-      // ----------------------------------------------------
       const sunSystem = createRealisticSun(4.5);
       scene.add(sunSystem.mesh);
 
@@ -627,9 +789,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         color: '#f59e0b'
       });
 
-      // ----------------------------------------------------
-      // 2. All 8 Major Planets (Mercury to Neptune)
-      // ----------------------------------------------------
+      // 2. All 8 Major Planets
       const planetKeys = ['mercury', 'venus', 'earth', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune'];
 
       planetKeys.forEach(pId => {
@@ -640,7 +800,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
           const ephem = calculatePlanetEphemeris(pId, simDate);
           const scenePos = eclipticToSceneCoords(ephem.positionAU, scaleMode);
 
-          // Scaled visual radius based on scale mode
           const visualRadius = scaleMode === 'SCIENTIFIC'
             ? Math.max(0.4, config.baseRadius * 0.42)
             : config.baseRadius;
@@ -650,7 +809,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
           planetObj.group.visible = showPlanets;
           scene.add(planetObj.group);
 
-          // If Earth, add the Moon orbiting Earth
+          // If Earth, add the Moon
           if (pId === 'earth') {
             const moonGeo = new THREE.SphereGeometry(visualRadius * 0.27, 24, 24);
             const moonMat = new THREE.MeshStandardMaterial({ color: 0xcfd8dc, roughness: 0.9 });
@@ -659,7 +818,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
             moonMesh.userData = { bodyId: 'moon' };
             planetObj.group.add(moonMesh);
 
-            // Satellite Constellation Ring Badge
             const satRingGeo = new THREE.RingGeometry(visualRadius * 1.25, visualRadius * 1.38, 36);
             const satRingMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.35 });
             const satRing = new THREE.Mesh(satRingGeo, satRingMat);
@@ -669,7 +827,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
             cloudsMeshRef.current = planetObj.cloudsMesh || null;
           }
 
-          // Keplerian Elliptical Orbit Path sampled across true orbital period
+          // Keplerian Elliptical Orbit Path
           let orbitLine: THREE.Line | undefined;
           if (showOrbits) {
             const orbitPts: THREE.Vector3[] = [];
@@ -713,9 +871,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         }
       });
 
-      // ----------------------------------------------------
       // 3. Aditya-L1 Solar Observatory at Sun-Earth L1
-      // ----------------------------------------------------
       try {
         const l1 = calculateAdityaL1Ephemeris(simDate);
         const earthBody = bodiesRef.current.get('earth');
@@ -726,7 +882,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
 
           const l1Mesh = getSpacecraft3DModel('aditya-l1', { scale: 0.45, isMapMode: true });
           l1Mesh.position.copy(l1VisualPos);
-          l1Mesh.lookAt(0, 0, 0); // Point instruments toward the Sun
+          l1Mesh.lookAt(0, 0, 0);
           l1Mesh.userData = { bodyId: 'aditya-l1' };
           l1Mesh.visible = showSpacecraft;
           scene.add(l1Mesh);
@@ -767,9 +923,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
       }
 
     } else {
-      // ----------------------------------------------------
-      // EARTH ORBIT TRACKING MODE (Earth Centered + Moon)
-      // ----------------------------------------------------
+      // EARTH ORBIT TRACKING MODE
       if (sunPointLightRef.current) sunPointLightRef.current.intensity = 0.0;
       if (sunDirLightRef.current) sunDirLightRef.current.intensity = 3.2;
       if (ambientLightRef.current) {
@@ -780,19 +934,16 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
       const EARTH_R = 10.0;
       const sunDir = new THREE.Vector3(1.2, 0.35, 0.85).normalize();
 
-      // 1. Realistic Day/Night Earth Shader with specular oceans & city lights
       const earthGeo = new THREE.SphereGeometry(EARTH_R, 64, 64);
       const earthMat = createRealisticEarthShaderMaterial(sunDir);
       const earthMesh = new THREE.Mesh(earthGeo, earthMat);
       earthMesh.userData = { bodyId: 'earth' };
       scene.add(earthMesh);
 
-      // 2. Realistic Cloud Layer rotating above surface
       const cloudsMesh = createRealisticCloudMesh(EARTH_R);
       earthMesh.add(cloudsMesh);
       cloudsMeshRef.current = cloudsMesh;
 
-      // 3. Realistic Rayleigh Atmospheric Scattering Shell (Fresnel limb)
       const atmoGlow = createRealisticAtmosphereMesh(EARTH_R, sunDir);
       earthMesh.add(atmoGlow);
 
@@ -807,7 +958,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         color: '#38bdf8'
       });
 
-      // 4. Moon at scaled visual distance (~45 units)
       const moonDist = 45.0;
       const moonGeo = new THREE.SphereGeometry(1.6, 24, 24);
       const moonMat = new THREE.MeshStandardMaterial({ color: 0xcfd8dc, roughness: 0.9 });
@@ -841,12 +991,10 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         color: '#cfd8dc'
       });
 
-      // 5. Asynchronously Load Verified Satellites from CelesTrak
       setIsFetchingSatellites(true);
       CelestrakService.getSupportedEarthSatellites(simDate)
         .then(satellites => {
           setIsFetchingSatellites(false);
-          setSatelliteCount(satellites.length);
 
           satellites.forEach(sat => {
             if (!sat.state) return;
@@ -979,7 +1127,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     const reticle = reticleRef.current;
     const distLine = distLineRef.current;
 
-    // Orbit Line Emphasis: Selected orbit prominent, other orbits quieter
     bodiesRef.current.forEach((body) => {
       if (body.orbitLine && body.orbitLine.material) {
         const mat = body.orbitLine.material as THREE.LineBasicMaterial;
@@ -1065,43 +1212,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     }
   }, [selectedBodyId, viewMode, simDate]);
 
-  // Guided Walkthrough Phase Transitions
-  const handleWalkthroughStep = useCallback((step: number) => {
-    setWalkthroughPhase(step);
-    if (step === 0) {
-      try {
-        localStorage.setItem('spacepulse_solarsystem_walkthrough_completed', 'true');
-      } catch (e) {
-        console.warn('LocalStorage error:', e);
-      }
-      resetView();
-      return;
-    }
-
-    if (step === 1) {
-      // Phase 1: Deep Space Arrival
-      flyToTarget(new THREE.Vector3(0, 190, 440), new THREE.Vector3(0, 0, 0), 1600);
-    } else if (step === 2) {
-      // Phase 2: Heliocentric Architecture Reveal
-      flyToTarget(new THREE.Vector3(26, 32, 90), new THREE.Vector3(0, -1, 0), 1600);
-    } else if (step === 3) {
-      // Phase 3: Spatial Controls & Navigation
-      flyToTarget(new THREE.Vector3(18, 22, 65), new THREE.Vector3(0, -1, 0), 1400);
-    } else if (step === 4) {
-      // Phase 4: Target Acquisition Demonstration (Earth)
-      const earthBody = bodiesRef.current.get('earth');
-      if (earthBody) {
-        setSelectedBodyId('earth');
-        const offset = new THREE.Vector3(5.5, 3.8, 7.5);
-        flyToTarget(earthBody.position.clone().add(offset), earthBody.position.clone(), 1600);
-        handleObjectSelectionRef.current('earth', false);
-      }
-    } else if (step === 5) {
-      // Phase 5: Return to Full Observatory Overview
-      flyToTarget(new THREE.Vector3(28, 30, 85), new THREE.Vector3(0, -1, 0), 1500);
-    }
-  }, [flyToTarget, resetView]);
-
   // Search Objects Registry
   const searchableList = useMemo(() => {
     return [
@@ -1169,7 +1279,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
     handleObjectSelection(obj.id, false);
   };
 
-  // Fallback if WebGL is completely unsupported on device
+  // Fallback if WebGL is completely unsupported
   if (webGLFailed) {
     return (
       <div className="container" style={{ padding: '48px 24px', textAlign: 'center' }}>
@@ -1179,7 +1289,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
             3D Visualization is unavailable on this device
           </h2>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, marginTop: '12px' }}>
-            Hardware WebGL acceleration could not be initialized in your browser context. You can still inspect verified Keplerian ephemerides and CelesTrak orbital states via the Spacecraft Explorer.
+            Hardware WebGL acceleration could not be initialized in your browser context.
           </p>
         </div>
       </div>
@@ -1208,430 +1318,474 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         }}
       />
 
-      {/* Loading Overlay */}
-      {isInitializing && (
+      {/* 1. Cinematic 0-9s Arrival Overlay & Skip Button */}
+      {isArrivalActive && (
         <div style={{
           position: 'absolute',
-          inset: 0,
-          background: '#010307',
-          zIndex: 30,
+          top: '20px',
+          right: '20px',
+          zIndex: 45,
+          pointerEvents: 'auto',
           display: 'flex',
-          flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'center',
           gap: '12px'
         }}>
-          <RefreshCw size={24} className="radar-sweep" style={{ color: 'var(--accent-cyan)' }} />
-          <div style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', letterSpacing: '0.08em' }}>
-            INITIALIZING SPACE OBSERVATORY // THREE.JS HELIOCENTRIC ENGINE
+          <div style={{
+            fontSize: '11px',
+            fontFamily: 'var(--font-mono)',
+            color: 'var(--accent-cyan)',
+            letterSpacing: '0.08em',
+            background: 'rgba(5, 12, 24, 0.88)',
+            border: '1px solid rgba(56, 189, 248, 0.3)',
+            padding: '6px 14px',
+            borderRadius: 'var(--radius-full)'
+          }}>
+            {arrivalSeconds < 3 ? 'INTERPLANETARY ARRIVAL // DEEP SPACE' :
+             arrivalSeconds < 6 ? 'HELIOCENTRIC VECTOR // SOLAR IGNITION' :
+             'STABILIZING OBSERVATORY PERSPECTIVE'}
           </div>
+
+          <button
+            onClick={skipArrival}
+            className="btn btn-primary"
+            style={{ fontSize: '11px', padding: '6px 14px', borderRadius: 'var(--radius-full)' }}
+          >
+            Skip Intro
+          </button>
         </div>
       )}
 
-      {/* Top Scientific Control Toolbar */}
-      <div style={{
-        position: 'absolute',
-        top: '12px',
-        left: '12px',
-        right: '12px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '8px',
-        pointerEvents: 'none',
-        zIndex: 20
-      }}>
-        {/* Sub-Header: Reference Frame & Source Provenance Metadata */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '10px',
-          flexWrap: 'wrap',
-          marginBottom: '2px'
-        }}>
+      {/* 2. "Orbital View" Spacewalk Mode Active HUD Overlay */}
+      {isOrbitalView && (
+        <>
+          {/* Subtle Spacecraft Observation Viewport Vignette Edge */}
           <div style={{
-            fontSize: '10px',
-            fontFamily: 'var(--font-mono)',
-            color: 'var(--accent-cyan)',
-            letterSpacing: '0.04em',
-            background: 'rgba(3, 7, 18, 0.88)',
-            border: '1px solid rgba(56, 189, 248, 0.2)',
-            padding: '4px 12px',
-            borderRadius: 'var(--radius-full)',
-            width: 'fit-content',
-            pointerEvents: 'auto',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
+            position: 'absolute',
+            inset: 0,
+            pointerEvents: 'none',
+            zIndex: 10,
+            boxShadow: 'inset 0 0 100px rgba(0, 5, 15, 0.85), inset 0 0 180px rgba(0, 2, 6, 0.95)',
+            border: '1px solid rgba(56, 189, 248, 0.08)'
           }}>
-            <span>{viewMode === 'EARTH_ORBIT' ? 'GEOCENTRIC REFERENCE (ECI TEME J2000)' : 'HELIOCENTRIC REFERENCE (ECLIPTIC J2000)'}</span>
-            <span>•</span>
-            <span>DATA: CALCULATED (NASA JPL J2000 & CELESTRAK SGP4)</span>
-            <span>•</span>
-            <span style={{ color: scaleMode === 'SCIENTIFIC' ? '#34d399' : 'var(--text-muted)' }}>
-              {viewMode === 'EARTH_ORBIT' 
-                ? 'SATELLITE MARKERS ENLARGED'
-                : scaleMode === 'SCIENTIFIC' 
-                  ? 'TRUE PROPORTIONAL SCALE (AU)' 
-                  : 'EXPLORATION SCALE — COMPRESSED'}
-            </span>
+            <div style={{
+              position: 'absolute',
+              bottom: '24px',
+              left: '24px',
+              fontSize: '10px',
+              fontFamily: 'var(--font-mono)',
+              color: 'rgba(56, 189, 248, 0.65)',
+              letterSpacing: '0.12em',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              <Compass size={12} className="radar-sweep" />
+              <span>SPACECRAFT OBSERVATION DECK // DRIFT MODE ACTIVE</span>
+            </div>
           </div>
 
+          {/* Floating Exit Orbital View Button */}
           <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            fontSize: '10px',
-            color: 'var(--text-secondary)',
-            background: 'rgba(3, 7, 18, 0.88)',
-            border: '1px solid var(--border-hairline)',
-            padding: '4px 10px',
-            borderRadius: 'var(--radius-full)',
+            position: 'absolute',
+            top: '20px',
+            right: '20px',
+            zIndex: 35,
             pointerEvents: 'auto'
           }}>
-            <Info size={11} style={{ color: 'var(--accent-cyan)' }} />
-            <span>Click any planet or satellite to acquire telemetry • Drag to orbit • Scroll to zoom</span>
+            <button
+              onClick={() => {
+                setIsOrbitalView(false);
+                resetView();
+              }}
+              className="btn btn-primary"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 16px',
+                borderRadius: 'var(--radius-full)',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.8)'
+              }}
+            >
+              <Minimize2 size={13} />
+              <span>Exit Orbital View</span>
+            </button>
           </div>
-        </div>
+        </>
+      )}
 
+      {/* Top Scientific Control Toolbar (Hidden in Spacewalk Mode) */}
+      {!isOrbitalView && (
         <div style={{
+          position: 'absolute',
+          top: '12px',
+          left: '12px',
+          right: '12px',
           display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '12px',
-          flexWrap: 'wrap'
+          flexDirection: 'column',
+          gap: '8px',
+          pointerEvents: 'none',
+          zIndex: 20
         }}>
-          {/* Left: View Mode Toggle, Scale Mode Switcher, Quick Selectors, Search */}
-          <div id="space-map-controls-panel" style={{ display: 'flex', alignItems: 'center', gap: '8px', pointerEvents: 'auto', flexWrap: 'wrap' }}>
-            {/* Mode Switcher */}
-            <div className="glass-panel" style={{ display: 'flex', padding: '3px', borderRadius: 'var(--radius-xs)', gap: '3px', background: 'rgba(5, 12, 24, 0.88)' }}>
-              <button
-                onClick={() => {
-                  setViewMode('SOLAR_SYSTEM');
-                  resetView();
-                }}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: 'var(--radius-xs)',
-                  fontSize: '11px',
-                  fontFamily: 'var(--font-heading)',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  background: viewMode === 'SOLAR_SYSTEM' ? 'rgba(56, 189, 248, 0.18)' : 'transparent',
-                  color: viewMode === 'SOLAR_SYSTEM' ? '#ffffff' : 'var(--text-secondary)',
-                  border: viewMode === 'SOLAR_SYSTEM' ? '1px solid rgba(56, 189, 248, 0.45)' : '1px solid transparent',
-                  boxShadow: viewMode === 'SOLAR_SYSTEM' ? '0 0 12px rgba(56, 189, 248, 0.16)' : 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <Orbit size={13} style={{ color: viewMode === 'SOLAR_SYSTEM' ? 'var(--accent-cyan)' : 'inherit' }} />
-                <span>Solar System</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setViewMode('EARTH_ORBIT');
-                  resetView();
-                }}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: 'var(--radius-xs)',
-                  fontSize: '11px',
-                  fontFamily: 'var(--font-heading)',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  background: viewMode === 'EARTH_ORBIT' ? 'rgba(56, 189, 248, 0.18)' : 'transparent',
-                  color: viewMode === 'EARTH_ORBIT' ? '#ffffff' : 'var(--text-secondary)',
-                  border: viewMode === 'EARTH_ORBIT' ? '1px solid rgba(56, 189, 248, 0.45)' : '1px solid transparent',
-                  boxShadow: viewMode === 'EARTH_ORBIT' ? '0 0 12px rgba(56, 189, 248, 0.16)' : 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <Globe size={13} style={{ color: viewMode === 'EARTH_ORBIT' ? 'var(--accent-cyan)' : 'inherit' }} />
-                <span>Earth Orbit Tracking</span>
-              </button>
+          {/* Sub-Header: Reference Frame & Status */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '10px',
+            flexWrap: 'wrap',
+            marginBottom: '2px'
+          }}>
+            <div style={{
+              fontSize: '10px',
+              fontFamily: 'var(--font-mono)',
+              color: 'var(--accent-cyan)',
+              letterSpacing: '0.04em',
+              background: 'rgba(3, 7, 18, 0.88)',
+              border: '1px solid rgba(56, 189, 248, 0.2)',
+              padding: '4px 12px',
+              borderRadius: 'var(--radius-full)',
+              width: 'fit-content',
+              pointerEvents: 'auto',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              <span>{viewMode === 'EARTH_ORBIT' ? 'GEOCENTRIC REFERENCE (ECI TEME J2000)' : 'HELIOCENTRIC REFERENCE (ECLIPTIC J2000)'}</span>
+              <span>•</span>
+              <span>DATA: CALCULATED (NASA JPL J2000 & CELESTRAK SGP4)</span>
+              <span>•</span>
+              <span style={{ color: scaleMode === 'SCIENTIFIC' ? '#34d399' : 'var(--text-muted)' }}>
+                {viewMode === 'EARTH_ORBIT' 
+                  ? 'SATELLITE MARKERS ENLARGED'
+                  : scaleMode === 'SCIENTIFIC' 
+                    ? 'TRUE PROPORTIONAL SCALE (AU)' 
+                    : 'EXPLORATION SCALE — COMPRESSED'}
+              </span>
             </div>
 
-            {/* Scale Mode Switcher (Visible in Solar System Mode) */}
-            {viewMode === 'SOLAR_SYSTEM' && (
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '10px',
+              color: 'var(--text-secondary)',
+              background: 'rgba(3, 7, 18, 0.88)',
+              border: '1px solid var(--border-hairline)',
+              padding: '4px 10px',
+              borderRadius: 'var(--radius-full)',
+              pointerEvents: 'auto'
+            }}>
+              <Info size={11} style={{ color: 'var(--accent-cyan)' }} />
+              <span>Click planet to fly-to • Drag to orbit • Scroll to zoom</span>
+            </div>
+          </div>
+
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            flexWrap: 'wrap'
+          }}>
+            {/* Left Controls */}
+            <div id="space-map-controls-panel" style={{ display: 'flex', alignItems: 'center', gap: '8px', pointerEvents: 'auto', flexWrap: 'wrap' }}>
+              {/* Mode Switcher */}
               <div className="glass-panel" style={{ display: 'flex', padding: '3px', borderRadius: 'var(--radius-xs)', gap: '3px', background: 'rgba(5, 12, 24, 0.88)' }}>
                 <button
-                  onClick={() => setScaleMode('EXPLORATION')}
+                  onClick={() => {
+                    setViewMode('SOLAR_SYSTEM');
+                    resetView();
+                  }}
                   style={{
-                    padding: '5px 10px',
+                    padding: '6px 12px',
                     borderRadius: 'var(--radius-xs)',
                     fontSize: '11px',
+                    fontFamily: 'var(--font-heading)',
                     fontWeight: 600,
                     cursor: 'pointer',
-                    background: scaleMode === 'EXPLORATION' ? 'rgba(56, 189, 248, 0.20)' : 'transparent',
-                    color: scaleMode === 'EXPLORATION' ? '#ffffff' : 'var(--text-secondary)',
-                    border: scaleMode === 'EXPLORATION' ? '1px solid rgba(56, 189, 248, 0.45)' : '1px solid transparent',
+                    background: viewMode === 'SOLAR_SYSTEM' ? 'rgba(56, 189, 248, 0.18)' : 'transparent',
+                    color: viewMode === 'SOLAR_SYSTEM' ? '#ffffff' : 'var(--text-secondary)',
+                    border: viewMode === 'SOLAR_SYSTEM' ? '1px solid rgba(56, 189, 248, 0.45)' : '1px solid transparent',
+                    boxShadow: viewMode === 'SOLAR_SYSTEM' ? '0 0 12px rgba(56, 189, 248, 0.16)' : 'none',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '5px'
+                    gap: '6px',
+                    transition: 'all 0.15s ease'
                   }}
-                  title="Orbital distances compressed for human exploration; planets visually enlarged"
                 >
-                  <Sliders size={12} />
-                  <span>Exploration</span>
+                  <Orbit size={13} style={{ color: viewMode === 'SOLAR_SYSTEM' ? 'var(--accent-cyan)' : 'inherit' }} />
+                  <span>Solar System</span>
                 </button>
 
                 <button
                   onClick={() => {
-                    setScaleMode('SCIENTIFIC');
-                    flyToTarget(new THREE.Vector3(60, 110, 260), new THREE.Vector3(0, -1, 0), 1200);
+                    setViewMode('EARTH_ORBIT');
+                    resetView();
                   }}
                   style={{
-                    padding: '5px 10px',
+                    padding: '6px 12px',
                     borderRadius: 'var(--radius-xs)',
                     fontSize: '11px',
+                    fontFamily: 'var(--font-heading)',
                     fontWeight: 600,
                     cursor: 'pointer',
-                    background: scaleMode === 'SCIENTIFIC' ? 'rgba(52, 211, 153, 0.20)' : 'transparent',
-                    color: scaleMode === 'SCIENTIFIC' ? '#ffffff' : 'var(--text-secondary)',
-                    border: scaleMode === 'SCIENTIFIC' ? '1px solid rgba(52, 211, 153, 0.45)' : '1px solid transparent',
+                    background: viewMode === 'EARTH_ORBIT' ? 'rgba(56, 189, 248, 0.18)' : 'transparent',
+                    color: viewMode === 'EARTH_ORBIT' ? '#ffffff' : 'var(--text-secondary)',
+                    border: viewMode === 'EARTH_ORBIT' ? '1px solid rgba(56, 189, 248, 0.45)' : '1px solid transparent',
+                    boxShadow: viewMode === 'EARTH_ORBIT' ? '0 0 12px rgba(56, 189, 248, 0.16)' : 'none',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '5px'
+                    gap: '6px',
+                    transition: 'all 0.15s ease'
                   }}
-                  title="Orbital distances follow true astronomical proportions (1 AU = 22 units); planets realistically tiny"
                 >
-                  <Maximize2 size={12} />
-                  <span>Scientific</span>
+                  <Globe size={13} style={{ color: viewMode === 'EARTH_ORBIT' ? 'var(--accent-cyan)' : 'inherit' }} />
+                  <span>Earth Orbit Tracking</span>
                 </button>
               </div>
-            )}
 
-            {/* Quick Selectors */}
-            {viewMode === 'EARTH_ORBIT' ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-                {['iss', 'css-tiangong', 'hubble', 'astrosat', 'cartosat-3', 'eos-06'].map(satId => {
-                  const isSel = selectedBodyId === satId;
-                  const nameMap: Record<string, string> = {
-                    iss: 'ISS',
-                    'css-tiangong': 'Tiangong',
-                    hubble: 'Hubble',
-                    astrosat: 'Astrosat',
-                    'cartosat-3': 'Cartosat-3',
-                    'eos-06': 'EOS-06'
-                  };
-                  return (
-                    <button
-                      key={satId}
-                      onClick={() => {
-                        focusOnObject(satId);
-                        handleObjectSelection(satId, false);
-                      }}
-                      className={`btn ${isSel ? 'btn-active' : 'btn-secondary'}`}
-                      style={{ fontSize: '11px', padding: '5px 9px' }}
-                    >
-                      {nameMap[satId] || satId}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-                {['sun', 'earth', 'mars', 'jupiter', 'aditya-l1', 'voyager-1'].map(id => {
-                  const isSel = selectedBodyId === id;
-                  return (
-                    <button
-                      key={id}
-                      onClick={() => {
-                        if (id === 'voyager-1') {
-                          setVoyagerNotice(true);
-                        } else {
-                          focusOnObject(id);
-                        }
-                        handleObjectSelection(id, false);
-                      }}
-                      className={`btn ${isSel ? 'btn-active' : 'btn-secondary'}`}
-                      style={{ fontSize: '11px', padding: '5px 9px' }}
-                    >
-                      {id === 'aditya-l1' ? 'Aditya-L1' : id === 'voyager-1' ? 'Voyager 1' : id.charAt(0).toUpperCase() + id.slice(1)}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+              {/* Scale Mode Switcher */}
+              {viewMode === 'SOLAR_SYSTEM' && (
+                <div className="glass-panel" style={{ display: 'flex', padding: '3px', borderRadius: 'var(--radius-xs)', gap: '3px', background: 'rgba(5, 12, 24, 0.88)' }}>
+                  <button
+                    onClick={() => setScaleMode('EXPLORATION')}
+                    style={{
+                      padding: '5px 10px',
+                      borderRadius: 'var(--radius-xs)',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      background: scaleMode === 'EXPLORATION' ? 'rgba(56, 189, 248, 0.20)' : 'transparent',
+                      color: scaleMode === 'EXPLORATION' ? '#ffffff' : 'var(--text-secondary)',
+                      border: scaleMode === 'EXPLORATION' ? '1px solid rgba(56, 189, 248, 0.45)' : '1px solid transparent',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px'
+                    }}
+                    title="Compressed distances for human exploration"
+                  >
+                    <Sliders size={12} />
+                    <span>Exploration</span>
+                  </button>
 
-            {/* Interactive Search Bar */}
-            <div style={{ position: 'relative' }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                background: 'rgba(5, 12, 24, 0.88)',
-                border: '1px solid var(--border-hairline)',
-                borderRadius: 'var(--radius-xs)',
-                padding: '5px 10px',
-                width: '200px'
-              }}>
-                <Search size={13} style={{ color: 'var(--text-muted)' }} />
-                <input
-                  type="text"
-                  placeholder="Search body or probe..."
-                  value={searchQuery}
-                  onFocus={() => setShowSearchDropdown(true)}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setShowSearchDropdown(true);
-                  }}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    outline: 'none',
-                    color: 'var(--text-primary)',
-                    fontSize: '11px',
-                    width: '100%',
-                    fontFamily: 'var(--font-sans)'
-                  }}
-                />
-              </div>
-
-              {showSearchDropdown && searchResults.length > 0 && (
-                <div
-                  className="glass-panel"
-                  style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    right: 0,
-                    marginTop: '4px',
-                    borderRadius: 'var(--radius-xs)',
-                    maxHeight: '220px',
-                    overflowY: 'auto',
-                    zIndex: 50,
-                    padding: '4px',
-                    background: 'rgba(5, 12, 24, 0.96)'
-                  }}
-                >
-                  {searchResults.map(res => (
-                    <div
-                      key={res.id}
-                      onClick={() => handleSearchResultSelect(res)}
-                      style={{
-                        padding: '6px 8px',
-                        borderRadius: '3px',
-                        fontSize: '11px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(56, 189, 248, 0.12)'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{res.name}</span>
-                      <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>{res.category}</span>
-                    </div>
-                  ))}
+                  <button
+                    onClick={() => {
+                      setScaleMode('SCIENTIFIC');
+                      flyToTarget(new THREE.Vector3(60, 110, 260), new THREE.Vector3(0, -1, 0), 1200);
+                    }}
+                    style={{
+                      padding: '5px 10px',
+                      borderRadius: 'var(--radius-xs)',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      background: scaleMode === 'SCIENTIFIC' ? 'rgba(52, 211, 153, 0.20)' : 'transparent',
+                      color: scaleMode === 'SCIENTIFIC' ? '#ffffff' : 'var(--text-secondary)',
+                      border: scaleMode === 'SCIENTIFIC' ? '1px solid rgba(52, 211, 153, 0.45)' : '1px solid transparent',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px'
+                    }}
+                    title="True proportional distances (1 AU = 22 units)"
+                  >
+                    <Maximize2 size={12} />
+                    <span>Scientific</span>
+                  </button>
                 </div>
               )}
+
+              {/* Quick Selectors */}
+              {viewMode === 'EARTH_ORBIT' ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                  {['iss', 'css-tiangong', 'hubble', 'astrosat', 'cartosat-3', 'eos-06'].map(satId => {
+                    const isSel = selectedBodyId === satId;
+                    const nameMap: Record<string, string> = {
+                      iss: 'ISS',
+                      'css-tiangong': 'Tiangong',
+                      hubble: 'Hubble',
+                      astrosat: 'Astrosat',
+                      'cartosat-3': 'Cartosat-3',
+                      'eos-06': 'EOS-06'
+                    };
+                    return (
+                      <button
+                        key={satId}
+                        onClick={() => {
+                          focusOnObject(satId);
+                          handleObjectSelection(satId, false);
+                        }}
+                        className={`btn ${isSel ? 'btn-active' : 'btn-secondary'}`}
+                        style={{ fontSize: '11px', padding: '5px 9px' }}
+                      >
+                        {nameMap[satId] || satId}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                  {['sun', 'earth', 'mars', 'jupiter', 'aditya-l1', 'voyager-1'].map(id => {
+                    const isSel = selectedBodyId === id;
+                    return (
+                      <button
+                        key={id}
+                        onClick={() => {
+                          if (id === 'voyager-1') {
+                            setVoyagerNotice(true);
+                          } else {
+                            focusOnObject(id);
+                          }
+                          handleObjectSelection(id, false);
+                        }}
+                        className={`btn ${isSel ? 'btn-active' : 'btn-secondary'}`}
+                        style={{ fontSize: '11px', padding: '5px 9px' }}
+                      >
+                        {id === 'aditya-l1' ? 'Aditya-L1' : id === 'voyager-1' ? 'Voyager 1' : id.charAt(0).toUpperCase() + id.slice(1)}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Search Bar */}
+              <div style={{ position: 'relative' }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: 'rgba(5, 12, 24, 0.88)',
+                  border: '1px solid var(--border-hairline)',
+                  borderRadius: 'var(--radius-xs)',
+                  padding: '5px 10px',
+                  width: '190px'
+                }}>
+                  <Search size={13} style={{ color: 'var(--text-muted)' }} />
+                  <input
+                    type="text"
+                    placeholder="Search object..."
+                    value={searchQuery}
+                    onFocus={() => setShowSearchDropdown(true)}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setShowSearchDropdown(true);
+                    }}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      outline: 'none',
+                      color: 'var(--text-primary)',
+                      fontSize: '11px',
+                      width: '100%',
+                      fontFamily: 'var(--font-sans)'
+                    }}
+                  />
+                </div>
+
+                {showSearchDropdown && searchResults.length > 0 && (
+                  <div
+                    className="glass-panel"
+                    style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      right: 0,
+                      marginTop: '4px',
+                      borderRadius: 'var(--radius-xs)',
+                      maxHeight: '220px',
+                      overflowY: 'auto',
+                      zIndex: 50,
+                      padding: '4px',
+                      background: 'rgba(5, 12, 24, 0.96)'
+                    }}
+                  >
+                    {searchResults.map(res => (
+                      <div
+                        key={res.id}
+                        onClick={() => handleSearchResultSelect(res)}
+                        style={{
+                          padding: '6px 8px',
+                          borderRadius: '3px',
+                          fontSize: '11px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(56, 189, 248, 0.12)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{res.name}</span>
+                        <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>{res.category}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Right Controls: Compositions, Spacewalk, Tour, Layers, Reset */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', pointerEvents: 'auto' }}>
+              {/* Spacewalk / Orbital View Button */}
+              {viewMode === 'SOLAR_SYSTEM' && (
+                <button
+                  onClick={() => setIsOrbitalView(true)}
+                  className="btn btn-secondary"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    padding: '6px 11px',
+                    fontSize: '11px',
+                    border: '1px solid rgba(56, 189, 248, 0.35)',
+                    background: 'rgba(56, 189, 248, 0.10)'
+                  }}
+                  title="Enter full-screen spacecraft observation drift through deep space"
+                >
+                  <Compass size={13} style={{ color: 'var(--accent-cyan)' }} />
+                  <span>Orbital View</span>
+                </button>
+              )}
+
+              {/* 7-Step Tour Button */}
+              {viewMode === 'SOLAR_SYSTEM' && (
+                <button
+                  onClick={() => handleTourStep(1)}
+                  className="btn btn-secondary"
+                  title="Experience the 7-Step Spacepulse Space Tour"
+                  style={{ fontSize: '11px', padding: '6px 10px', gap: '5px' }}
+                >
+                  <Sparkles size={13} style={{ color: 'var(--accent-cyan)' }} />
+                  <span>Space Tour</span>
+                </button>
+              )}
+
+              <button
+                onClick={() => setShowOrbits(!showOrbits)}
+                className={`btn ${showOrbits ? 'btn-active' : 'btn-secondary'}`}
+                title="Toggle Keplerian Orbital Paths"
+                style={{ fontSize: '11px', padding: '6px 10px' }}
+              >
+                <Layers size={13} />
+                <span>Orbits</span>
+              </button>
+
+              <button
+                onClick={resetView}
+                className="btn btn-secondary"
+                title="Reset Observatory Framing"
+                style={{ fontSize: '11px', padding: '6px 10px' }}
+              >
+                <RotateCcw size={13} />
+                <span>Reset</span>
+              </button>
             </div>
           </div>
-
-          {/* Right: Walkthrough Tour, Camera Presets, Layer Toggles & Reset */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', pointerEvents: 'auto' }}>
-            {viewMode === 'EARTH_ORBIT' && isFetchingSatellites && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '4px 8px',
-                borderRadius: 'var(--radius-xs)',
-                background: 'rgba(56, 189, 248, 0.1)',
-                border: '1px solid rgba(56, 189, 248, 0.25)',
-                fontSize: '10px',
-                color: 'var(--accent-cyan)'
-              }}>
-                <RefreshCw size={11} className="radar-sweep" />
-                <span>RETRIEVING ORBITAL DATA</span>
-              </div>
-            )}
-
-            {/* Camera Presets (Earth Orbit) */}
-            {viewMode === 'EARTH_ORBIT' && (
-              <div className="glass-panel" style={{ display: 'flex', padding: '2px', borderRadius: 'var(--radius-xs)', gap: '2px', background: 'rgba(5, 12, 24, 0.88)' }}>
-                <button
-                  onClick={() => setCameraPreset('default')}
-                  className="btn btn-secondary"
-                  style={{ padding: '4px 8px', fontSize: '10px' }}
-                  title="Cinematic Orbital Horizon"
-                >
-                  Orbital
-                </button>
-                <button
-                  onClick={() => setCameraPreset('horizon')}
-                  className="btn btn-secondary"
-                  style={{ padding: '4px 8px', fontSize: '10px' }}
-                  title="Sunlit Limb View"
-                >
-                  Limb
-                </button>
-                <button
-                  onClick={() => setCameraPreset('polar')}
-                  className="btn btn-secondary"
-                  style={{ padding: '4px 8px', fontSize: '10px' }}
-                  title="Polar View"
-                >
-                  Polar
-                </button>
-                <button
-                  onClick={() => setCameraPreset('equatorial')}
-                  className="btn btn-secondary"
-                  style={{ padding: '4px 8px', fontSize: '10px' }}
-                  title="Equatorial View"
-                >
-                  Equator
-                </button>
-              </div>
-            )}
-
-            {/* Tour / Walkthrough Replay Button */}
-            {viewMode === 'SOLAR_SYSTEM' && (
-              <button
-                onClick={() => handleWalkthroughStep(1)}
-                className="btn btn-secondary"
-                title="Start Guided Observatory Tour"
-                style={{ fontSize: '11px', padding: '6px 10px', gap: '5px' }}
-              >
-                <Sparkles size={13} style={{ color: 'var(--accent-cyan)' }} />
-                <span>Tour</span>
-              </button>
-            )}
-
-            <button
-              onClick={() => setShowOrbits(!showOrbits)}
-              className={`btn ${showOrbits ? 'btn-active' : 'btn-secondary'}`}
-              title="Toggle Keplerian Orbital Paths"
-              style={{ fontSize: '11px', padding: '6px 10px' }}
-            >
-              <Layers size={13} />
-              <span>Orbits</span>
-            </button>
-
-            <button
-              onClick={resetView}
-              className="btn btn-secondary"
-              title="Reset Observatory Framing"
-              style={{ fontSize: '11px', padding: '6px 10px' }}
-            >
-              <RotateCcw size={13} />
-              <span>Reset</span>
-            </button>
-          </div>
         </div>
-      </div>
+      )}
 
-      {/* Guided Walkthrough Floating Modal (Phases 1 to 5) */}
-      {walkthroughPhase > 0 && (
+      {/* 3. 7-Step Spacepulse Space Tour Interactive Player Modal */}
+      {tourStep > 0 && !isOrbitalView && (
         <div
           className="glass-panel tech-corner"
           style={{
@@ -1639,14 +1793,14 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
             top: '80px',
             left: '50%',
             transform: 'translateX(-50%)',
-            width: '460px',
+            width: '480px',
             maxWidth: 'calc(100vw - 32px)',
             padding: '16px 20px',
             borderRadius: 'var(--radius-sm)',
             zIndex: 40,
-            background: 'rgba(5, 12, 24, 0.94)',
-            border: '1px solid rgba(56, 189, 248, 0.45)',
-            boxShadow: '0 12px 40px rgba(0, 0, 0, 0.75)',
+            background: 'rgba(5, 12, 24, 0.95)',
+            border: '1px solid rgba(56, 189, 248, 0.5)',
+            boxShadow: '0 12px 40px rgba(0, 0, 0, 0.8)',
             animation: 'fadeIn 0.25s ease'
           }}
         >
@@ -1662,36 +1816,44 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
               letterSpacing: '0.08em'
             }}>
               <Compass size={13} className="radar-sweep" />
-              <span>{walkthroughPhase === 1 ? 'PHASE 01 // ARRIVAL' :
-                     walkthroughPhase === 2 ? 'PHASE 02 // SYSTEM REVEAL' :
-                     walkthroughPhase === 3 ? 'PHASE 03 // OBSERVATORY CONTROLS' :
-                     walkthroughPhase === 4 ? 'PHASE 04 // TARGET ACQUISITION (EARTH)' :
-                     'PHASE 05 // SYSTEM READY'}</span>
+              <span>STEP {tourStep} OF 7 // {
+                tourStep === 1 ? 'DEEP SPACE CANOPY' :
+                tourStep === 2 ? 'HELIOCENTRIC ARCHITECTURE' :
+                tourStep === 3 ? 'THE INNER WORLDS' :
+                tourStep === 4 ? 'THE GAS GIANTS' :
+                tourStep === 5 ? 'THE ICE GIANTS & BEYOND' :
+                tourStep === 6 ? 'HUMAN SPACEFLIGHT PRESENCE' :
+                'OBSERVATORY PERSPECTIVE'
+              }</span>
             </div>
 
             <button
-              onClick={() => handleWalkthroughStep(0)}
+              onClick={() => handleTourStep(0)}
               style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px' }}
-              title="Skip Walkthrough"
+              title="Exit Space Tour"
             >
               <X size={14} />
             </button>
           </div>
 
           <div style={{ fontSize: '15px', fontWeight: 700, color: '#ffffff', marginBottom: '6px' }}>
-            {walkthroughPhase === 1 && 'Approaching the Heliocentric System'}
-            {walkthroughPhase === 2 && 'Keplerian Architecture & True Geometry'}
-            {walkthroughPhase === 3 && 'Spatial Exploration & Time Scrubbing'}
-            {walkthroughPhase === 4 && 'Target Tracking & Planetary Telemetry'}
-            {walkthroughPhase === 5 && 'Observatory Ready For Exploration'}
+            {tourStep === 1 && 'Entering Deep Space'}
+            {tourStep === 2 && 'Approaching the Solar System'}
+            {tourStep === 3 && 'The Inner Planets'}
+            {tourStep === 4 && 'The Gas Giants: Jupiter & Saturn'}
+            {tourStep === 5 && 'Beyond the Giants: Uranus & Neptune'}
+            {tourStep === 6 && 'Human Spaceflight & Telemetry'}
+            {tourStep === 7 && 'Return to the Solar System'}
           </div>
 
           <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.55, margin: '0 0 14px 0' }}>
-            {walkthroughPhase === 1 && 'Entering deep heliocentric observation domain. Notice the distant multi-tier star canopy with authentic B-V spectral classifications.'}
-            {walkthroughPhase === 2 && 'Planetary positions and orbital ellipses are propagated from verified NASA JPL J2000 secular elements with inverse-square solar illumination.'}
-            {walkthroughPhase === 3 && 'Left-click and drag to orbit in 360°, scroll to zoom, and toggle between Exploration and Scientific scales. Use the timeline to simulate orbital movement.'}
-            {walkthroughPhase === 4 && 'Selecting any celestial body smoothly tracks the target, revealing calculated distances, light-time delays, velocity vectors, and atmospheric features.'}
-            {walkthroughPhase === 5 && 'The observatory is now under your control. Switch between Exploration Scale and Scientific Scale anytime, or explore Earth Orbit Tracking.'}
+            {tourStep === 1 && 'You are floating in deep interstellar void. Notice the four spatial depth tiers of stars with authentic astronomical B-V spectral temperatures and diffuse Milky Way band.'}
+            {tourStep === 2 && 'The radiant Sun anchors the heliocentric system, casting inverse-square illumination that produces authentic day/night terminators on every planet.'}
+            {tourStep === 3 && 'Gliding across the ecliptic: rocky cratered Mercury, sulfuric clouds on Venus, living Earth with rotating cloud formations and atmospheric limb, and iron-rich Mars.'}
+            {tourStep === 4 && 'Passing Jupiter’s turbulent cloud bands and Great Red Spot, toward Saturn with its multi-band ring system (Cassini Division, Ring B, Ring A) tilted at 26.7°.'}
+            {tourStep === 5 && 'Outer frontiers: pale cyan-aquamarine Uranus rotating sideways at 97.8° axial tilt, and deep cobalt-blue Neptune with high-altitude methane cloud streaks.'}
+            {tourStep === 6 && 'Humanity’s presence in deep space: Aditya-L1 at the Sun-Earth L1 Lagrange point, Earth-orbiting stations, and long-range spacecraft exploration.'}
+            {tourStep === 7 && 'The Solar System observatory is now under your control. Use the timeline to simulate orbital movement or switch between Exploration and Scientific scales.'}
           </p>
 
           <div style={{
@@ -1701,18 +1863,30 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
             paddingTop: '10px',
             borderTop: '1px solid var(--border-hairline)'
           }}>
-            <button
-              onClick={() => handleWalkthroughStep(0)}
-              className="btn btn-secondary"
-              style={{ fontSize: '11px', padding: '5px 12px' }}
-            >
-              Skip Tour
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                onClick={() => setTourPaused(!tourPaused)}
+                className="btn btn-secondary"
+                style={{ fontSize: '11px', padding: '5px 10px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                title={tourPaused ? 'Resume auto-play' : 'Pause tour'}
+              >
+                {tourPaused ? <Play size={11} /> : <Pause size={11} />}
+                <span>{tourPaused ? 'Play' : 'Pause'}</span>
+              </button>
+
+              <button
+                onClick={() => handleTourStep(0)}
+                className="btn btn-secondary"
+                style={{ fontSize: '11px', padding: '5px 10px' }}
+              >
+                Exit Tour
+              </button>
+            </div>
 
             <div style={{ display: 'flex', gap: '6px' }}>
-              {walkthroughPhase > 1 && (
+              {tourStep > 1 && (
                 <button
-                  onClick={() => handleWalkthroughStep(walkthroughPhase - 1)}
+                  onClick={() => handleTourStep(tourStep - 1)}
                   className="btn btn-secondary"
                   style={{ fontSize: '11px', padding: '5px 10px', display: 'flex', alignItems: 'center', gap: '4px' }}
                 >
@@ -1721,9 +1895,9 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
                 </button>
               )}
 
-              {walkthroughPhase < 5 ? (
+              {tourStep < 7 ? (
                 <button
-                  onClick={() => handleWalkthroughStep(walkthroughPhase + 1)}
+                  onClick={() => handleTourStep(tourStep + 1)}
                   className="btn btn-primary"
                   style={{ fontSize: '11px', padding: '5px 14px', display: 'flex', alignItems: 'center', gap: '4px' }}
                 >
@@ -1732,11 +1906,11 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
                 </button>
               ) : (
                 <button
-                  onClick={() => handleWalkthroughStep(0)}
+                  onClick={() => handleTourStep(0)}
                   className="btn btn-primary"
                   style={{ fontSize: '11px', padding: '5px 16px' }}
                 >
-                  Start Exploring
+                  Finish Tour
                 </button>
               )}
             </div>
@@ -1745,7 +1919,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
       )}
 
       {/* Hover Tooltip */}
-      {hoveredBody && (
+      {hoveredBody && !isOrbitalView && (
         <div
           style={{
             position: 'fixed',
@@ -1771,8 +1945,8 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         </div>
       )}
 
-      {/* Voyager Ephemeris Notice - Contextual Status */}
-      {voyagerNotice && (
+      {/* Voyager Ephemeris Notice */}
+      {voyagerNotice && !isOrbitalView && (
         <div
           className="glass-panel tech-corner"
           style={{
@@ -1834,7 +2008,7 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
       )}
 
       {/* Target Acquisition HUD Reticle (Bottom Left) */}
-      {!voyagerNotice && hudData && (
+      {!voyagerNotice && !isOrbitalView && hudData && (
         <div
           className="glass-panel tech-corner space-map-hud"
           style={{
@@ -1850,7 +2024,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.65)'
           }}
         >
-          {/* Header Row: Reticle indicator & Inspect Button */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
             <div style={{
               display: 'inline-flex',
@@ -1920,7 +2093,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
             </div>
           </div>
 
-          {/* Object Name & Category */}
           <div style={{ fontSize: '15px', fontWeight: 700, color: '#ffffff', letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {hudData.name}
           </div>
@@ -1930,7 +2102,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
             {hudData.orbitClass && <span>{hudData.orbitClass}</span>}
           </div>
 
-          {/* Telemetry Metrics in a single strip */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -1964,7 +2135,6 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
             </div>
           </div>
 
-          {/* Source Provenance */}
           <div style={{
             marginTop: '6px',
             paddingTop: '6px',
@@ -1981,91 +2151,95 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
       )}
 
       {/* Scientific Transparency Scale Disclaimer (Bottom Center) */}
-      <div
-        className="space-map-scale-disclaimer"
-        style={{
-          position: 'absolute',
-          bottom: '12px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          background: 'rgba(3, 5, 10, 0.88)',
-          backdropFilter: 'blur(8px)',
-          padding: '5px 14px',
-          borderRadius: 'var(--radius-full)',
-          border: '1px solid rgba(56, 189, 248, 0.25)',
-          fontSize: '10px',
-          color: 'var(--text-muted)',
-          textAlign: 'center',
-          pointerEvents: 'none',
-          maxWidth: 'min(580px, calc(100vw - 32px))',
-          zIndex: 15,
-          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.6)'
-        }}
-      >
-        {scaleMode === 'SCIENTIFIC' ? (
-          <span>
-            <strong style={{ color: '#34d399' }}>SCIENTIFIC SCALE:</strong> True proportional interplanetary distances (1 AU = 22 scene units).
-          </span>
-        ) : (
-          <span>
-            <strong style={{ color: 'var(--accent-cyan)' }}>EXPLORATION SCALE — DISTANCES VISUALLY COMPRESSED:</strong> Continuous power-law mapping preserves exact Keplerian ordering and true angular positions.
-          </span>
-        )}
-      </div>
+      {!isOrbitalView && (
+        <div
+          className="space-map-scale-disclaimer"
+          style={{
+            position: 'absolute',
+            bottom: '12px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'rgba(3, 5, 10, 0.88)',
+            backdropFilter: 'blur(8px)',
+            padding: '5px 14px',
+            borderRadius: 'var(--radius-full)',
+            border: '1px solid rgba(56, 189, 248, 0.25)',
+            fontSize: '10px',
+            color: 'var(--text-muted)',
+            textAlign: 'center',
+            pointerEvents: 'none',
+            maxWidth: 'min(580px, calc(100vw - 32px))',
+            zIndex: 15,
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.6)'
+          }}
+        >
+          {scaleMode === 'SCIENTIFIC' ? (
+            <span>
+              <strong style={{ color: '#34d399' }}>SCIENTIFIC SCALE:</strong> True proportional interplanetary distances (1 AU = 22 scene units).
+            </span>
+          ) : (
+            <span>
+              <strong style={{ color: 'var(--accent-cyan)' }}>EXPLORATION SCALE — DISTANCES VISUALLY COMPRESSED:</strong> Continuous power-law mapping preserves exact Keplerian ordering and true angular positions.
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Time Scrubber (Bottom Right) */}
-      <div
-        className="glass-panel"
-        style={{
-          position: 'absolute',
-          bottom: '24px',
-          right: '20px',
-          padding: '8px 12px',
-          borderRadius: 'var(--radius-sm)',
-          zIndex: 15,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-          background: 'rgba(5, 12, 24, 0.92)'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Clock size={13} style={{ color: 'var(--accent-cyan)' }} />
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontSize: '8px', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>CALCULATED FOR</span>
-            <span className="mono" style={{ fontSize: '11px', fontWeight: 600, color: '#ffffff' }}>
-              {simDate.toISOString().split('T')[0]}
-            </span>
+      {!isOrbitalView && (
+        <div
+          className="glass-panel"
+          style={{
+            position: 'absolute',
+            bottom: '24px',
+            right: '20px',
+            padding: '8px 12px',
+            borderRadius: 'var(--radius-sm)',
+            zIndex: 15,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            background: 'rgba(5, 12, 24, 0.92)'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Clock size={13} style={{ color: 'var(--accent-cyan)' }} />
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: '8px', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>CALCULATED FOR</span>
+              <span className="mono" style={{ fontSize: '11px', fontWeight: 600, color: '#ffffff' }}>
+                {simDate.toISOString().split('T')[0]}
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '4px' }}>
+            <button
+              onClick={() => setSimDate(new Date(simDate.getTime() - 86400000 * 7))}
+              className="btn btn-secondary"
+              style={{ padding: '3px 6px', fontSize: '10px' }}
+              title="Rewind 7 days"
+            >
+              -7d
+            </button>
+            <button
+              onClick={() => setSimDate(new Date())}
+              className="btn btn-secondary"
+              style={{ padding: '3px 6px', fontSize: '10px' }}
+              title="Reset to current time"
+            >
+              Now
+            </button>
+            <button
+              onClick={() => setSimDate(new Date(simDate.getTime() + 86400000 * 7))}
+              className="btn btn-secondary"
+              style={{ padding: '3px 6px', fontSize: '10px' }}
+              title="Advance 7 days"
+            >
+              +7d
+            </button>
           </div>
         </div>
-
-        <div style={{ display: 'flex', gap: '4px' }}>
-          <button
-            onClick={() => setSimDate(new Date(simDate.getTime() - 86400000 * 7))}
-            className="btn btn-secondary"
-            style={{ padding: '3px 6px', fontSize: '10px' }}
-            title="Rewind 7 days"
-          >
-            -7d
-          </button>
-          <button
-            onClick={() => setSimDate(new Date())}
-            className="btn btn-secondary"
-            style={{ padding: '3px 6px', fontSize: '10px' }}
-            title="Reset to current time"
-          >
-            Now
-          </button>
-          <button
-            onClick={() => setSimDate(new Date(simDate.getTime() + 86400000 * 7))}
-            className="btn btn-secondary"
-            style={{ padding: '3px 6px', fontSize: '10px' }}
-            title="Advance 7 days"
-          >
-            +7d
-          </button>
-        </div>
-      </div>
+      )}
 
       {/* 3D Spacecraft Architecture Viewer Modal */}
       {viewing3DViewer && (
