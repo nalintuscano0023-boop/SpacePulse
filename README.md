@@ -173,16 +173,7 @@ SpacePulse follows these principles:
 7. Prefer authoritative scientific sources.
 8. Avoid presenting outdated information as current or live data.
 
----
 
-## 🔒 Security & Credential Policy
-
-SpacePulse adheres to strict client-side security guidelines:
-
-- **Zero Hardcoded Secrets**: SpacePulse contains no hardcoded API keys, private credentials, tokens, passwords, or certificates.
-- **Client-Side Environment Notice**: SpacePulse is a 100% frontend React + Vite web application. Any environment variable exposed through `VITE_*` is bundled directly into the browser distribution and is publicly viewable. Private credentials or confidential tokens must **never** be placed in `VITE_*` variables.
-- **Strictly Public Data Feeds**: All telemetry, satellite positions, space weather metrics, and orbital data are sourced exclusively from public, unauthenticated APIs and open archives (NOAA SWPC, CelesTrak / 18th SDS, NASA/JPL Horizons, Open-Notify, and ISRO open portals).
-- **Developer Guidelines**: Never commit `.env` files, API keys, tokens, passwords, credentials, or private keys. Sensitive file patterns (`.env*`, `*.pem`, `*.key`, `*.pfx`, `credentials.json`, etc.) are tracked and blocked in `.gitignore`.
 
 ---
 
@@ -210,4 +201,4 @@ Data belongs to its respective providers and is subject to their individual term
 
 ### Explore. Visualize. Understand Space.
 
-Built with ❤️ using React, TypeScript, Three.js, and real space data.
+Built with using React, TypeScript, Three.js, and real space data.
