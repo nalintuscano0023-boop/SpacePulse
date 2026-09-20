@@ -233,10 +233,10 @@ const SPACECRAFT_CAPABILITY_REGISTRY: Record<string, BaseSpacecraftCapabilityDef
     supportedTrackingMethod: 'HISTORICAL_ARCHIVE',
     source: 'ISRO / NASA PDS Archive',
     sourceUrl: 'https://www.issdc.gov.in/',
-    canFocusOnMap: false,
+    canFocusOnMap: true,
     canTrackVectors: false,
-    focusReason: 'Historical mission: primary science completed in August 2009',
-    trackReason: 'Historical completed mission (2008–2009). No current tracking source is available for this mission',
+    focusReason: 'Focus Chandrayaan-1 lunar orbit context in 3D Space Map',
+    trackReason: 'Historical completed mission (2008–2009). Archived 100 km polar lunar orbit data available; no current live telemetry.',
     defaultStatus: 'HISTORICAL',
     statusContext: 'Mission completed in August 2009. Historic discovery of lunar water molecules'
   },
@@ -503,4 +503,144 @@ export function getAllRegisteredTrackingCapabilities(): TrackingCapability[] {
     const base = SPACECRAFT_CAPABILITY_REGISTRY[id];
     return resolveTrackingCapability(id, base.name);
   });
+}
+
+/**
+ * Action-level capability architecture
+ * Decouples data status (e.g. HISTORICAL, CURRENT, CALCULATED) from UI action states.
+ * Guarantees all spacecraft cards render identical action slots without invisible or collapsing buttons.
+ */
+export type ActionVisualState = 'AVAILABLE' | 'LIMITED' | 'UNSUPPORTED';
+
+export interface ActionCapabilityDescriptor {
+  actionId: 'inspect' | 'view3D' | 'focus' | 'track';
+  state: ActionVisualState;
+  isClickable: boolean;
+  label: string;
+  tooltipTitle: string;
+  tooltipDescription: string;
+}
+
+export interface SpacecraftActionSet {
+  inspect: ActionCapabilityDescriptor;
+  view3D: ActionCapabilityDescriptor;
+  focus: ActionCapabilityDescriptor;
+  track: ActionCapabilityDescriptor;
+}
+
+/**
+ * Universal Action Capability Resolver
+ * Evaluates a spacecraft's profile and returns the exact visual state for every action slot.
+ */
+export function resolveSpacecraftActionSet(craft: {
+  id: string;
+  name: string;
+  trackingCapability?: TrackingCapability;
+  telemetrySource?: { status?: string };
+  [key: string]: any;
+}): SpacecraftActionSet {
+  const cap = craft.trackingCapability || resolveTrackingCapability(craft.id, craft.name);
+  const dataStatus = craft.telemetrySource?.status || cap.status;
+
+  // 1. Inspect: Universally accessible across all spacecraft
+  const inspect: ActionCapabilityDescriptor = {
+    actionId: 'inspect',
+    state: 'AVAILABLE',
+    isClickable: true,
+    label: 'Inspect',
+    tooltipTitle: 'OBJECT DOSSIER',
+    tooltipDescription: `Inspect technical specifications, telemetry, and mission profile for ${craft.name}`
+  };
+
+  // 2. 3D Model Architecture Viewer: Universally accessible across all fleet spacecraft
+  const view3D: ActionCapabilityDescriptor = {
+    actionId: 'view3D',
+    state: 'AVAILABLE',
+    isClickable: true,
+    label: '3D Model',
+    tooltipTitle: 'SPACECRAFT BLUEPRINT',
+    tooltipDescription: `Inspect interactive 3D model, payloads, and engineering subsystems for ${craft.name}`
+  };
+
+  // 3. Focus in 3D Space Map
+  let focus: ActionCapabilityDescriptor;
+  if (craft.id === 'chandrayaan-1') {
+    focus = {
+      actionId: 'focus',
+      state: 'LIMITED',
+      isClickable: true,
+      label: 'Focus Lunar Context',
+      tooltipTitle: 'HISTORICAL LUNAR CONTEXT',
+      tooltipDescription: 'Focuses camera on Moon and Chandrayaan-1 documented lunar orbital context'
+    };
+  } else if (cap.canFocusOnMap) {
+    focus = {
+      actionId: 'focus',
+      state: 'AVAILABLE',
+      isClickable: true,
+      label: 'Focus 3D Map',
+      tooltipTitle: 'FOCUS 3D MAP',
+      tooltipDescription: cap.focusReason || `Focus ${craft.name} in 3D Space Map`
+    };
+  } else {
+    focus = {
+      actionId: 'focus',
+      state: 'UNSUPPORTED',
+      isClickable: false,
+      label: 'Focus Unavailable',
+      tooltipTitle: 'FOCUS UNAVAILABLE',
+      tooltipDescription: cap.focusReason || '3D space map positioning is not supported for this object'
+    };
+  }
+
+  // 4. Track Vectors / Historical Orbit
+  let track: ActionCapabilityDescriptor;
+  if (craft.id === 'chandrayaan-1') {
+    track = {
+      actionId: 'track',
+      state: 'LIMITED',
+      isClickable: true,
+      label: 'Historical Orbit',
+      tooltipTitle: 'HISTORICAL ORBIT ARCHIVE',
+      tooltipDescription: 'Historical mission (2008–2009). Archived 100 km polar lunar orbit data available; no current live telemetry.'
+    };
+  } else if (craft.id === 'chandrayaan-3-surface') {
+    track = {
+      actionId: 'track',
+      state: 'LIMITED',
+      isClickable: true,
+      label: 'Surface Telemetry',
+      tooltipTitle: 'LUNAR SURFACE SITE',
+      tooltipDescription: 'Surface mission accomplished — stationary at Shiv Shakti Point (69.373° S, 32.319° E).'
+    };
+  } else if (cap.canTrackVectors) {
+    track = {
+      actionId: 'track',
+      state: 'AVAILABLE',
+      isClickable: true,
+      label: 'Track Vectors',
+      tooltipTitle: 'TRACK VECTORS',
+      tooltipDescription: cap.trackReason || `Propagate real-time orbital state vectors for ${craft.name}`
+    };
+  } else if (dataStatus === 'HISTORICAL') {
+    track = {
+      actionId: 'track',
+      state: 'LIMITED',
+      isClickable: true,
+      label: 'Historical Orbit',
+      tooltipTitle: 'HISTORICAL MISSION',
+      tooltipDescription: cap.trackReason || 'Historical completed mission — archived orbital parameters available.'
+    };
+  } else {
+    track = {
+      actionId: 'track',
+      state: 'UNSUPPORTED',
+      isClickable: false,
+      label: 'Tracking Unavailable',
+      tooltipTitle: 'CURRENT TRACKING UNAVAILABLE',
+      tooltipDescription: cap.trackReason || 'No verified orbital propagation or telemetry source is currently available.'
+    };
+  }
+
+  return { inspect, view3D, focus, track };
 }

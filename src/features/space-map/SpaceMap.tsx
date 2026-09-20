@@ -308,12 +308,18 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
 
   // Focus on specific object with smooth ease-in-out flight
   const focusOnObject = useCallback((id: string) => {
-    const body = bodiesRef.current.get(id);
+    let body = bodiesRef.current.get(id);
+    if (!body && id.startsWith('chandrayaan')) {
+      body = bodiesRef.current.get('moon') || bodiesRef.current.get('earth');
+    }
     if (!body || !cameraRef.current || !controlsRef.current) return;
 
     if (viewMode === 'EARTH_ORBIT') {
       if (body.id === 'earth') {
         flyToTarget(new THREE.Vector3(14, 11, 24), new THREE.Vector3(-1.2, 0, 0), 1200);
+      } else if (body.id === 'moon' || body.id.startsWith('chandrayaan')) {
+        const targetLook = body.position.clone();
+        flyToTarget(body.position.clone().add(new THREE.Vector3(5.0, 3.0, 6.0)), targetLook, 1300);
       } else {
         const targetLook = body.position.clone();
         const zoomDist = selectedBodyId === id ? 1.8 : 3.8;
@@ -338,6 +344,8 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         viewDist = 4.5;
       } else if (body.id === 'voyager-1' || body.id === 'voyager-2') {
         viewDist = 5.0;
+      } else if (body.id === 'chandrayaan-1' || body.id.startsWith('chandrayaan')) {
+        viewDist = 4.0;
       }
 
       // Compute camera offset along current viewing angle with slight upward elevation
@@ -990,6 +998,31 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
         }
       }
 
+      // 5. Chandrayaan-1 Historical Lunar Mission
+      const ch1Def = SPACECRAFT_REGISTRY.find(s => s.id === 'chandrayaan-1');
+      const earthBody = bodiesRef.current.get('earth');
+      if (ch1Def && earthBody) {
+        const visualRadius = scaleMode === 'SCIENTIFIC' ? 0.35 : 1.35;
+        const moonSceneOffset = new THREE.Vector3(visualRadius * 2.8, 0.4, visualRadius * 1.5);
+        const ch1Pos = earthBody.position.clone().add(moonSceneOffset);
+
+        bodiesRef.current.set('chandrayaan-1', {
+          id: 'chandrayaan-1',
+          name: 'Chandrayaan-1',
+          type: 'spacecraft',
+          mesh: earthBody.mesh,
+          position: ch1Pos,
+          realKm: { x: earthBody.realKm.x + 384400, y: earthBody.realKm.y, z: earthBody.realKm.z },
+          radiusKm: 2,
+          color: '#f59e0b'
+        });
+
+        resolveSpacecraftState(ch1Def, simDate).then(craftState => {
+          const existing = bodiesRef.current.get('chandrayaan-1');
+          if (existing) existing.craftData = craftState;
+        });
+      }
+
     } else {
       // EARTH ORBIT TRACKING MODE
       if (sunPointLightRef.current) sunPointLightRef.current.intensity = 0.0;
@@ -1285,7 +1318,9 @@ export const SpaceMap: React.FC<SpaceMapProps> = ({
       { id: 'noaa-19', name: 'NOAA-19 (POES)', type: 'satellite', category: 'Weather Satellite (SSO)' },
       { id: 'terra', name: 'Terra (EOS AM-1)', type: 'satellite', category: 'Earth Observing (SSO)' },
       { id: 'voyager-1', name: 'Voyager 1', type: 'spacecraft', category: 'Interstellar Probe (DSN)' },
-      { id: 'voyager-2', name: 'Voyager 2', type: 'spacecraft', category: 'Interstellar Probe (DSN)' }
+      { id: 'voyager-2', name: 'Voyager 2', type: 'spacecraft', category: 'Interstellar Probe (DSN)' },
+      { id: 'chandrayaan-1', name: 'Chandrayaan-1', type: 'spacecraft', category: 'Lunar Orbiter (Historical)' },
+      { id: 'chandrayaan-2-orbiter', name: 'Chandrayaan-2 Orbiter', type: 'spacecraft', category: 'Lunar Orbiter' }
     ];
   }, []);
 

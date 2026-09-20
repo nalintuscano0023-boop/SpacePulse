@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import type { ActionVisualState } from '../../services/data/trackingCapability';
 
 interface ActionTooltipProps {
   title?: string;
   description: string;
+  state?: ActionVisualState;
   isUnavailable?: boolean;
   children: React.ReactNode;
 }
@@ -10,10 +12,26 @@ interface ActionTooltipProps {
 export const ActionTooltip: React.FC<ActionTooltipProps> = ({
   title,
   description,
+  state,
   isUnavailable = false,
   children
 }) => {
   const [visible, setVisible] = useState(false);
+
+  // Derive visual tint from explicit state or legacy isUnavailable prop
+  const resolvedState: ActionVisualState = state || (isUnavailable ? 'UNSUPPORTED' : 'AVAILABLE');
+
+  const getTitleColor = () => {
+    switch (resolvedState) {
+      case 'LIMITED':
+        return '#f59e0b';
+      case 'UNSUPPORTED':
+        return '#94a3b8';
+      case 'AVAILABLE':
+      default:
+        return 'var(--accent-cyan)';
+    }
+  };
 
   return (
     <div
@@ -34,7 +52,7 @@ export const ActionTooltip: React.FC<ActionTooltipProps> = ({
                 fontFamily: 'var(--font-mono)',
                 fontWeight: 700,
                 letterSpacing: '0.05em',
-                color: isUnavailable ? 'var(--solar-amber)' : 'var(--accent-cyan)',
+                color: getTitleColor(),
                 textTransform: 'uppercase',
                 marginBottom: '3px'
               }}

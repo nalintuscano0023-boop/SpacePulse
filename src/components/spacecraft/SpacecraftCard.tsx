@@ -89,7 +89,7 @@ export const SpacecraftCard: React.FC<SpacecraftCardProps> = ({
       </div>
 
       {/* 4. Unified Action Bar: [ Inspect ] [ Visibility / 3D ] [ Focus ] [ Track ] */}
-      <div style={{ marginTop: 'auto', paddingTop: '10px' }}>
+      <div style={{ marginTop: 'auto', width: '100%' }}>
         <SpacecraftActions
           craft={craft}
           onSelect={onSelect}

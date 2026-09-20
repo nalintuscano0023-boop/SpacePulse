@@ -709,13 +709,13 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
               <ActionTooltip
                 title={cap.statusLabel}
                 description={cap.focusReason}
-                isUnavailable
+                state="UNSUPPORTED"
               >
                 <button
                   disabled
                   aria-disabled="true"
                   className="btn btn-secondary"
-                  style={{ flex: '1 1 130px', minHeight: '38px', fontSize: '12px', opacity: 0.4, cursor: 'not-allowed' }}
+                  style={{ flex: '1 1 130px', minHeight: '38px', fontSize: '12px', opacity: 0.75, cursor: 'not-allowed', border: '1px solid rgba(255, 255, 255, 0.14)', color: '#94a3b8' }}
                 >
                   <Crosshair size={14} />
                   <span>Focus on Map</span>
@@ -739,13 +739,13 @@ export const ObjectInspector: React.FC<ObjectInspectorProps> = ({
               <ActionTooltip
                 title={cap.statusLabel}
                 description={cap.trackReason}
-                isUnavailable
+                state="UNSUPPORTED"
               >
                 <button
                   disabled
                   aria-disabled="true"
                   className="btn btn-secondary"
-                  style={{ minHeight: '38px', fontSize: '12px', padding: '8px 12px', opacity: 0.4, cursor: 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  style={{ minHeight: '38px', fontSize: '12px', padding: '8px 12px', opacity: 0.75, cursor: 'not-allowed', border: '1px solid rgba(255, 255, 255, 0.14)', color: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   aria-label={`Vector tracking unavailable: ${cap.trackReason}`}
                 >
                   <Compass size={14} />
